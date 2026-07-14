@@ -4,6 +4,56 @@ import tseslint from 'typescript-eslint';
 import prettier from 'eslint-config-prettier';
 import globals from 'globals';
 
+const DETERMINISM_MSG =
+  'Determinismo (money path): fonte não-determinística ou dependente de plataforma/ICU proibida em libs de domínio — receba o valor como parâmetro (seed/tempo) e use aritmética inteira.';
+
+// Transcendentais NÃO são garantidas corretamente-arredondadas pelo ECMAScript →
+// divergem no último bit entre SOs/versões de V8. `Math.floor`/`imul`/`sqrt` (exatas)
+// seguem permitidas; estas, não. Proibidas no money path.
+const NON_DETERMINISTIC_MATH = [
+  'pow',
+  'exp',
+  'expm1',
+  'log',
+  'log2',
+  'log10',
+  'log1p',
+  'sin',
+  'cos',
+  'tan',
+  'asin',
+  'acos',
+  'atan',
+  'atan2',
+  'sinh',
+  'cosh',
+  'tanh',
+  'asinh',
+  'acosh',
+  'atanh',
+  'cbrt',
+  'hypot',
+];
+
+// `object.property` proibidos além dos cobertos por `no-restricted-syntax`
+// (fecha o furo achado no review: Intl.NumberFormat/Collator, localeCompare — ICU;
+// performance.now / process.hrtime — relógio; crypto.getRandomValues — entropia;
+// Date.parse — parsing dependente de locale/impl).
+const RESTRICTED_PROPERTIES = [
+  ...NON_DETERMINISTIC_MATH.map((property) => ({
+    object: 'Math',
+    property,
+    message: DETERMINISM_MSG,
+  })),
+  { object: 'Intl', property: 'NumberFormat', message: DETERMINISM_MSG },
+  { object: 'Intl', property: 'Collator', message: DETERMINISM_MSG },
+  { object: 'Date', property: 'parse', message: DETERMINISM_MSG },
+  { object: 'performance', property: 'now', message: DETERMINISM_MSG },
+  { object: 'process', property: 'hrtime', message: DETERMINISM_MSG },
+  { object: 'crypto', property: 'getRandomValues', message: DETERMINISM_MSG },
+  { property: 'localeCompare', message: DETERMINISM_MSG },
+];
+
 export default tseslint.config(
   // Ignores globais.
   { ignores: ['**/dist/**', '**/coverage/**', '**/*.tsbuildinfo'] },
@@ -49,7 +99,15 @@ export default tseslint.config(
           message:
             'Determinismo (money path): sem `Math.random()` em libs de domínio — use RNG por seed.',
         },
+        {
+          selector:
+            "NewExpression[callee.object.name='Intl'][callee.property.name='DateTimeFormat']",
+          message:
+            'Determinismo (money path): sem `Intl.DateTimeFormat` em libs de domínio (depende de ICU/tzdata) — use aritmética de epoch com offset fixo.',
+        },
       ],
+      // Defense-in-depth: transcendentais, Intl/locale (ICU), relógio e entropia.
+      'no-restricted-properties': ['error', ...RESTRICTED_PROPERTIES],
     },
   },
 

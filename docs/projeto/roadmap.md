@@ -11,8 +11,9 @@ Objetivo: infra determinística e auditável antes de qualquer feature de jogado
 
 | # | Spec | Entrega |
 |---|------|---------|
-| 0.1 | **Bootstrap de repositório + CI** ✅ | Monorepo, gates de lint/type/test, pipeline de build. *(SPEC-001 — concluído 2026-07-14, PR pendente.)* |
-| 0.2 | **Camada de dados + seed do mundo** | Schema de ligas/clubes/atletas/temporadas; migrations versionadas. |
+| 0.1 | **Bootstrap de repositório + CI** ✅ | Monorepo, gates de lint/type/test, pipeline de build. *(SPEC-001 — concluído 2026-07-14.)* |
+| 0.1.5 | **Spike — motor do mundo** ✅ | De-risca R1 (compute/determinismo/atomicidade/fuso) **antes** de 0.2: 1 liga fictícia, 10 clubes NPC, 18 rodadas determinísticas por seed, publicação atômica, âncora de fuso sem `Intl`/`Date`, golden vectors cross-ambiente e bench K-ligas. Lib descartável/evoluível `packages/world-engine`; valida antecipadamente partes de 0.3 (RNG+auditoria) e 1.1/1.2. *(SPEC-002 — concluído 2026-07-14.)* |
+| 0.2 | **Camada de dados + seed do mundo** | Schema de ligas/clubes/atletas/temporadas; migrations versionadas. Persiste o que o spike (0.1.5) provou em memória. |
 | 0.3 | **RNG determinístico + auditoria** | Seed por temporada, log replayable de toda tick do mundo (rigor money path). |
 | 0.4 | **Baseline de segurança** | Auth, autorização por recurso, validação de input, segredos em env. |
 

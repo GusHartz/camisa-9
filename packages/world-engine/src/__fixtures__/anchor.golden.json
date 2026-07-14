@@ -1,0 +1,103 @@
+{
+  "vectors": [
+    {
+      "iso": "2026-07-11T15:00:00-03:00",
+      "epochMs": 1783792800000,
+      "slot": {
+        "dayOfWeek": 6,
+        "hour": 15,
+        "minute": 0,
+        "dayIndex": 20645,
+        "isMatchWindow": true
+      }
+    },
+    {
+      "iso": "2026-07-07T15:00:00-03:00",
+      "epochMs": 1783447200000,
+      "slot": {
+        "dayOfWeek": 2,
+        "hour": 15,
+        "minute": 0,
+        "dayIndex": 20641,
+        "isMatchWindow": true
+      }
+    },
+    {
+      "iso": "2026-07-09T15:00:00-03:00",
+      "epochMs": 1783620000000,
+      "slot": {
+        "dayOfWeek": 4,
+        "hour": 15,
+        "minute": 0,
+        "dayIndex": 20643,
+        "isMatchWindow": true
+      }
+    },
+    {
+      "iso": "2026-07-06T10:00:00-03:00",
+      "epochMs": 1783342800000,
+      "slot": {
+        "dayOfWeek": 1,
+        "hour": 10,
+        "minute": 0,
+        "dayIndex": 20640,
+        "isMatchWindow": false
+      }
+    },
+    {
+      "iso": "2026-07-11T14:59:00-03:00",
+      "epochMs": 1783792740000,
+      "slot": {
+        "dayOfWeek": 6,
+        "hour": 14,
+        "minute": 59,
+        "dayIndex": 20645,
+        "isMatchWindow": false
+      }
+    },
+    {
+      "iso": "2026-07-11T23:30:00-03:00",
+      "epochMs": 1783823400000,
+      "slot": {
+        "dayOfWeek": 6,
+        "hour": 23,
+        "minute": 30,
+        "dayIndex": 20645,
+        "isMatchWindow": false
+      }
+    },
+    {
+      "iso": "1969-12-27T15:00:00-03:00",
+      "epochMs": -367200000,
+      "slot": {
+        "dayOfWeek": 6,
+        "hour": 15,
+        "minute": 0,
+        "dayIndex": -5,
+        "isMatchWindow": true
+      }
+    },
+    {
+      "iso": "1969-12-27T00:00:00-03:00",
+      "epochMs": -421200000,
+      "slot": {
+        "dayOfWeek": 6,
+        "hour": 0,
+        "minute": 0,
+        "dayIndex": -5,
+        "isMatchWindow": false
+      }
+    },
+    {
+      "iso": "1969-12-25T10:30:00-03:00",
+      "epochMs": -556200000,
+      "slot": {
+        "dayOfWeek": 4,
+        "hour": 10,
+        "minute": 30,
+        "dayIndex": -7,
+        "isMatchWindow": false
+      }
+    }
+  ]
+}
