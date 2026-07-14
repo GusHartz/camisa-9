@@ -1,0 +1,13 @@
+{
+  "name": "@camisa-9/example",
+  "version": "0.0.0",
+  "private": true,
+  "type": "module",
+  "description": "Placeholder puro e descartável (SPEC-001) — prova o pipeline. NÃO é o world-engine.",
+  "main": "dist/index.js",
+  "types": "dist/index.d.ts",
+  "scripts": {
+    "build": "tsc -b",
+    "test": "vitest run"
+  }
+}
