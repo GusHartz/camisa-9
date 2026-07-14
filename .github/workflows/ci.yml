@@ -1,0 +1,84 @@
+# CI da fundação H1VE (SPEC-089) — resiliente: roda com ou sem app Node ainda.
+# Ao abrir um PR, produz um check_suite que o H1VE Flow consome p/ mover pr -> ci -> qa_data.
+name: CI
+
+on:
+  pull_request:
+  push:
+    branches: [main]
+
+jobs:
+  ci:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      # SPEC-166 (GATE 2): lint de formato das SPEC/DONE alteradas no PR. NÃO-BLOQUEANTE
+      # (continue-on-error → a suite fica verde, não estranda o card); apenas anota (::error).
+      - name: Lint de SPECs/DONEs (H1VE — formato do template)
+        if: github.event_name == 'pull_request'
+        continue-on-error: true
+        run: |
+          git fetch --no-tags --depth=1 origin "$GITHUB_BASE_REF" >/dev/null 2>&1 || true
+          : > /tmp/h1ve_changed
+          git diff --name-only "FETCH_HEAD...HEAD" > /tmp/h1ve_changed 2>/dev/null || git diff --name-only FETCH_HEAD HEAD > /tmp/h1ve_changed 2>/dev/null || : > /tmp/h1ve_changed
+          bad=0
+          while IFS= read -r f; do
+            case "$f" in specs/SPEC-*.md|specs/DONE-*.md) ;; *) continue ;; esac
+            case "$f" in *TEMPLATE.md) continue ;; esac
+            [ -e "$f" ] || continue
+            case "$f" in
+              specs/DONE-*.md)
+                grep -qiE '^#+[[:space:]]*Resumo do que foi feito' "$f" || { echo "::error file=$f::DONE fora do template H1VE (SPEC-166) — falta a seção obrigatória: ## Resumo do que foi feito"; bad=1; }
+                grep -qiE '^#+[[:space:]]*Arquivos modificados' "$f" || { echo "::error file=$f::DONE fora do template H1VE (SPEC-166) — falta a seção obrigatória: ## Arquivos modificados"; bad=1; }
+                grep -qiE '^#+[[:space:]]*Critérios de aceitação' "$f" || { echo "::error file=$f::DONE fora do template H1VE (SPEC-166) — falta a seção obrigatória: ## Critérios de aceitação"; bad=1; }
+                grep -qiE '^#+[[:space:]]*AI Declaration' "$f" || { echo "::error file=$f::DONE fora do template H1VE (SPEC-166) — falta a seção obrigatória: ## AI Declaration"; bad=1; }
+                ;;
+              *)
+                grep -qiE '^#+[[:space:]]*Objetivo' "$f" || { echo "::error file=$f::SPEC fora do template H1VE (SPEC-166) — falta a seção obrigatória: ## Objetivo"; bad=1; }
+                grep -qiE '^#+[[:space:]]*Contexto e motivação' "$f" || { echo "::error file=$f::SPEC fora do template H1VE (SPEC-166) — falta a seção obrigatória: ## Contexto e motivação"; bad=1; }
+                grep -qiE '^#+[[:space:]]*Escopo — o que está DENTRO' "$f" || { echo "::error file=$f::SPEC fora do template H1VE (SPEC-166) — falta a seção obrigatória: ## Escopo — o que está DENTRO"; bad=1; }
+                grep -qiE '^#+[[:space:]]*Escopo — o que está FORA' "$f" || { echo "::error file=$f::SPEC fora do template H1VE (SPEC-166) — falta a seção obrigatória: ## Escopo — o que está FORA"; bad=1; }
+                grep -qiE '^#+[[:space:]]*Arquivos que serão tocados' "$f" || { echo "::error file=$f::SPEC fora do template H1VE (SPEC-166) — falta a seção obrigatória: ## Arquivos que serão tocados"; bad=1; }
+                grep -qiE '^#+[[:space:]]*Critérios de aceitação' "$f" || { echo "::error file=$f::SPEC fora do template H1VE (SPEC-166) — falta a seção obrigatória: ## Critérios de aceitação"; bad=1; }
+                grep -qiE '^#+[[:space:]]*Riscos e dependências' "$f" || { echo "::error file=$f::SPEC fora do template H1VE (SPEC-166) — falta a seção obrigatória: ## Riscos e dependências"; bad=1; }
+                grep -qiE '^#+[[:space:]]*Notas de implementação' "$f" || { echo "::error file=$f::SPEC fora do template H1VE (SPEC-166) — falta a seção obrigatória: ## Notas de implementação"; bad=1; }
+                ;;
+            esac
+          done < /tmp/h1ve_changed
+          if [ "$bad" -ne 0 ]; then
+            echo "H1VE (SPEC-166): SPEC/DONE alterada(s) neste PR não seguem o template. Corrija as seções anotadas acima — o gate de plataforma (Modo Estrito) é autoritativo."
+            exit 1
+          fi
+
+      - name: Detectar app Node
+        id: detect
+        run: |
+          if [ -f package.json ]; then
+            echo "node=true" >> "$GITHUB_OUTPUT"
+          else
+            echo "node=false" >> "$GITHUB_OUTPUT"
+          fi
+
+      - name: Setup Node
+        if: steps.detect.outputs.node == 'true'
+        uses: actions/setup-node@v4
+        with:
+          node-version: 20
+
+      - name: Instalar dependências
+        if: steps.detect.outputs.node == 'true'
+        run: npm ci || npm install
+
+      - name: Verificações (roda o que existir)
+        if: steps.detect.outputs.node == 'true'
+        run: |
+          npm run lint --if-present
+          npm run typecheck --if-present
+          npm test --if-present
+          npm run build --if-present
+
+      - name: Fundação sem app ainda
+        if: steps.detect.outputs.node != 'true'
+        run: echo "Repositório de fundação (sem package.json) — CI verde. Adicione o app para rodar lint/typecheck/test/build."
