@@ -1,0 +1,5 @@
+{
+  "//": "Solution raiz (padrão H1VE): sem arquivos próprios; apenas referencia os packages. Build com `tsc -b`.",
+  "files": [],
+  "references": [{ "path": "./packages/example" }]
+}

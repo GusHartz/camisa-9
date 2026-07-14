@@ -132,4 +132,23 @@ Nenhum PR é válido sem a SPEC aprovada e o DONE correspondente.
 
 ---
 
+## Estado atual
+
+> Atualizado ao final de cada sessão. Última atualização: **2026-07-14**.
+
+**Fase:** F0 — Fundação técnica e money path.
+
+**Concluído:**
+- **SPEC-001 — Bootstrap de repositório + CI** (roadmap 0.1): monorepo TypeScript (npm workspaces) com os 4 gates verdes — `lint` (ESLint flat + Prettier), `typecheck` (`tsc -b` + type-check dos testes), `test` (Vitest), `build` (`tsc -b`). OPs codificadas no lint (OP-14/15/16) + guardrail de determinismo (`Math.random`/`Date.now`/`new Date()` proibidos em `packages/*/src`). Placeholder `packages/example` (a remover). *Em review — PR pendente.*
+
+**Convenções cravadas (ver `README.md`):**
+- Layout: libs de domínio puras sob `packages/*` (docs falam `lib/world-engine` ⇒ `packages/world-engine`).
+- Camadas (OP-17): libs puras = toda a lógica · orquestração fina · cliente só renderiza.
+- i18n: sem texto de UI hardcoded; libs puras sem strings localizáveis.
+- Runtime: Node ≥ 20.19.
+
+**Próximo:** SPEC-002 — Camada de dados + seed do mundo (roadmap 0.2).
+
+---
+
 *CLAUDE.md gerado pelo Nexus Flow (H1VE) na fundação do projeto. Documento vivo — leia antes, atualize depois.*

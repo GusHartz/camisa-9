@@ -1,0 +1,15 @@
+# Dependências
+node_modules/
+
+# Artefatos de build
+dist/
+coverage/
+*.tsbuildinfo
+
+# Segredos (OP-02) — nunca versionar
+.env
+.env.*
+!.env.example
+
+# Sistema
+.DS_Store

@@ -11,7 +11,7 @@ Objetivo: infra determinística e auditável antes de qualquer feature de jogado
 
 | # | Spec | Entrega |
 |---|------|---------|
-| 0.1 | **Bootstrap de repositório + CI** | Monorepo, gates de lint/type/test, pipeline de build. |
+| 0.1 | **Bootstrap de repositório + CI** ✅ | Monorepo, gates de lint/type/test, pipeline de build. *(SPEC-001 — concluído 2026-07-14, PR pendente.)* |
 | 0.2 | **Camada de dados + seed do mundo** | Schema de ligas/clubes/atletas/temporadas; migrations versionadas. |
 | 0.3 | **RNG determinístico + auditoria** | Seed por temporada, log replayable de toda tick do mundo (rigor money path). |
 | 0.4 | **Baseline de segurança** | Auth, autorização por recurso, validação de input, segredos em env. |

@@ -1,0 +1,8 @@
+dist/
+coverage/
+package-lock.json
+*.tsbuildinfo
+
+# Markdown é hand-authored (docs de fundação H1VE, SPECs/DONEs com formato próprio
+# consumido pelo SPEC-lint do CI). Prettier não é dono do markdown neste repo.
+**/*.md
