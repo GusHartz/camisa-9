@@ -9,7 +9,6 @@
         Topmost="False"
         WindowStartupLocation="Manual"
         Background="#0B1220"
-        ClipToBounds="True"
         UseLayoutRounding="True"
         SnapsToDevicePixels="True">
     <!-- AllowsTransparency=false (default) de propósito: transparência liga a

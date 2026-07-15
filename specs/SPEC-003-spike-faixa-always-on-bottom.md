@@ -19,7 +19,7 @@
 | **Criada em** | 2026-07-15 |
 | **Aprovada em** | 2026-07-15 |
 | **Aprovada por** | Gustavo Hartz (founder/architect) |
-| **Status** | Em desenvolvimento |
+| **Status** | Concluído — validado no Windows 2026-07-15 (ver `DONE-003`) |
 | **Sequência ratificada** | **Candidato A (C#/WPF) primeiro** → validar no Windows → só então o Candidato B (Rust/Win32). Reduz código não-verificado acumulado (dev em macOS). |
 
 ---
