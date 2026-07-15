@@ -111,6 +111,9 @@ a **SPEC de distribuição**. Não se força resultado positivo.
 
 ## Estado
 
-- ✅ **Compila** (0 warn / 0 erro, SDK 8.0.423, zero workload) — a escolha de stack/pacote está validada.
-- ⏳ **Validação interativa no Windows** (o founder clica): toast aparece → warm → **cold** → silêncio →
-  footprint. Resultados em [`RESULTS.md`](RESULTS.md).
+- ✅ **Compila** (0 warn / 0 erro, SDK 8.0.423, zero workload).
+- ✅ **Validado no Windows 11** (Ryzen 5 5600X, non-elevated) — **GO**. Cold-activation COM provada
+  (PIDs novos cold-startam headless, postam ao servidor, `ack:true`); warm sem roubar foco; orçamento
+  PASS (0,095% CPU, RAM pico 99 MB); footprint 185,3 MB self-contained. **6 achados** (2 major: cenário
+  `Reminder` para os botões persistirem; silêncio precisa de heurística suplementar no Win11). Detalhes
+  e prova verbatim em [`RESULTS.md`](RESULTS.md). Kill-criteria **não** acionado.

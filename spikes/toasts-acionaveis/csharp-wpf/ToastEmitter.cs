@@ -16,6 +16,10 @@ internal static class ToastEmitter
         if (!allow) return (false, reason);
 
         new ToastContentBuilder()
+            // Reminder: o banner FICA na tela com os botões visíveis até o usuário decidir —
+            // não some pra Central de Ações (onde o Win11 recolhe e ESCONDE os botões, deixando
+            // só o body-tap com argumento vazio). É o cenário certo para o ritual das 15h.
+            .SetToastScenario(ToastScenario.Reminder)
             .AddText("camisa-9 — hora da partida")
             .AddText("Você entra em campo? (spike de teste — botões placeholder)")
             .AddButton(new ToastButton()

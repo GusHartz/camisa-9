@@ -26,6 +26,16 @@ public partial class App : Application
         // Nós controlamos o fim do processo (não o WPF por contagem de janelas).
         ShutdownMode = ShutdownMode.OnExplicitShutdown;
 
+        // Sonda do gate de silêncio (validação SPEC-005): consulta SHQueryUserNotificationState
+        // e grava gate.jsonl SEM abrir janela — não rouba foco nem quebra a tela cheia do usuário.
+        if (e.Args.Contains("--gate-check"))
+        {
+            var (allow, reason) = NotificationGate.ShouldShow();
+            ToastActivation.WriteGate(allow, reason);
+            Shutdown();
+            return;
+        }
+
         if (ToastNotificationManagerCompat.WasCurrentProcessToastActivated())
         {
             // COLD: este processo só existe para atender o clique. NÃO abrir janela;
@@ -38,6 +48,14 @@ public partial class App : Application
         _singleInstance = new Mutex(true, "camisa9-toast-spike-single", out bool isNew);
         if (!isNew) { Shutdown(); return; }
         new MainWindow().Show();
+
+        // Modo orquestrado (validação SPEC-005): dispara um toast já na abertura e
+        // registra a decisão do gate de silêncio (gate.jsonl) para verificação programática.
+        if (e.Args.Contains("--auto-toast"))
+        {
+            var (shown, reason) = ToastEmitter.Send();
+            ToastActivation.WriteGate(shown, reason);
+        }
     }
 
     private void OnToastActivated(ToastNotificationActivatedEventArgsCompat e)

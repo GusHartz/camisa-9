@@ -23,6 +23,7 @@ internal static class ToastActivation
         Environment.GetFolderPath(Environment.SpecialFolder.LocalApplicationData),
         "camisa9-toast-spike");
     private static readonly string ProofPath = Path.Combine(BaseDir, "proof.jsonl");
+    private static readonly string GatePath = Path.Combine(BaseDir, "gate.jsonl");
 
     private static readonly HttpClient Http = new() { Timeout = TimeSpan.FromSeconds(8) };
 
@@ -73,6 +74,21 @@ internal static class ToastActivation
     {
         Directory.CreateDirectory(BaseDir);
         WriteProof(new { at = TimestampUtc(), pid = Environment.ProcessId, watchdogTimeout = true });
+    }
+
+    /// <summary>
+    /// Registra a decisão do gate de silêncio (modo --auto-toast) para verificação
+    /// programática: se o toast foi mostrado e por quê (estado QUNS observado).
+    /// </summary>
+    public static void WriteGate(bool shown, string reason)
+    {
+        try
+        {
+            Directory.CreateDirectory(BaseDir);
+            File.AppendAllText(GatePath, JsonSerializer.Serialize(
+                new { at = TimestampUtc(), shown, reason, pid = Environment.ProcessId }) + Environment.NewLine);
+        }
+        catch { /* best-effort, como WriteProof */ }
     }
 
     private static string ParseDecision(string argument)
