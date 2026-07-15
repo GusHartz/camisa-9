@@ -20,11 +20,12 @@
 - **UI** (cliente Windows) → apresenta estado; **zero regra de negócio**, **zero anti-fraude**.
 
 ### Cliente Windows
-- ⚠️ **Decisão de stack no F0** — governada pela promessa **<1% CPU** (aprendizado do erro do TBH com Electron).
-- **Candidatos:** nativo (C#/WinUI3 ou similar) vs. web-wrapper ultraleve. **Electron descartado** — [SUPOSIÇÃO — revisar] provavelmente trai a promessa de CPU.
-- **Forma padrão:** janela sem borda, always-on-bottom (padrão do gênero, risco baixo).
+- ✅ **Stack RATIFICADA no F0 — `C#/WPF` (.NET LTS)** como baseline do cliente. Ver **[ADR-001](../adr/ADR-001-stack-do-cliente-windows.md)** para critérios, evidência e alternativas. Ratificada na evidência medida da SPEC-003 (CPU **0,249%** / RAM **~87 MB** — passa `<1% CPU` e `<150 MB RAM` com folga); único con = footprint (**161 MB** self-contained), aceito e **reversível** (cliente = *thin renderer*, OP-17). **Electron descartado** (trai a promessa de CPU — lição do TBH).
+- **Orçamentos ratificados:** `<1% CPU` (governante, gate de CI) e `<150 MB RAM` (medido contra o **process tree inteiro**).
+- **Alternativas avaliadas (ver ADR-001):** Rust/Win32 (footprint vencedor, maior custo de dev → gatilho de revisão) · Tauri/WebView2 (CPU não de-riscada, mesmo motor do Electron) · WinUI3 (dominado por WPF). "Web-wrapper ultraleve" só conta se usar **WebView2 do sistema** **e** passar o gate `<1% CPU` sob build real medido.
+- **Forma padrão:** janela sem borda, always-on-bottom (validada em WPF na SPEC-003; risco baixo).
 - **Widget na taskbar:** spike de risco alto (APIs não-oficiais). **Plano B já aceito em design:** modo compacto da própria faixa. Nunca no caminho crítico.
-- **Critério de decisão:** o spike do F0 mede CPU real sob build candidata; o candidato que não sustentar <1% em idle é eliminado.
+- **Gate items pós-ratificação (no build do cliente, não bloqueiam a ratificação):** soak de 8 h · check de hardware fraco · solução WorkerW/Win+D (Win+D via DWM cloaking).
 
 ### Notificações
 - Toasts nativos WinRT com botões de ação — decisões respondidas sem abrir o jogo.
@@ -54,7 +55,7 @@
 | D2 | Publicação atômica da rodada | Uma rodada meio-publicada corrompe o estado do mundo de todos os jogadores simultaneamente — falha catastrófica. |
 | D3 | Adiar > publicar errado | Confiança no resultado > pontualidade. Protocolo de falha pública ("evento de reparação") preserva o vínculo. |
 | D4 | Anti-fraude server-side puro | Cliente sob controle do usuário nunca é confiável. Toda validação de presença/rate/replay no servidor. |
-| D5 | Cliente nativo (não Electron) ⚠️ | Promessa <1% CPU é diferencial de produto; Electron a compromete. |
+| D5 | **Cliente `C#/WPF` (.NET LTS)** — ratificado ([ADR-001](../adr/ADR-001-stack-do-cliente-windows.md)) | Único candidato medido; passa `<1% CPU` (0,249%) e `<150 MB RAM` (~87 MB) com folga na SPEC-003. Con = footprint 161 MB, aceito e reversível (thin renderer). Electron descartado. |
 | D6 | Widget taskbar como spike opcional | APIs não-oficiais = risco alto; plano B (modo compacto) garante o produto mesmo sem o widget. |
 | D7 | i18n desde SPEC-001 | Retrofit de i18n é caro; externalizar cedo é barato. |
 | D8 | Química social apenas na F2 | Compra tempo para desenhar anti-abuso antes de expor superfície de fraude. |

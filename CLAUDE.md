@@ -137,7 +137,7 @@ Nenhum PR é válido sem a SPEC aprovada e o DONE correspondente.
 
 ## Estado atual
 
-> Atualizado ao final de cada sessão. Última atualização: **2026-07-15**.
+> Atualizado ao final de cada sessão. Última atualização: **2026-07-15** (SPEC-004).
 
 **Fase:** F0 — Fundação técnica e money path.
 
@@ -146,7 +146,10 @@ Nenhum PR é válido sem a SPEC aprovada e o DONE correspondente.
 - **SPEC-002 — Spike do motor do mundo** (roadmap 0.1.5): lib pura `packages/world-engine` — PRNG por seed (uint32, sem transcendentais), partida "chances × conversão", tabela turno-returno (18 rodadas/90 partidas), classificação, runner de temporada com sub-seed por partida `(seed, liga, temporada, rodada, ids)`, store transacional + publicador atômico (all-or-nothing + idempotência sob lock), âncora de fuso ter/qui/sáb 15h sem `Date`/`Intl` (offset fixo UTC-3). Golden vectors cross-ambiente. 48 testes. Review adversarial de 5 dimensões (5 defeitos corrigidos, incl. 1 major: seam de pré-commit async). **R1: GO** (~1 ms/temporada). *(Mergeado em `main` — PR #2.)*
 
 **Validado no Windows (PR pendente):**
-- **SPEC-003 — Spike faixa always-on-bottom** (de-risking do **cliente** no F0; alimenta a Ratificação de stack #1): **candidato A (C#/WPF) validado no Windows 11** (Ryzen 5 5600X) — antes rodava no macOS sem compilar. **Orçamento: PASS com folga** — CPU média **0,249%** (<1%), RAM **~87 MB** (<150 MB), sem leak no proxy de 3 min; era o **risco central** → **GO**. Always-on-bottom, não-rouba-foco, fora de taskbar/Alt-Tab, multi-monitor: **PASS**. **1 bug corrigido:** `ClipToBounds` no `<Window>` crashava o startup (único diff de código). **1 gap deferido:** Win+D (mostrar desktop) esconde a faixa no Win11 via DWM cloaking → exige parenting à WorkerW (tarefa do cliente real). **Footprint:** 161 MB self-contained (WPF sem trim) — insumo da #1. **Candidato B (Rust) não implementado** (A passou → sem kill; B vira dado de footprint da #1). `RESULTS.md` + `DONE-003` preenchidos; gates TS verdes (spike fora de `packages/*`). **Pendências:** soak de 8 h; decisão sobre o Win+D; a #1 (WPF vs. Rust).
+- **SPEC-003 — Spike faixa always-on-bottom** (de-risking do **cliente** no F0; alimenta a Ratificação de stack #1): **candidato A (C#/WPF) validado no Windows 11** (Ryzen 5 5600X) — antes rodava no macOS sem compilar. **Orçamento: PASS com folga** — CPU média **0,249%** (<1%), RAM **~87 MB** (<150 MB), sem leak no proxy de 3 min; era o **risco central** → **GO**. Always-on-bottom, não-rouba-foco, fora de taskbar/Alt-Tab, multi-monitor: **PASS**. **1 bug corrigido:** `ClipToBounds` no `<Window>` crashava o startup (único diff de código). **1 gap deferido:** Win+D (mostrar desktop) esconde a faixa no Win11 via DWM cloaking → exige parenting à WorkerW (tarefa do cliente real). **Footprint:** 161 MB self-contained (WPF sem trim) — insumo da #1. **Candidato B (Rust) não implementado** (A passou → sem kill; B vira dado de footprint da #1). `RESULTS.md` + `DONE-003` preenchidos; gates TS verdes (spike fora de `packages/*`). **Pendências:** soak de 8 h; decisão sobre o Win+D. *(A #1 — WPF vs. Rust — foi **ratificada na SPEC-004**: WPF.)*
+
+**Ratificado nesta sessão (PR pendente):**
+- **SPEC-004 — Ratificação de stack do cliente** (a "#1"): **stack do cliente ratificada = `C#/WPF` (.NET LTS)**, na evidência medida da SPEC-003 (CPU **0,249%** / RAM **~87 MB**, ambos com folga; único con = footprint **161 MB**, aceito e **reversível** — cliente é *thin renderer*, OP-17). Decisão registrada em **`docs/adr/ADR-001`** (primeiro ADR do projeto) + os itens `⚠️` de stack do **SDD** (§1 "Cliente Windows" + **D5**) flipados para **ratificado**, apontando ao ADR. Adota formalmente os orçamentos `<1% CPU` e `<150 MB RAM` (process tree) e registra requisitos antes silentes (**code-signing** + modelo de payload de autoupdate). Fundamentado por fan-out de pesquisa (WPF/Rust/Tauri/WinUI3) + **verificado adversarialmente** (7/7 critérios PASS; 1 erro factual .NET 8/10 corrigido). Desbloqueia os spikes de cliente (#3 toasts, #4 taskbar) e a futura SPEC de distribuição. `DONE-004` preenchido; gates TS verdes (docs-only). *(Escolha de escopo: ratificar na evidência + literatura — sem re-spike; probes medidos de Rust/Tauri ficam como gatilho de revisão.)*
 
 **Convenções cravadas (ver `README.md`):**
 - Layout: libs de domínio puras sob `packages/*` (docs falam `lib/world-engine` ⇒ `packages/world-engine`); borda impura só em `harness/`.
@@ -155,7 +158,7 @@ Nenhum PR é válido sem a SPEC aprovada e o DONE correspondente.
 - i18n: sem texto de UI hardcoded; libs puras sem strings localizáveis.
 - Runtime: Node ≥ 20.19.
 
-**Próximo:** SPEC-002 (0.2) — Camada de dados + seed do mundo: persistir em Postgres o que o spike (0.1.5) provou em memória (schema + migrations versionadas).
+**Próximo:** escolher no **board vivo** (`h1ve start`) — o board é a fila de trabalho, **não** o roadmap (ritual SPEC-176). Cards iniciáveis no backlog: *Landing waiting list*, *Spike toasts acionáveis* (#3), *Spike widget na taskbar* (#4) — os dois spikes de cliente agora assentam sobre a stack ratificada (WPF, ADR-001). A trilha server-first do roadmap (0.2 Camada de dados → 0.3 RNG/auditoria → 0.4 segurança) segue como **direção de longo prazo**, entrando na fila quando priorizada no board.
 
 ---
 
