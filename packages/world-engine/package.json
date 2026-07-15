@@ -1,9 +1,9 @@
 {
-  "name": "@camisa-9/example",
+  "name": "@camisa-9/world-engine",
   "version": "0.0.0",
   "private": true,
   "type": "module",
-  "description": "Placeholder puro e descartável (SPEC-001) — prova o pipeline. NÃO é o world-engine.",
+  "description": "Motor do mundo (SPEC-002 spike) — simulação determinística de liga + orquestração de publicação. Lib pura, sem I/O.",
   "main": "dist/index.js",
   "types": "dist/index.d.ts",
   "scripts": {

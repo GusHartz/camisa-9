@@ -20,6 +20,10 @@
     "esModuleInterop": true,
     "forceConsistentCasingInFileNames": true,
     "verbatimModuleSyntax": true,
-    "skipLibCheck": true
+    "skipLibCheck": true,
+
+    "paths": {
+      "@camisa-9/world-engine": ["./packages/world-engine/src/index.ts"]
+    }
   }
 }

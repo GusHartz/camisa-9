@@ -1,0 +1,10 @@
+{
+  "//": "Harness (borda impura). Non-composite, noEmit — só p/ tsx/editor. Type-check real vem do tsconfig.typecheck.json da raiz.",
+  "extends": "../tsconfig.base.json",
+  "compilerOptions": {
+    "composite": false,
+    "noEmit": true,
+    "types": ["node"]
+  },
+  "include": ["**/*.ts"]
+}

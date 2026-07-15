@@ -25,7 +25,11 @@ npm run build   # tsc -b (build mode)
 
 ```
 packages/*        libs de domínio puras (sem I/O, sem UI) — TODA a lógica/progressão
-  example/        placeholder descartável (SPEC-001) — prova o pipeline; será removido
+  world-engine/   motor determinístico do mundo (SPEC-002): PRNG por seed, resolução
+                  de partida (sem transcendentais), tabela turno-returno, temporada,
+                  classificação, publicação atômica e âncora de fuso (offset fixo)
+harness/          borda IMPURA (fora do guardrail de determinismo): roda uma temporada
+                  de verdade com relógio real e reporta custo de parede — `npm run sim`
 ```
 
 Referências dos docs de planejamento a `lib/world-engine` mapeiam, neste repo, para **`packages/world-engine`** (todas as libs vivem sob `packages/*`).
@@ -38,7 +42,7 @@ Referências dos docs de planejamento a `lib/world-engine` mapeiam, neste repo, 
 - **Orquestração** (rotas/workers) — apenas coordena transações, publicação atômica e jobs.
 - **Cliente** — apenas **renderiza** estado. Zero regra de negócio, zero anti-fraude. (É o que torna o port Mac na F3 um *re-skin*, não um port.)
 
-**Determinismo (money path):** libs de domínio não usam `Math.random`, `Date.now` nem `new Date()` — tempo e aleatoriedade entram como parâmetro (seed). O lint reprova o uso em `packages/*/src`.
+**Determinismo (money path):** libs de domínio não usam `Math.random`, `Date.now`, `new Date()` nem `Intl.DateTimeFormat` — tempo e aleatoriedade entram como parâmetro (seed); fuso é aritmética de epoch com offset fixo. O lint reprova o uso em `packages/*/src`. Vetores golden gerados no dev e assertados no CI provam determinismo **cross-ambiente**.
 
 **i18n:** nenhum texto de UI hardcoded; mensagens externalizadas em `messages/{pt,en}.json` (PT nativo, EN na F3). **Libs puras não carregam strings localizáveis nem dependência PT-only** — conteúdo localizável fica separado desde o dia 1. (Arquivos `messages/*.json` entram com a primeira SPEC de UI.)
 

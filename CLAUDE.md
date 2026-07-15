@@ -139,15 +139,17 @@ Nenhum PR é válido sem a SPEC aprovada e o DONE correspondente.
 **Fase:** F0 — Fundação técnica e money path.
 
 **Concluído:**
-- **SPEC-001 — Bootstrap de repositório + CI** (roadmap 0.1): monorepo TypeScript (npm workspaces) com os 4 gates verdes — `lint` (ESLint flat + Prettier), `typecheck` (`tsc -b` + type-check dos testes), `test` (Vitest), `build` (`tsc -b`). OPs codificadas no lint (OP-14/15/16) + guardrail de determinismo (`Math.random`/`Date.now`/`new Date()` proibidos em `packages/*/src`). Placeholder `packages/example` (a remover). *Em review — PR pendente.*
+- **SPEC-001 — Bootstrap de repositório + CI** (roadmap 0.1): monorepo TypeScript (npm workspaces) com os 4 gates verdes — `lint`, `typecheck`, `test`, `build`. OPs no lint (OP-14/15/16) + guardrail de determinismo. *(Mergeado em `main` — PR #1.)*
+- **SPEC-002 — Spike do motor do mundo** (roadmap 0.1.5): lib pura `packages/world-engine` — PRNG por seed (uint32, sem transcendentais), partida "chances × conversão", tabela turno-returno (18 rodadas/90 partidas), classificação, runner de temporada com sub-seed por partida `(seed, liga, temporada, rodada, ids)`, store transacional + publicador atômico (all-or-nothing + idempotência sob lock), âncora de fuso ter/qui/sáb 15h sem `Date`/`Intl` (offset fixo UTC-3). Golden vectors (temporada/PRNG/âncora) gerados no dev, assertados no CI → determinismo **cross-ambiente**. Borda impura `harness/run-season.ts` (`npm run sim`). 48 testes; `packages/example` removido. Passou por review adversarial de 5 dimensões (5 defeitos confirmados corrigidos, incl. 1 major: seam de pré-commit async que furava o rollback). **R1: GO** (~1 ms/temporada vs orçamento do tick — folga ~10.000×). *Em review — PR pendente.*
 
 **Convenções cravadas (ver `README.md`):**
-- Layout: libs de domínio puras sob `packages/*` (docs falam `lib/world-engine` ⇒ `packages/world-engine`).
+- Layout: libs de domínio puras sob `packages/*` (docs falam `lib/world-engine` ⇒ `packages/world-engine`); borda impura só em `harness/`.
 - Camadas (OP-17): libs puras = toda a lógica · orquestração fina · cliente só renderiza.
+- Determinismo (money path): sem `Math.random`/`Date.now`/`new Date()`/`Intl`/transcendentais/relógio/entropia em `packages/*/src` (lint + golden cross-ambiente).
 - i18n: sem texto de UI hardcoded; libs puras sem strings localizáveis.
 - Runtime: Node ≥ 20.19.
 
-**Próximo:** SPEC-002 — Camada de dados + seed do mundo (roadmap 0.2).
+**Próximo:** SPEC-002 (0.2) — Camada de dados + seed do mundo: persistir em Postgres o que o spike (0.1.5) provou em memória (schema + migrations versionadas).
 
 ---
 
