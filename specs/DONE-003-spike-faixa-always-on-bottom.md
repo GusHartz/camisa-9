@@ -14,7 +14,7 @@
 | **Feature** | Spike faixa always-on-bottom (de-risca a forma padrão do cliente) |
 | **Owner** | gustavo-hartz |
 | **Branch** | `feat/gustavo-hartz/spike-faixa-always-on-bottom` |
-| **PR** | {preencher ao abrir o PR} |
+| **PR** | #3 — https://github.com/GusHartz/camisa-9/pull/3 |
 | **Desenvolvimento iniciado** | 2026-07-15 |
 | **Validação no Windows** | 2026-07-15 |
 | **Dias utilizados vs appetite** | <1 dia vs 14 dias (timebox do spike) |
