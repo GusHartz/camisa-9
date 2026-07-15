@@ -76,9 +76,10 @@
 ### Antes de qualquer sessão
 1. **Ler este AGENTS.md completo** — sem exceção.
 2. **Ler `memory/MEMORY.md`** — a memória durável do projeto (decisões, gotchas, invariantes acumulados). Se ela contradiz o que você ia fazer, **ela vence** — trate como âncora.
-3. Verificar se existe **SPEC aprovada** para a feature; se não, criar `specs/SPEC-NNN-slug.md` e obter aprovação antes de escrever código.
-4. `git fetch origin && git rebase origin/main`
-5. Confirmar que está na branch correta (`feat/{owner}/{feature-slug}`).
+3. **Ler o BOARD VIVO** — rode `h1ve status` (a feature da sua branch atual) e `h1ve start` (os cards iniciáveis do backlog), ou use as tools MCP `get_current_feature`/`start_feature`. **O board é a fonte da verdade do QUE construir** — as colunas `dev → pr → qa_data → main` com os cards que o time move. O `docs/roadmap.md` é **direção de longo prazo, NÃO a fila de trabalho**: nunca escolha a próxima feature a partir do roadmap. **Sem acesso ao board** (CLI não logado / MCP não conectado): **PARE e peça ao usuário para conectar** (`h1ve login` + `claude mcp add h1ve …`) — **jamais invente o backlog** a partir do roadmap ou de qualquer doc local.
+4. Verificar se existe **SPEC aprovada** para a feature; se não, criar `specs/SPEC-NNN-slug.md` e obter aprovação antes de escrever código.
+5. `git fetch origin && git rebase origin/main`
+6. Confirmar que está na branch correta (`feat/{owner}/{feature-slug}`).
 
 ### Ao final de qualquer sessão
 1. Criar `specs/DONE-NNN-slug.md` (mesmo número da SPEC) — obrigatório antes do PR.
