@@ -1,0 +1,16 @@
+<Project Sdk="Microsoft.NET.Sdk">
+
+  <!-- Candidato A do spike SPEC-003: faixa always-on-bottom em C#/WPF (.NET 8).
+       Framework-dependent por padrão (dotnet run rápido). Para medir footprint
+       real, publique self-contained (ver README). Trimming de WPF NÃO é suportado
+       no .NET 8 — o tamanho self-contained (~150 MB) é, ele próprio, um dado da #1. -->
+  <PropertyGroup>
+    <OutputType>WinExe</OutputType>
+    <TargetFramework>net8.0-windows</TargetFramework>
+    <Nullable>enable</Nullable>
+    <ImplicitUsings>enable</ImplicitUsings>
+    <UseWPF>true</UseWPF>
+    <AssemblyName>FaixaSpike</AssemblyName>
+  </PropertyGroup>
+
+</Project>

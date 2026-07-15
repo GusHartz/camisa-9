@@ -6,6 +6,12 @@ dist/
 coverage/
 *.tsbuildinfo
 
+# Spikes de cliente (build nativo Windows — não versionar artefatos)
+spikes/**/bin/
+spikes/**/obj/
+spikes/**/target/
+spikes/**/publish/
+
 # Segredos (OP-02) — nunca versionar
 .env
 .env.*
