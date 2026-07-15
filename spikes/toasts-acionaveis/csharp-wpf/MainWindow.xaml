@@ -1,0 +1,14 @@
+<Window x:Class="ToastSpike.MainWindow"
+        xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation"
+        xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+        Title="Toast Spike — gatilho de teste (SPEC-005)"
+        Height="260" Width="460"
+        WindowStartupLocation="CenterScreen" ResizeMode="CanMinimize">
+    <StackPanel Margin="16">
+        <TextBlock TextWrapping="Wrap" Margin="0,0,0,12"
+                   Text="Spike SPEC-005 — toasts acionáveis. Estes botões só exercitam o mecanismo; a validação de verdade é clicar os botões DO TOAST — inclusive com este app FECHADO (cold-start)." />
+        <Button x:Name="BtnSend" Content="1) Enviar toast (PLAY / REST)" Height="34" Margin="0,4" Click="OnSend" />
+        <Button x:Name="BtnKill" Content="2) Simular app fechado (matar este processo)" Height="34" Margin="0,4" Click="OnKill" />
+        <TextBlock x:Name="Status" Margin="0,12,0,0" FontFamily="Consolas" TextWrapping="Wrap" />
+    </StackPanel>
+</Window>
