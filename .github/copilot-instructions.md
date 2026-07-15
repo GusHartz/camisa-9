@@ -77,12 +77,12 @@
 1. **Ler este AGENTS.md completo** — sem exceção.
 2. **Ler `memory/MEMORY.md`** — a memória durável do projeto (decisões, gotchas, invariantes acumulados). Se ela contradiz o que você ia fazer, **ela vence** — trate como âncora.
 3. **Ler o BOARD VIVO** — rode `h1ve status` (a feature da sua branch atual) e `h1ve start` (os cards iniciáveis do backlog), ou use as tools MCP `get_current_feature`/`start_feature`. **O board é a fonte da verdade do QUE construir** — as colunas `dev → pr → qa_data → main` com os cards que o time move. O `docs/roadmap.md` é **direção de longo prazo, NÃO a fila de trabalho**: nunca escolha a próxima feature a partir do roadmap. **Sem acesso ao board** (CLI não logado / MCP não conectado): **PARE e peça ao usuário para conectar** (`h1ve login` + `claude mcp add h1ve …`) — **jamais invente o backlog** a partir do roadmap ou de qualquer doc local.
-4. Verificar se existe **SPEC aprovada** para a feature; se não, criar `specs/SPEC-NNN-slug.md` e obter aprovação antes de escrever código.
+4. Verificar se existe **SPEC aprovada** para a feature (o card em `spec`/`dev`); se não, criar `specs/SPEC-NNN-slug.md`, **publicá-la no card** (`h1ve spec --from specs/SPEC-NNN-slug.md`, ou a tool MCP `set_spec`) e obter a aprovação **no próprio card** antes de escrever código.
 5. `git fetch origin && git rebase origin/main`
 6. Confirmar que está na branch correta (`feat/{owner}/{feature-slug}`).
 
 ### Ao final de qualquer sessão
-1. Criar `specs/DONE-NNN-slug.md` (mesmo número da SPEC) — obrigatório antes do PR.
+1. Criar `specs/DONE-NNN-slug.md` (mesmo número da SPEC) e **publicá-lo no card** (`h1ve done --doc specs/DONE-NNN-slug.md`, ou a tool MCP `set_done`) — obrigatório antes do PR.
 2. Atualizar a seção **"Estado atual"** deste AGENTS.md.
 3. Atualizar o status no `docs/roadmap.md`.
 4. Abrir PR com a AI declaration preenchida.
@@ -100,6 +100,8 @@ specs/SPEC-{NNN}-{slug}.md   ← antes do desenvolvimento
 specs/DONE-{NNN}-{slug}.md   ← depois do desenvolvimento
 ```
 Nenhum PR é válido sem a SPEC aprovada e o DONE correspondente.
+
+> **Publique o artefato NO CARD — não só no repositório.** O H1VE lê a SPEC e o DONE **do card** (é lá que ficam os gates de fluxo e a aprovação). Depois de escrever o arquivo, publique-o: `h1ve spec --from specs/SPEC-NNN-slug.md` (SPEC) e `h1ve done --doc specs/DONE-NNN-slug.md` (DONE) — ou as tools MCP `set_spec`/`set_done`. Escrever apenas o arquivo do repositório **não** faz o artefato chegar ao card nem move o fluxo.
 
 ## Regras inegociáveis (OPs)
 
