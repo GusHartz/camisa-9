@@ -1,0 +1,7 @@
+<Application x:Class="ToastSpike.App"
+             xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation"
+             xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml">
+    <!-- Sem StartupUri de propósito: o App.OnStartup decide entre janela-gatilho
+         (launch normal) e HEADLESS (cold-activation por clique no botão do toast). -->
+    <Application.Resources />
+</Application>
