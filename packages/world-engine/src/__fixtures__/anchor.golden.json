@@ -98,6 +98,50 @@
         "dayIndex": -7,
         "isMatchWindow": false
       }
+    },
+    {
+      "iso": "2026-07-12T15:00:00-03:00",
+      "epochMs": 1783879200000,
+      "slot": {
+        "dayOfWeek": 0,
+        "hour": 15,
+        "minute": 0,
+        "dayIndex": 20646,
+        "isMatchWindow": true
+      }
+    },
+    {
+      "iso": "2026-07-06T15:00:00-03:00",
+      "epochMs": 1783360800000,
+      "slot": {
+        "dayOfWeek": 1,
+        "hour": 15,
+        "minute": 0,
+        "dayIndex": 20640,
+        "isMatchWindow": true
+      }
+    },
+    {
+      "iso": "2026-07-08T15:00:00-03:00",
+      "epochMs": 1783533600000,
+      "slot": {
+        "dayOfWeek": 3,
+        "hour": 15,
+        "minute": 0,
+        "dayIndex": 20642,
+        "isMatchWindow": true
+      }
+    },
+    {
+      "iso": "2026-07-10T15:00:00-03:00",
+      "epochMs": 1783706400000,
+      "slot": {
+        "dayOfWeek": 5,
+        "hour": 15,
+        "minute": 0,
+        "dayIndex": 20644,
+        "isMatchWindow": true
+      }
     }
   ]
 }

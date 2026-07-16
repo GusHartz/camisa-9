@@ -13,15 +13,16 @@ describe('resolveSlot — fuso Brasília (offset fixo UTC-3)', () => {
     }
   });
 
-  it('ter/qui/sáb às 15h são janela de rodada; demais não', () => {
+  it('qualquer dia às 15h é janela de rodada (diário 7/7); fora das 15h não', () => {
     const windows = golden.vectors.filter((v) => v.slot.isMatchWindow);
     const nonWindows = golden.vectors.filter((v) => !v.slot.isMatchWindow);
     expect(windows.length).toBeGreaterThan(0);
     expect(nonWindows.length).toBeGreaterThan(0);
-    for (const v of windows) {
-      expect([2, 4, 6]).toContain(v.slot.dayOfWeek);
-      expect(v.slot.hour).toBe(15);
-    }
+    // janela ⇔ 15h; o dia da semana é irrelevante (era ter/qui/sáb, agora 7/7).
+    for (const v of windows) expect(v.slot.hour).toBe(15);
+    for (const v of nonWindows) expect(v.slot.hour).not.toBe(15);
+    // prova o 7/7: há janelas FORA de ter/qui/sáb (dom/seg/qua/sex às 15h).
+    expect(windows.some((v) => ![2, 4, 6].includes(v.slot.dayOfWeek))).toBe(true);
   });
 
   it('14:59 no sábado NÃO é janela (limiar exato de hora)', () => {

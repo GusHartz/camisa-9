@@ -6,8 +6,7 @@ const MS_PER_DAY = 86_400_000;
 const MS_PER_HOUR = 3_600_000;
 const MS_PER_MINUTE = 60_000;
 const BRASILIA_OFFSET_MS = -3 * MS_PER_HOUR; // UTC-3 fixo
-const MATCH_DAYS: readonly number[] = [2, 4, 6]; // ter, qui, sáb (0=Dom)
-const MATCH_HOUR = 15; // 15h Brasília
+const MATCH_HOUR = 15; // 15h Brasília — TODO DIA (cadência diária 7/7, R4 FINAL)
 
 export interface RoundSlot {
   /** 0=Dom .. 6=Sáb (horário de Brasília). */
@@ -16,7 +15,7 @@ export interface RoundSlot {
   readonly minute: number;
   /** Dias desde a época (id único do dia, independente de fuso). */
   readonly dayIndex: number;
-  /** É uma janela de rodada (ter/qui/sáb às 15h)? */
+  /** É uma janela de rodada (15h Brasília, todo dia — 7/7)? */
   readonly isMatchWindow: boolean;
 }
 
@@ -28,6 +27,6 @@ export function resolveSlot(epochMs: number): RoundSlot {
   const msInDay = local - dayIndex * MS_PER_DAY;
   const hour = Math.floor(msInDay / MS_PER_HOUR);
   const minute = Math.floor((msInDay - hour * MS_PER_HOUR) / MS_PER_MINUTE);
-  const isMatchWindow = MATCH_DAYS.includes(dayOfWeek) && hour === MATCH_HOUR;
+  const isMatchWindow = hour === MATCH_HOUR; // 7/7: qualquer dia às 15h Brasília
   return { dayOfWeek, hour, minute, dayIndex, isMatchWindow };
 }
