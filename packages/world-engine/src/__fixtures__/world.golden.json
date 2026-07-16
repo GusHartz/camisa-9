@@ -1,0 +1,18 @@
+{
+  "seed": "decada",
+  "seasons": 11,
+  "note": "SPEC-009 — âncora cross-ambiente. hashes[0] = mundo semeado; hashes[i] = após i viragens. Regerar só com mudança INTENCIONAL do stream do PRNG (rompe replay).",
+  "hashes": [
+    "63ab72a602a3f64969087e3037d213a6",
+    "dc32ee16232892dded355d8061a9437f",
+    "035ca3167b4f0e7d05a2b98af81c8cc1",
+    "4383bf6d3ccfe396dcb99dd8b44b7a5d",
+    "5fa868443c95821c432bcbcd8ce0d0e1",
+    "4f8341c4d896afd9479480fb04b462be",
+    "9f1f16b931bd5234830949c7150aa7e3",
+    "fbbfed831d240735e160dfc3f1f26ffa",
+    "ee0cb8b78fc0607b0555ec2d01cc6ee2",
+    "6b9a7c98a7b9953f7fe87bc077d4cdd3",
+    "5c47f20d91bc717884cf6995820a1dc3"
+  ]
+}
