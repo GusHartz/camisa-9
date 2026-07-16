@@ -8,4 +8,10 @@ export {
   type SignupInput,
   type SignupResult,
 } from './store/player-repo.js';
+export {
+  applyTraining,
+  spendFreePoint,
+  readAthleteProgress,
+  type Progress,
+} from './store/training-repo.js';
 export * as schema from './schema/index.js';
