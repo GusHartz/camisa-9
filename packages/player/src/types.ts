@@ -44,9 +44,11 @@ export interface TrainState {
   readonly freePoints: number;
 }
 
-/** Seams neutros do treino (default 100 = 1.0): `speed` = DLC "tempo não poder";
- *  `age` = curva de idade. Ambos adiados (fatias futuras); aqui só o gancho. */
+/** Seams neutros do treino (default 100 = 1.0): `focusRepeat` = rendimento decrescente ao
+ *  repetir o foco (SPEC-019; o store deriva do streak persistido); `speed` = DLC "tempo não
+ *  poder"; `age` = curva de idade (ambos adiados). Ausentes = neutros (SPEC-017 intacta). */
 export interface TrainOpts {
+  readonly focusRepeatPct?: number;
   readonly speedMultiplierPct?: number;
   readonly ageFactorPct?: number;
 }

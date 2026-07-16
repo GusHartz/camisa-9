@@ -56,6 +56,8 @@ Objetivo: um humano assume uma vaga e vive uma carreira.
 
 > **Cadastro solo/team + código de time — a camada de identidade do quinteto ✅ SPEC-018 (2026-07-16).** *(Card R14 no board — item 2.6.)* Nasce o **conceito de GRUPO** (o "monte seu quinteto"): bifurcação **solo** (`team_id=NULL`) / **team** (cria com nome + **camisa própria** → **código distribuível**) / **join** (amigo entra pelo código na **posição** livre). Elenco humano de **até 16** (2 GK · 5 DEF · 5 MID · 4 FWD — espelha `WORLD.squadShape`), marcos no **11º** e **16º** (→ código tranca). Lib pura `packages/player/team.ts` (validações + slots + marcos + `isPosition`) + serviço `services/player-store` (migration aditiva `0002` — tabela `team` + `athlete.team_id`; `team-repo` com **`SELECT … FOR UPDATE`** na corrida pela vaga). Entrega a **fundação de identidade** do 2.6 — **não** coloca no mundo (fundar clube / vaga NPC = 2.1, o card 21). Química/waiting-list/furar-a-fila seguem em fatias futuras.
 
+> **Pontos de treino com banking — o FOCO do dia ganhou efeito ✅ SPEC-019 (2026-07-16).** *(Card 2.7.)* Completa o loop de treino da SPEC-017 (o FOCO era **seam neutro**): agora o FOCO importa pelo **ritmo**. Cada sessão treina um foco (**escolhido** ou, sem escolha, o **mais baixo** pelo técnico — `coachFocus`); **repetir** o mesmo foco decai por **degraus com piso** (`repeatPenaltyPct`), **rotacionar** rende **100%** (a **curva de lenda fica intacta** — a penalidade só desacelera). Ponto segue **flutuante** (Model A). Lib pura `packages/player/training.ts` (o fator entra como 3º seam `focusRepeatPct` → os 168 testes preservados por construção) + migration aditiva `0003` (`last_focus`/`focus_streak`) + `applyTraining(focus | null)` com **`FOR UPDATE`**. **Calibração da SPEC-017 resolvida** (manter a curva de lenda — ~72/carreira). Cobre 2.7 + o card 9.
+
 | # | Spec | Entrega |
 |---|------|---------|
 | 2.1 | **Substituição de NPC + waiting list** | Humano assume vaga (posição/camisa/clube); vaga congela 30 dias em abandono → reverte a NPC. *(Conta + atleta já existem — SPEC-016/017; falta a costura `player-store`↔`world-store` + mapa focos→`ability` p/ ocupar a vaga.)* |
@@ -64,7 +66,7 @@ Objetivo: um humano assume uma vaga e vive uma carreira.
 | 2.4 | **Decisões de carreira (3-5/dia)** | Cotidiano → dramático; sem resposta = agente decide conservador às 18h. |
 | 2.5 | **Lesões narrativas com arco** | Raras, sempre recuperação → volta por cima. |
 | 2.6 | **Cadastro solo/team + código de time (R14)** 🟡 | Bifurcação solo/team; código coloca amigos direto no elenco; jogável desde o humano nº 1; NPC fixo por posição (goleiro default); fundação em massa só na divisão de entrada. O social mínimo do beta. *(Identidade do quinteto ✅ SPEC-018; falta a colocação no mundo = card 21.)* |
-| 2.7 | **Pontos de treino com banking** | Pontos acumulam sem expirar; FOCO do dia (Físico/Técnico/Tático/Mental; sem escolha = técnico decide); bônus de treino focado no dia, com rendimento decrescente ao repetir o mesmo foco. |
+| 2.7 | **Pontos de treino com banking** ✅ | Pontos acumulam sem expirar; FOCO do dia (Físico/Técnico/Tático/Mental; sem escolha = técnico decide); bônus de treino focado no dia, com rendimento decrescente ao repetir o mesmo foco. *(Entregue — SPEC-019.)* |
 | 2.8 | **Salário & estilo de vida (básico)** | 4-6 compras com trade-off; casa da mãe (marco+card); patrimônio na cena de casa da faixa; trava anti-dinheiro-real. |
 
 ### Fase 3 — Dia de jogo (o evento) e presença

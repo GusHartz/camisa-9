@@ -32,8 +32,14 @@ export const CREATION_TOTAL = FOCI.length * PLAYER.creation.floor + PLAYER.creat
  */
 export const TRAINING = {
   sessionXp: 100,
-  /** FOCO do dia = taxa (seam). Default NEUTRO (todos 100) — diferenciar o efeito é fatia futura. */
+  /** FOCO do dia = taxa (seam por-foco). Default NEUTRO (todos 100) — diferenciar POR foco é
+   *  fatia futura; o efeito do FOCO na v2 vem do rendimento decrescente ao repetir (abaixo). */
   focusMultPct: { fisico: 100, tecnico: 100, tatico: 100, mental: 100 },
+  /** Rendimento decrescente ao REPETIR o mesmo foco em dias consecutivos (SPEC-019, viés de
+   *  taxa): cada repetição consecutiva corta `step` p.p. do depósito, com piso. Fresco/trocou =
+   *  100% (o baseline da SPEC-017 — a curva não muda; só martelar um foco desacelera). */
+  focusRepeatStepPct: 20, // −20 p.p. por repetição consecutiva
+  focusRepeatFloorPct: 40, // nunca abaixo de 40% (piso: o treino sempre progride um pouco)
   /** Seams neutros (default 1.0 = 100%): DLC acelera; idade desacelera. Adiados. */
   speedMultiplierPct: 100,
   ageFactorPct: 100,
