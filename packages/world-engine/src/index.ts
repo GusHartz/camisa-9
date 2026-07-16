@@ -15,6 +15,17 @@ export { resolveMatch, type Score } from './engine/match.js';
 export { computeStandings } from './engine/standings.js';
 export { simulateSeason } from './engine/season.js';
 export { DEMO_LEAGUE } from './data/league-seed.js';
+// Mundo — pirâmide + elenco NPC (SPEC-009).
+export { WORLD, ARCHETYPES, POSITIONS } from './constants.js';
+export { seedWorld } from './data/world-seed.js';
+export { clubStrength, positionCounts, tierAbilityRange } from './engine/roster.js';
+export { simulateWorldSeason } from './engine/world-season.js';
+export { advanceWorld } from './engine/world-turnover.js';
+export { applyPromotionRelegation } from './engine/promotion.js';
+export { ageAndRetire, refillYouth } from './engine/lifecycle.js';
+export { runTransfers } from './engine/transfers.js';
+export { turnoverReport } from './engine/turnover-report.js';
+export { worldHash } from './engine/world-hash.js';
 export { RoundStore, type PublishedRound } from './orchestration/store.js';
 export { resolveSlot, type RoundSlot } from './orchestration/anchor.js';
 export {

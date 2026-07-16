@@ -137,9 +137,9 @@ Nenhum PR é válido sem a SPEC aprovada e o DONE correspondente.
 
 ## Estado atual
 
-> Atualizado ao final de cada sessão. Última atualização: **2026-07-15** (SPEC-008).
+> Atualizado ao final de cada sessão. Última atualização: **2026-07-16** (SPEC-009).
 
-**Fase:** F0 — **fundação técnica completa** (money path provado na SPEC-002 + os 3 de-risks de cliente fechados + docs de fundação sincronizados com v1.4/Steam-only/R13/R14). Abrindo a próxima frente: **camada de dados (0.2)** e **Trilha GTM (arte/identidade)**.
+**Fase:** F0 — **fundação técnica completa** (money path provado na SPEC-002 + os 3 de-risks de cliente fechados + docs de fundação sincronizados com v1.4/Steam-only/R13/R14). **Fase 1 (motor do mundo) aberta:** SPEC-009 (pirâmide + elenco NPC) **entregue** (PR pendente). Próxima frente: **camada de dados (0.2)** — persistir o `WorldState` que a SPEC-009 provou em memória — e **Trilha GTM (arte/identidade)**.
 
 **Concluído:**
 - **SPEC-001 — Bootstrap de repositório + CI** (roadmap 0.1): monorepo TypeScript (npm workspaces) com os 4 gates verdes — `lint`, `typecheck`, `test`, `build`. OPs no lint (OP-14/15/16) + guardrail de determinismo. *(Mergeado em `main` — PR #1.)*
@@ -152,6 +152,9 @@ Nenhum PR é válido sem a SPEC aprovada e o DONE correspondente.
 
 **Docs de fundação sincronizados (PR pendente):**
 - **SPEC-008 — Docs de fundação: R13 (Pirâmide Elástica) + R14 (código de time):** aplica os adendos (patches A1-A6) aos 4 docs + sincroniza este *Estado atual*. **R13 — Pirâmide Elástica:** o mundo cresce por ramificação 2× por nível; expansão a **~70% de ocupação humana** da base **só na virada de temporada** (**revoga o gatilho “pool 100% humano”**); gradiente ancora na altitude percentual; motor de temporada ciente de grupos paralelos. **R14 — Cadastro solo/team:** bifurcação **solo** (vaga NPC) / **team** (código de time — amigos entram direto no elenco escolhendo posição); jogável desde o humano nº 1 (11 fecha as vagas, não o jogo); NPC fixo por posição; **absorve o takeover de quinteto** (puxado da F2 para a F1/beta). Docs-only; ADR-001/código/CI inalterados.
+
+**Fase 1 — motor do mundo (entregue, PR pendente):**
+- **SPEC-009 — Pirâmide completa do mundo** (cobre 1.2 multi-divisão + 1.3 ciclo de vida NPC + 1.4 transferências placeholder): a lib pura `packages/world-engine` cresceu de 1 liga/10 clubes escalares para uma **pirâmide de 4 divisões × 20 clubes com elenco NPC** (20 atletas: idade+habilidade+posição) que **roda 1 temporada inteira e faz a viragem** sozinha — promoção/rebaixamento **3↑3↓ por fronteira**, envelhecimento, aposentadoria (≥35), 12 transferências placeholder (intra-liga, mesma posição) e reposição de base **posicional** (jovens 17). **Determinístico por seed**, sem tocar `simulateSeason`/`resolveMatch`/`season.golden.json` (força de clube virou **derivada** = média das 11 melhores; faixas por tier **sobrepostas**). Fundações de specs futuras já plantadas (exigências do founder): `WorldState` modela **tier→[leagues]** (R13); `WorldClub` nasce com **archetype+weights sorteados por seed** na criação (não desloca o stream do PRNG da 1.4). Golden de ciclo = **11 hashes** (semeado + 10 viragens) cross-ambiente; `turnoverReport` por DIFF puro (auditoria 1.5). Ordem canônica da viragem = a da SPEC. **89 testes** (48 golden da SPEC-002 preservados + 41 novos), typecheck/build/**ESLint** verdes (OP-14/15/16 + guardrail de determinismo). **Review adversarial** (workflow 5 dimensões + verificação de cada achado): 7 achados → 2 corrigidos (incl. **drift de ordem da viragem pego e reconciliado** com a SPEC) + 2 guardas de hardening. **(PR pendente — aguarda o founder; `SPEC-009`/`DONE-009` preenchidos.)**
 
 **Convenções cravadas (ver `README.md`):**
 - Layout: libs de domínio puras sob `packages/*` (docs falam `lib/world-engine` ⇒ `packages/world-engine`); borda impura só em `harness/`.
