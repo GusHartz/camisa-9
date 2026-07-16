@@ -15,6 +15,7 @@ import {
 } from 'drizzle-orm/pg-core';
 import type { Appearance } from '@camisa-9/player';
 import { account, playerSchema } from './account.js';
+import { team } from './team.js';
 
 export const athlete = playerSchema.table(
   'athlete',
@@ -34,6 +35,9 @@ export const athlete = playerSchema.table(
     // Pontos livres GANHOS por treino e ainda não gastos (SPEC-017, card 13). O gasto (+1 num
     // foco) decrementa este pool; a barra `training_xp` é o acumulador rumo ao próximo ponto.
     freePoints: integer('free_points').notNull().default(0),
+    // Time do quinteto (SPEC-018). NULL = solo; setado no create/join do time. A `position`
+    // acima é a vaga reivindicada no elenco. Membros do time = atletas com este `team_id`.
+    teamId: uuid('team_id').references(() => team.id),
     active: boolean('active').notNull().default(true),
     createdAt: timestamp('created_at', { withTimezone: true }).notNull().defaultNow(),
   },

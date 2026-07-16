@@ -58,3 +58,20 @@ export interface TrainResult {
   readonly freePoints: number;
   readonly freePointsGained: number;
 }
+
+/** Camisa do time (SPEC-018): índices bounded — o cliente renderiza (lei de arte D11). */
+export interface Kit {
+  readonly primaryColor: number;
+  readonly secondaryColor: number;
+  readonly crest: number;
+}
+
+/** Identidade validada do time — SEM id/código/timestamps (isso é do store, impuro). */
+export interface TeamDraft {
+  readonly name: string;
+  readonly kit: Kit;
+  readonly captainPosition: Position;
+}
+
+/** Vagas HUMANAS já ocupadas por posição — a base p/ slots livres e marcos. */
+export type ClaimedByPosition = Readonly<Record<Position, number>>;

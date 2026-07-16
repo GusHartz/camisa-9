@@ -1,6 +1,7 @@
-// Filtro de nome do jogador (SPEC-016) — normaliza + valida forma + blocklist mínima.
+// Filtro de nome (SPEC-016 atleta / SPEC-018 time) — normaliza + valida forma + blocklist mínima.
 // Puro/determinístico: `toLowerCase`/`normalize('NFD')` são spec-ECMAScript (não ICU/locale),
-// permitidos pelo guardrail; nada de Intl/Date/random.
+// permitidos pelo guardrail; nada de Intl/Date/random. O NÚCLEO (`validateNameWith`) é reusado
+// pelo atleta e pelo time — variam só o comprimento (SPEC-018).
 import { PLAYER } from './constants.js';
 import { NAME_BLOCKLIST } from './data/name-blocklist.js';
 import type { Result } from './types.js';
@@ -21,15 +22,22 @@ const LEET: Readonly<Record<string, string>> = {
   $: 's',
 };
 
-/** Valida e normaliza o nome (trim + colapsa espaços). Rejeita forma inválida ou blocklist. */
-export function validateName(raw: string): Result<string> {
+/** Núcleo reusável: valida e normaliza um nome com limites dados. Rejeita forma/blocklist. */
+export function validateNameWith(
+  raw: string,
+  limits: { minLen: number; maxLen: number },
+): Result<string> {
   const value = raw.trim().replace(/\s+/g, ' ');
-  const { minLen, maxLen } = PLAYER.name;
-  if (value.length < minLen) return fail('nome muito curto');
-  if (value.length > maxLen) return fail('nome muito longo');
+  if (value.length < limits.minLen) return fail('nome muito curto');
+  if (value.length > limits.maxLen) return fail('nome muito longo');
   if (!ALLOWED.test(value)) return fail('nome com caracteres inválidos');
   if (isBlocked(value)) return fail('nome não permitido');
   return { ok: true, value };
+}
+
+/** Valida e normaliza o nome do ATLETA (trim + colapsa espaços). */
+export function validateName(raw: string): Result<string> {
+  return validateNameWith(raw, PLAYER.name);
 }
 
 function isBlocked(name: string): boolean {

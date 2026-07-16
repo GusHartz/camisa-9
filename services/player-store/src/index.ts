@@ -14,4 +14,15 @@ export {
   readAthleteProgress,
   type Progress,
 } from './store/training-repo.js';
+export {
+  createAccountWithTeam,
+  joinTeamWithCode,
+  lockTeam,
+  readTeam,
+  type CreateTeamInput,
+  type CreateTeamResult,
+  type JoinTeamInput,
+  type JoinTeamResult,
+  type TeamView,
+} from './store/team-repo.js';
 export * as schema from './schema/index.js';

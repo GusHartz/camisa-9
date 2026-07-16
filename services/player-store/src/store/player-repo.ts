@@ -2,13 +2,14 @@
 // Recebe um AthleteDraft JÁ validado pela lib pura (@camisa-9/player); aqui só persiste +
 // hasheia. E-mail duplicado → erro GENÉRICO (OP-11), nunca vaza SQL/constraint.
 import { and, eq } from 'drizzle-orm';
-import { validatePassword, type AthleteDraft } from '@camisa-9/player';
+import { validatePassword, type AthleteDraft, type Position } from '@camisa-9/player';
 import type { Db } from '../client.js';
 import { account } from '../schema/account.js';
 import { athlete } from '../schema/athlete.js';
 import { hashPassword } from './auth.js';
 
-type Tx = Parameters<Parameters<Db['transaction']>[0]>[0];
+/** Handle de transação — reusado pelos repos de conta/atleta (SPEC-016) e de time (SPEC-018). */
+export type Tx = Parameters<Parameters<Db['transaction']>[0]>[0];
 
 export interface SignupInput {
   readonly email: string;
@@ -39,7 +40,7 @@ export async function createAccountWithAthlete(db: Db, input: SignupInput): Prom
   }
 }
 
-async function insertAccount(tx: Tx, email: string, passwordHash: string): Promise<string> {
+export async function insertAccount(tx: Tx, email: string, passwordHash: string): Promise<string> {
   const [row] = await tx
     .insert(account)
     .values({ email, passwordHash })
@@ -48,18 +49,25 @@ async function insertAccount(tx: Tx, email: string, passwordHash: string): Promi
   return row.id;
 }
 
-async function insertAthlete(tx: Tx, accountId: string, draft: AthleteDraft): Promise<string> {
+/** Insere o atleta. `opts` sobrepõe a posição (vaga do time) e liga o `team_id` (SPEC-018). */
+export async function insertAthlete(
+  tx: Tx,
+  accountId: string,
+  draft: AthleteDraft,
+  opts?: { position?: Position; teamId?: string },
+): Promise<string> {
   const [row] = await tx
     .insert(athlete)
     .values({
       accountId,
       name: draft.name,
-      position: draft.position,
+      position: opts?.position ?? draft.position,
       appearance: draft.appearance,
       fisico: draft.attributes.fisico,
       tecnico: draft.attributes.tecnico,
       tatico: draft.attributes.tatico,
       mental: draft.attributes.mental,
+      teamId: opts?.teamId,
     })
     .returning({ id: athlete.id });
   if (!row) throw new Error('falha ao criar atleta');
@@ -89,13 +97,13 @@ export async function readActiveAthlete(
   return rows[0] ?? null;
 }
 
-function normalizeEmail(email: string): string {
+export function normalizeEmail(email: string): string {
   return email.trim().toLowerCase();
 }
 
 /** pg unique_violation = SQLSTATE 23505. O Drizzle ENVELOPA o erro do pg, então o `code`
  *  fica em `err.cause` — caminhamos a cadeia de causas. Narrow sem `any` (OP-14). */
-function isUniqueViolation(err: unknown): boolean {
+export function isUniqueViolation(err: unknown): boolean {
   let cur: unknown = err;
   for (let i = 0; i < 5 && isRecord(cur); i++) {
     if (cur['code'] === '23505') return true;
