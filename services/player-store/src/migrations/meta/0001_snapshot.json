@@ -1,0 +1,217 @@
+{
+  "id": "283e88aa-84a2-4602-8667-df6e02115c3e",
+  "prevId": "65480026-f7b8-4ba4-a42a-e577f26d156f",
+  "version": "7",
+  "dialect": "postgresql",
+  "tables": {
+    "player.account": {
+      "name": "account",
+      "schema": "player",
+      "columns": {
+        "id": {
+          "name": "id",
+          "type": "uuid",
+          "primaryKey": true,
+          "notNull": true,
+          "default": "gen_random_uuid()"
+        },
+        "email": {
+          "name": "email",
+          "type": "text",
+          "primaryKey": false,
+          "notNull": true
+        },
+        "password_hash": {
+          "name": "password_hash",
+          "type": "text",
+          "primaryKey": false,
+          "notNull": true
+        },
+        "created_at": {
+          "name": "created_at",
+          "type": "timestamp with time zone",
+          "primaryKey": false,
+          "notNull": true,
+          "default": "now()"
+        }
+      },
+      "indexes": {},
+      "foreignKeys": {},
+      "compositePrimaryKeys": {},
+      "uniqueConstraints": {
+        "account_email_unique": {
+          "name": "account_email_unique",
+          "nullsNotDistinct": false,
+          "columns": [
+            "email"
+          ]
+        }
+      },
+      "policies": {},
+      "checkConstraints": {},
+      "isRLSEnabled": false
+    },
+    "player.athlete": {
+      "name": "athlete",
+      "schema": "player",
+      "columns": {
+        "id": {
+          "name": "id",
+          "type": "uuid",
+          "primaryKey": true,
+          "notNull": true,
+          "default": "gen_random_uuid()"
+        },
+        "account_id": {
+          "name": "account_id",
+          "type": "uuid",
+          "primaryKey": false,
+          "notNull": true
+        },
+        "name": {
+          "name": "name",
+          "type": "text",
+          "primaryKey": false,
+          "notNull": true
+        },
+        "position": {
+          "name": "position",
+          "type": "text",
+          "primaryKey": false,
+          "notNull": true
+        },
+        "appearance": {
+          "name": "appearance",
+          "type": "jsonb",
+          "primaryKey": false,
+          "notNull": true
+        },
+        "fisico": {
+          "name": "fisico",
+          "type": "integer",
+          "primaryKey": false,
+          "notNull": true
+        },
+        "tecnico": {
+          "name": "tecnico",
+          "type": "integer",
+          "primaryKey": false,
+          "notNull": true
+        },
+        "tatico": {
+          "name": "tatico",
+          "type": "integer",
+          "primaryKey": false,
+          "notNull": true
+        },
+        "mental": {
+          "name": "mental",
+          "type": "integer",
+          "primaryKey": false,
+          "notNull": true
+        },
+        "training_xp": {
+          "name": "training_xp",
+          "type": "integer",
+          "primaryKey": false,
+          "notNull": true,
+          "default": 0
+        },
+        "free_points": {
+          "name": "free_points",
+          "type": "integer",
+          "primaryKey": false,
+          "notNull": true,
+          "default": 0
+        },
+        "active": {
+          "name": "active",
+          "type": "boolean",
+          "primaryKey": false,
+          "notNull": true,
+          "default": true
+        },
+        "created_at": {
+          "name": "created_at",
+          "type": "timestamp with time zone",
+          "primaryKey": false,
+          "notNull": true,
+          "default": "now()"
+        }
+      },
+      "indexes": {
+        "athlete_one_active_per_account": {
+          "name": "athlete_one_active_per_account",
+          "columns": [
+            {
+              "expression": "account_id",
+              "isExpression": false,
+              "asc": true,
+              "nulls": "last"
+            }
+          ],
+          "isUnique": true,
+          "where": "\"player\".\"athlete\".\"active\"",
+          "concurrently": false,
+          "method": "btree",
+          "with": {}
+        }
+      },
+      "foreignKeys": {
+        "athlete_account_id_account_id_fk": {
+          "name": "athlete_account_id_account_id_fk",
+          "tableFrom": "athlete",
+          "tableTo": "account",
+          "schemaTo": "player",
+          "columnsFrom": [
+            "account_id"
+          ],
+          "columnsTo": [
+            "id"
+          ],
+          "onDelete": "no action",
+          "onUpdate": "no action"
+        }
+      },
+      "compositePrimaryKeys": {},
+      "uniqueConstraints": {},
+      "policies": {},
+      "checkConstraints": {
+        "athlete_fisico_range": {
+          "name": "athlete_fisico_range",
+          "value": "\"player\".\"athlete\".\"fisico\" between 0 and 99"
+        },
+        "athlete_tecnico_range": {
+          "name": "athlete_tecnico_range",
+          "value": "\"player\".\"athlete\".\"tecnico\" between 0 and 99"
+        },
+        "athlete_tatico_range": {
+          "name": "athlete_tatico_range",
+          "value": "\"player\".\"athlete\".\"tatico\" between 0 and 99"
+        },
+        "athlete_mental_range": {
+          "name": "athlete_mental_range",
+          "value": "\"player\".\"athlete\".\"mental\" between 0 and 99"
+        },
+        "athlete_free_points_range": {
+          "name": "athlete_free_points_range",
+          "value": "\"player\".\"athlete\".\"free_points\" >= 0"
+        }
+      },
+      "isRLSEnabled": false
+    }
+  },
+  "enums": {},
+  "schemas": {
+    "player": "player"
+  },
+  "sequences": {},
+  "roles": {},
+  "policies": {},
+  "views": {},
+  "_meta": {
+    "columns": {},
+    "schemas": {},
+    "tables": {}
+  }
+}

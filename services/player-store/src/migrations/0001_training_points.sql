@@ -1,0 +1,2 @@
+ALTER TABLE "player"."athlete" ADD COLUMN "free_points" integer DEFAULT 0 NOT NULL;--> statement-breakpoint
+ALTER TABLE "player"."athlete" ADD CONSTRAINT "athlete_free_points_range" CHECK ("player"."athlete"."free_points" >= 0);

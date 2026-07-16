@@ -35,3 +35,26 @@ export interface AthleteDraft {
 /** Validação: sucesso com valor, ou falha com motivo (genérico, sem detalhe interno). */
 export type Result<T> =
   { readonly ok: true; readonly value: T } | { readonly ok: false; readonly reason: string };
+
+/** Estado de progresso de treino (SPEC-017): a barra de XP + os pontos livres não gastos +
+ *  os atributos atuais. A matemática (`trainSession`) recomputa tudo a partir daqui. */
+export interface TrainState {
+  readonly attributes: Attributes;
+  readonly trainingXp: number;
+  readonly freePoints: number;
+}
+
+/** Seams neutros do treino (default 100 = 1.0): `speed` = DLC "tempo não poder";
+ *  `age` = curva de idade. Ambos adiados (fatias futuras); aqui só o gancho. */
+export interface TrainOpts {
+  readonly speedMultiplierPct?: number;
+  readonly ageFactorPct?: number;
+}
+
+/** Resultado de UMA sessão: a barra carregada (resto), o total de pontos livres e quantos
+ *  pontos foram ganhos AGORA (cascata). */
+export interface TrainResult {
+  readonly trainingXp: number;
+  readonly freePoints: number;
+  readonly freePointsGained: number;
+}

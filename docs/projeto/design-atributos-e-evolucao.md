@@ -6,6 +6,15 @@
 > os 4 focos, a régua 0..99, a primitiva de alocação e o campo `training_xp` (o seam da barra).
 > A **matemática abaixo é do card 13** — não implementar na SPEC-016.
 
+> **✅ IMPLEMENTADO na SPEC-017 (2026-07-16).** Decisões travadas com o founder ao iniciar o card 13:
+> **(1) Model A — barra ÚNICA + ponto LIVRE** (o que o record descreve): o FOCO do dia multiplica a
+> TAXA (seam neutro em v1); barra cheia → +1 flutuante gasto em qualquer foco (`applyPoint`, teto 99);
+> o limiar cresce com o overall (curva de 3 zonas). Efeito colateral aceito: um 99 num foco isolado
+> sai mais barato. **(2) DLC + idade = seams neutros e adiados** (`speedMultiplierPct`/`ageFactorPct`
+> = 100). **(3) Refinamentos de mecanismo:** a curva é **inteira/piecewise** (o guardrail proíbe
+> `exp`/`pow`); o gasto usa `applyPoint` (+1, teto 99), **não** a `allocateAttributes` (que é trava de
+> criação, soma===136). Ver `specs/SPEC-017-atributos-e-evolucao.md` / `DONE-017`.
+
 ## Modelo de atributos (fundação plantada na SPEC-016)
 
 - **4 focos:** Físico · Técnico · Tático · Mental — os mesmos FOCOs de treino do R4 FINAL (criação e evolução falam a mesma língua).

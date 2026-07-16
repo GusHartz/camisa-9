@@ -31,6 +31,9 @@ export const athlete = playerSchema.table(
     tatico: integer('tatico').notNull(),
     mental: integer('mental').notNull(),
     trainingXp: integer('training_xp').notNull().default(0),
+    // Pontos livres GANHOS por treino e ainda não gastos (SPEC-017, card 13). O gasto (+1 num
+    // foco) decrementa este pool; a barra `training_xp` é o acumulador rumo ao próximo ponto.
+    freePoints: integer('free_points').notNull().default(0),
     active: boolean('active').notNull().default(true),
     createdAt: timestamp('created_at', { withTimezone: true }).notNull().defaultNow(),
   },
@@ -42,5 +45,6 @@ export const athlete = playerSchema.table(
     tecnicoRange: check('athlete_tecnico_range', sql`${t.tecnico} between 0 and 99`),
     taticoRange: check('athlete_tatico_range', sql`${t.tatico} between 0 and 99`),
     mentalRange: check('athlete_mental_range', sql`${t.mental} between 0 and 99`),
+    freePointsRange: check('athlete_free_points_range', sql`${t.freePoints} >= 0`),
   }),
 );

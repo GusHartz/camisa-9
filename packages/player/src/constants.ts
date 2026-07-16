@@ -22,3 +22,27 @@ export const PLAYER = {
 
 /** Soma fixa dos atributos na criação = piso*4 + pool (= 136 → overall uniforme 34). */
 export const CREATION_TOTAL = FOCI.length * PLAYER.creation.floor + PLAYER.creation.pool;
+
+/**
+ * Curva de treino (SPEC-017, card 13). TODA a calibração da progressão vive aqui —
+ * reequilibra sem tocar lógica. XP em unidades inteiras (`sessionXp` = 1 treino neutro);
+ * multiplicadores em % (aplicados com divisão inteira → tudo determinístico, guardrail-safe).
+ * As fronteiras das zonas são em `pointsEarnedTotal` (pontos já ganhos): overall 60 ⇒ p=104;
+ * overall 85 ⇒ p=204; p máx = 260 (overall 99). Limiares ≈ 3 / 8 / 15+ treinos por ponto.
+ */
+export const TRAINING = {
+  sessionXp: 100,
+  /** FOCO do dia = taxa (seam). Default NEUTRO (todos 100) — diferenciar o efeito é fatia futura. */
+  focusMultPct: { fisico: 100, tecnico: 100, tatico: 100, mental: 100 },
+  /** Seams neutros (default 1.0 = 100%): DLC acelera; idade desacelera. Adiados. */
+  speedMultiplierPct: 100,
+  ageFactorPct: 100,
+  /** Fronteiras (pontos já ganhos) das 3 zonas. */
+  midStartPoints: 104, // overall ~60
+  eliteStartPoints: 204, // overall ~85
+  /** Limiar de XP por zona (p/ o próximo ponto). */
+  zone1Xp: 300, // várzea: ~3 treinos/ponto
+  zone2Xp: 800, // meio: ~8 treinos/ponto
+  zone3BaseXp: 1500, // elite: 15 treinos/ponto no início da cauda...
+  zone3RampXp: 25, // ...+0,25 treino por ponto de progresso (a cauda vira grind orgulhoso)
+} as const;
