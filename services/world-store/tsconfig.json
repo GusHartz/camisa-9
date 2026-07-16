@@ -1,0 +1,9 @@
+{
+  "//": "Type-check do world-store (SPEC-013). NÃO é composite e NÃO entra no `tsc -b`: referenciaria o world-engine e o `tsc -b --noEmit` do gate `typecheck` quebraria (TS6310 — projeto referenciado não pode desabilitar emit). É borda IMPURA rodada via tsx/vitest (como harness/); consome o world-engine pelo alias `paths` (→ src). O gate de tipos autoritativo é `tsconfig.typecheck.json` (raiz), que inclui services/*.",
+  "extends": "../../tsconfig.base.json",
+  "compilerOptions": {
+    "noEmit": true,
+    "resolveJsonModule": true
+  },
+  "include": ["src/**/*.ts", "test/**/*.ts"]
+}

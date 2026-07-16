@@ -9,3 +9,7 @@ spikes/
 # Markdown é hand-authored (docs de fundação H1VE, SPECs/DONEs com formato próprio
 # consumido pelo SPEC-lint do CI). Prettier não é dono do markdown neste repo.
 **/*.md
+
+# Migrations geradas pelo drizzle-kit (SQL + meta JSON — SPEC-013). O drizzle é dono
+# do formato; reformatar quebraria o journal/snapshot que ele compara no próximo generate.
+services/*/src/migrations/
