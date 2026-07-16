@@ -46,6 +46,11 @@
 ### i18n
 - Strings externalizadas desde a SPEC-001. PT primeiro; EN na F3.
 
+### Arte e assets (dois níveis de pixel art — lei)
+- **Nível JOGO (canônico):** grid de pixel fixo; escala apenas por múltiplos inteiros (nearest-neighbor; nunca densidades misturadas); paleta limitada (~24-32 cores em tokens); contornos grossos; sprites de personagem 32-48px. É o nível da faixa, do modo mini e de toda screenshot (Steam exige gameplay real).
+- **Nível KEY ART:** pixel de ilustração (alta densidade) — exclusivo de capsule, library hero e cards compartilháveis.
+- **Regra-ponte (gate de arte):** o mascote (bode coroado camisa 10) deve ser inconfundivelmente o mesmo personagem no sprite de 48px e na key art; o sprite é o canônico — em conflito, a key art recua. Anti-over-promise: a distância entre capa e jogo é de densidade, nunca de identidade.
+
 ---
 
 ## 2. Decisões-chave
@@ -62,6 +67,8 @@
 | D8 | Química social apenas na F2 | Compra tempo para desenhar anti-abuso antes de expor superfície de fraude. |
 | D9 | Steam como canal único do lançamento (15/07) | Confiança/SmartScreen de graça; code-signing (gap BR) fora do caminho crítico; foco do founder solo. Instalador próprio deferido com gatilho. |
 | D10 | Validação de demanda via trilho nativo | Página Coming Soon (wishlist = waiting list nativa + crédito algorítmico) + Discord (quintetos = a validação SOCIAL que a wishlist não mede) + Playtest (beta sem infra própria). |
+| D11 | Dois níveis de pixel art (jogo canônico / key art derivada) | Anti-over-promise nas reviews; screenshots Steam = gameplay real; identidade preservada em qualquer tamanho (teste 120×45). |
+| D12 | Inteligência do mundo por heurística + personalidade + seed | Determinismo preservado (golden/replay); custo O(sort) por janela; personalidade = pesos por arquétipo sorteado por seed NA CRIAÇÃO do clube (nunca retroativo). LLM/IA cara descartada por quebrar determinismo e custo. |
 
 ---
 

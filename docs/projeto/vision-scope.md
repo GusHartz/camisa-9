@@ -1,5 +1,7 @@
 # Visão & Escopo — Camisa 9 (codinome · método H1VE)
 
+> **Nome oficial: NEXT GOAT — Taskbar Football** (decidido 15/07; "Camisa 9" segue apenas como codinome interno do repositório). Mascote canônico: **o bode coroado, camisa 10** — malandro, digno, debochado. Subtítulo PT na comunicação BR: "futebol na sua taskbar". Condições pré-página-Steam: verificação INPI 9/41 + TESS/EUIPO (atenção: GOAT Games, publisher mobile) e garantia de domínios/handles.
+
 ## Problema
 
 A dor é real e verificada, em três camadas:
