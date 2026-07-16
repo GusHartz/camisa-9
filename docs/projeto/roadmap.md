@@ -50,9 +50,11 @@ Objetivo: **o mundo vive sem nenhum humano.** Esta é a fatia que valida a tese.
 ### Fase 2 — Entrada humana e o atleta
 Objetivo: um humano assume uma vaga e vive uma carreira.
 
+> **Conta + criação do atleta — a primeira identidade humana ✅ SPEC-016 (2026-07-16).** *(Card 22 no board; fatiado como primeira feature da Fase 1 pelo founder — o board é a fila, não este roadmap.)* Nasce a lib pura `packages/player` (nome/posição/visual + **atributos base nos 4 focos**, point-buy calibrado para a várzea — pool fixo ⇒ overall 34) + o serviço isolado `services/player-store` (conta por e-mail **argon2id** + atleta persistido numa transação all-or-nothing; schema Postgres `player`; migration `0000`). É a **fundação** que 2.1/2.3 consomem — mas **não** coloca o atleta no mundo (isso é 2.1, o **card 21**: bloqueado pelo snapshot imutável) nem implementa treino/evolução (**card 13**; design record em `docs/projeto/design-atributos-e-evolucao.md`).
+
 | # | Spec | Entrega |
 |---|------|---------|
-| 2.1 | **Substituição de NPC + waiting list** | Humano assume vaga (posição/camisa/clube); vaga congela 30 dias em abandono → reverte a NPC. |
+| 2.1 | **Substituição de NPC + waiting list** | Humano assume vaga (posição/camisa/clube); vaga congela 30 dias em abandono → reverte a NPC. *(Conta + atleta já existem — SPEC-016; falta a costura `player-store`↔`world-store` p/ ocupar a vaga.)* |
 | 2.2 | **Pirâmide Elástica (expansão do mundo)** | Ramificação 2× por nível; gatilho de ~70% de ocupação humana da base; novos grupos/andares só na virada de temporada; playoff de acesso entre campeões de grupo. |
 | 2.3 | **Simulação do atleta (MVP)** | DUAS barras persistentes (Forma e Moral) + 12 atributos evolutivos; stamina só dentro da partida (drena por físico, guia as substituições do técnico NPC, até 5/jogo). Fôlego diário cortado. |
 | 2.4 | **Decisões de carreira (3-5/dia)** | Cotidiano → dramático; sem resposta = agente decide conservador às 18h. |

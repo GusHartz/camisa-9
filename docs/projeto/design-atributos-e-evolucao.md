@@ -1,0 +1,47 @@
+# Design record — Atributos & evolução (treino)
+
+> **Não é uma SPEC ainda.** É o registro de design co-desenhado com o founder (2026-07-16) durante a
+> SPEC-016. Vira a base da SPEC do **card 13 "Atributos e evolução"** (+ card 9 "Treino com banking")
+> quando esse card for iniciado no board. A **SPEC-016 (conta + criação)** planta só a fundação:
+> os 4 focos, a régua 0..99, a primitiva de alocação e o campo `training_xp` (o seam da barra).
+> A **matemática abaixo é do card 13** — não implementar na SPEC-016.
+
+## Modelo de atributos (fundação plantada na SPEC-016)
+
+- **4 focos:** Físico · Técnico · Tático · Mental — os mesmos FOCOs de treino do R4 FINAL (criação e evolução falam a mesma língua).
+- **Escala 0..99** por foco. `overall = média(4 focos)` (o mapa `ability = f(focos, posição)` para quando o atleta entra no mundo — card 21 — é ponderado por posição; fora de escopo aqui).
+- **Criação (point-buy):** `piso 20 · pool 56 · teto de criação 50` → overall ~34 = fundo da banda várzea (tier 4 = `34..66` no `world-engine`). Nasce cru; a carreira é a subida.
+
+## Progressão por treino (CARD 13 — a implementar)
+
+- **Barra de XP única** (por atleta, não por foco). O treino diário deposita XP; quando a barra enche → **+1 ponto livre** para o jogador distribuir **onde quiser** (até 99). Reusa a primitiva `allocateAttributes` da SPEC-016, agora com +1.
+- **A barra cresce a cada ponto ganho** (retornos decrescentes) → chegar ao 99 é grind, nunca brinde.
+
+### Curva de 3 zonas (feeling alvo)
+
+| Zona | Faixa | Ritmo |
+|---|---|---|
+| Início | várzea → ~60 | ~1 ponto a cada 2–4 treinos (rápido — as primeiras semanas dão gosto, ninguém desanima) |
+| Meio | ~60 → ~85 | ~1 a cada ~8 treinos (compromisso de meses) |
+| Elite | ~85 → 99 | ~1 a cada 15+ treinos (o grind orgulhoso — **DLC acelera aqui**) |
+
+### Envelope da carreira (âncoras do engine)
+
+- Entra aos **17**, aposenta aos **35** (`WORLD.youthAge`/`retirementAge`) → 18 temporadas de teto, MAS pico real ~27–30 e depois declínio (o engine já envelhece/aposenta) → janela de crescimento efetiva ~17→~28.
+- Temporada = 38 rodadas ≈ 6 semanas ≈ ~40 dias de treino → **~720 sessões** numa carreira inteira.
+- **Alvo:** uma carreira **dedicada** chega perto de elite (~85 overall) dentro da janela de pico; **99 num foco** é a cauda brutal — hard, não impossível. A janela de idade limitada é parte do que faz o 99 ser difícil.
+
+## DLC — "tempo, não poder" (decisão de valores do founder)
+
+O charter posiciona o jogo **contra** monetização odiada e **a favor** de justiça/cooperação. Para o DLC de progressão não virar pay-to-win:
+
+- O DLC **acelera a cauda 85→99** (compra *velocidade* que qualquer um alcançaria grindando), **nunca** um teto exclusivo ou atributo só-de-quem-paga.
+- Alternativa/complemento: DLC de **prestígio/cosmético pós-99**.
+- **Princípio:** o free chega ao 99. O pago chega mais rápido. Poder igual, tempo diferente.
+
+## Ganchos para a SPEC do card 13
+
+- Reusar `packages/player` (`allocateAttributes`) para gastar o +1.
+- Ler/escrever `athlete.training_xp` (o seam já criado na SPEC-016).
+- Definir: XP por sessão de treino, papel do FOCO escolhido (multiplica a barra? enviesa o ponto?), a fórmula de crescimento da barra, o soft-cap, e a mecânica do DLC.
+- Interação com idade/declínio (card 21/lifecycle do engine).

@@ -16,6 +16,10 @@ export default defineConfig({
           new URL('./packages/world-engine/src/index.ts', import.meta.url),
         ),
       },
+      {
+        find: /^@camisa-9\/player$/,
+        replacement: fileURLToPath(new URL('./packages/player/src/index.ts', import.meta.url)),
+      },
     ],
   },
   test: {

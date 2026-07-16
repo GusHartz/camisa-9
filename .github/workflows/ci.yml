@@ -94,6 +94,10 @@ jobs:
         if: steps.detect.outputs.node == 'true'
         run: npm run db:migrate --if-present -w services/world-store
 
+      - name: Aplicar migrations (jogador — SPEC-016)
+        if: steps.detect.outputs.node == 'true'
+        run: npm run db:migrate --if-present -w services/player-store
+
       - name: Verificações (roda o que existir)
         if: steps.detect.outputs.node == 'true'
         run: |
