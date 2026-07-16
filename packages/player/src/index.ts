@@ -6,7 +6,15 @@ export { allocateAttributes } from './attributes.js';
 export { validateAppearance } from './appearance.js';
 export { validatePassword } from './password-policy.js';
 export { createAthlete } from './create.js';
-export { trainSession, applyPoint, nextThreshold, pointsEarnedTotal } from './training.js';
+export {
+  trainSession,
+  applyPoint,
+  nextThreshold,
+  pointsEarnedTotal,
+  repeatPenaltyPct,
+  coachFocus,
+  resolveFocusStreak,
+} from './training.js';
 export {
   validateTeamName,
   validateKit,

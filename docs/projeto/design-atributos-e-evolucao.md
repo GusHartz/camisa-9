@@ -38,7 +38,8 @@
 
 - Entra aos **17**, aposenta aos **35** (`WORLD.youthAge`/`retirementAge`) → 18 temporadas de teto, MAS pico real ~27–30 e depois declínio (o engine já envelhece/aposenta) → janela de crescimento efetiva ~17→~28.
 - Temporada = 38 rodadas ≈ 6 semanas ≈ ~40 dias de treino → **~720 sessões** numa carreira inteira.
-- **Alvo:** uma carreira **dedicada** chega perto de elite (~85 overall) dentro da janela de pico; **99 num foco** é a cauda brutal — hard, não impossível. A janela de idade limitada é parte do que faz o 99 ser difícil.
+- **Alvo (calibração de LENDA — decidido pelo founder na SPEC-019):** com os tunáveis atuais (`sessionXp 100`, limiares 300/800/1500), uma carreira **dedicada** (~720 sessões, rotacionando o foco) chega a **~overall 72**; **85+ é grind de LENDA** (multi-carreira, ~1112+ sessões), coerente com "da várzea às lendas". **99 num foco isolado** é a cauda brutal (~195 sessões nele). *(O antigo "carreira → ~85" era incompatível com os ritmos 3/8/15 — corrigido aqui; a curva/limiares ficam intactos.)*
+- **FOCO do dia = viés de taxa (SPEC-019):** treinar o **mesmo** foco em dias consecutivos aplica **rendimento decrescente** (degraus com piso — `focusRepeatStepPct`/`focusRepeatFloorPct`); rotacionar rende **100%** (o teto = o pace acima). Sem escolha, o **técnico treina o foco mais baixo**. O ponto segue **flutuante** (o build é o gasto, não o treino — Model A).
 
 ## DLC — "tempo, não poder" (decisão de valores do founder)
 

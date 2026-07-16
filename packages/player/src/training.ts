@@ -29,15 +29,51 @@ export function nextThreshold(pointsEarned: number): number {
 
 /**
  * XP depositado por UMA sessão de treino. Multiplicadores como % com divisão inteira (mantém
- * tudo inteiro/determinístico): FOCO = taxa (seam); speed = DLC; age = idade.
+ * tudo inteiro/determinístico): FOCO = taxa (seam por-foco); repeat = rendimento decrescente ao
+ * repetir (SPEC-019); speed = DLC; age = idade. Ausentes = neutros (100) → SPEC-017 intacta.
  */
 function sessionDeposit(focus: Focus, opts: TrainOpts): number {
+  const repeat = opts.focusRepeatPct ?? 100;
   const speed = opts.speedMultiplierPct ?? TRAINING.speedMultiplierPct;
   const age = opts.ageFactorPct ?? TRAINING.ageFactorPct;
   let xp = Math.floor((TRAINING.sessionXp * TRAINING.focusMultPct[focus]) / 100);
+  xp = Math.floor((xp * repeat) / 100);
   xp = Math.floor((xp * speed) / 100);
   xp = Math.floor((xp * age) / 100);
   return xp;
+}
+
+/**
+ * % de rendimento de uma sessão que REPETE o mesmo foco `repeats` vezes consecutivas (0 =
+ * fresco). Degraus inteiros com piso — sem transcendental (guardrail). Fresco = 100% (o baseline
+ * da SPEC-017: a curva não muda; só martelar o mesmo foco desacelera).
+ */
+export function repeatPenaltyPct(repeats: number): number {
+  const raw = 100 - Math.max(0, repeats) * TRAINING.focusRepeatStepPct;
+  return Math.max(TRAINING.focusRepeatFloorPct, raw);
+}
+
+/**
+ * O foco que o técnico treina quando o jogador NÃO escolhe: o de MENOR valor (arredonda a
+ * fraqueza). Empate → a ordem canônica de `FOCI` (o `<` estrito mantém o primeiro). Determinístico.
+ */
+export function coachFocus(attributes: Attributes): Focus {
+  return FOCI.reduce((best, f) => (attributes[f] < attributes[best] ? f : best));
+}
+
+/**
+ * Resolve o streak de foco: `repeats` = repetições consecutivas que ESTA sessão já acumula (a
+ * base da penalidade) e o PRÓXIMO estado persistido. Fresco/trocou → repeats 0, streak 1.
+ * `lastFocus` vem do store como texto (coluna `text`); valor inesperado ≠ `focus` → tratado
+ * como fresco (robusto). O `focusStreak` negativo é saneado (defensivo).
+ */
+export function resolveFocusStreak(
+  lastFocus: string | null,
+  focusStreak: number,
+  focus: Focus,
+): { repeats: number; lastFocus: Focus; focusStreak: number } {
+  const repeats = focus === lastFocus ? Math.max(0, focusStreak) : 0;
+  return { repeats, lastFocus: focus, focusStreak: repeats + 1 };
 }
 
 /**

@@ -2,7 +2,15 @@
 // cascata de pontos, os seams (DLC/idade) e o teto 99 do gasto. Sem banco, sempre rodam.
 import { describe, expect, it } from 'vitest';
 import { CREATION_TOTAL, TRAINING } from './constants.js';
-import { applyPoint, nextThreshold, pointsEarnedTotal, trainSession } from './training.js';
+import {
+  applyPoint,
+  coachFocus,
+  nextThreshold,
+  pointsEarnedTotal,
+  repeatPenaltyPct,
+  resolveFocusStreak,
+  trainSession,
+} from './training.js';
 import type { Attributes, Focus } from './types.js';
 
 /** Um estado com atributos dados (default: recém-criado, tudo 34 → soma 136 = CREATION_TOTAL). */
@@ -119,6 +127,53 @@ describe('trainSession', () => {
     expect(nextThreshold(pointsEarnedTotal(a, 0))).toBe(TRAINING.zone1Xp); // 300
     // com 5 pontos guardados → p=105 (≥104) → já é zona 2 (mais caro).
     expect(nextThreshold(pointsEarnedTotal(a, 5))).toBe(TRAINING.zone2Xp); // 800
+  });
+});
+
+describe('FOCO do dia — rendimento decrescente ao repetir (SPEC-019)', () => {
+  it('repeatPenaltyPct: degraus inteiros com piso (100 → 80 → 60 → 40 → 40…)', () => {
+    expect(repeatPenaltyPct(0)).toBe(100); // fresco = baseline SPEC-017
+    expect(repeatPenaltyPct(1)).toBe(100 - TRAINING.focusRepeatStepPct);
+    expect(repeatPenaltyPct(2)).toBe(100 - 2 * TRAINING.focusRepeatStepPct);
+    expect(repeatPenaltyPct(3)).toBe(TRAINING.focusRepeatFloorPct); // atinge o piso
+    expect(repeatPenaltyPct(10)).toBe(TRAINING.focusRepeatFloorPct); // nunca abaixo do piso
+    expect(repeatPenaltyPct(-1)).toBe(100); // repeats negativo saneado
+  });
+
+  it('trainSession aplica o fator de repetição (via focusRepeatPct); ausente = neutro', () => {
+    const s = { attributes: attrs(), trainingXp: 0, freePoints: 0 };
+    expect(trainSession(s, 'fisico').trainingXp).toBe(100); // ausente = 100% (SPEC-017)
+    expect(trainSession(s, 'fisico', { focusRepeatPct: 80 }).trainingXp).toBe(80);
+    expect(trainSession(s, 'fisico', { focusRepeatPct: 40 }).trainingXp).toBe(40);
+  });
+
+  it('coachFocus: o foco MAIS BAIXO; empate → ordem canônica de FOCI', () => {
+    expect(coachFocus(attrs(40, 34, 50, 60))).toBe('tecnico'); // 34 é o menor
+    expect(coachFocus(attrs(34, 34, 50, 60))).toBe('fisico'); // empate 34 → primeiro (fisico)
+    expect(coachFocus(attrs(50, 50, 50, 42))).toBe('mental'); // 42 é o menor
+  });
+
+  it('resolveFocusStreak: fresco/troca → repeats 0, streak 1; repetir → cresce', () => {
+    expect(resolveFocusStreak(null, 0, 'fisico')).toEqual({
+      repeats: 0,
+      lastFocus: 'fisico',
+      focusStreak: 1,
+    });
+    expect(resolveFocusStreak('fisico', 1, 'fisico')).toEqual({
+      repeats: 1,
+      lastFocus: 'fisico',
+      focusStreak: 2,
+    });
+    expect(resolveFocusStreak('fisico', 3, 'tecnico')).toEqual({
+      repeats: 0, // trocou → reseta
+      lastFocus: 'tecnico',
+      focusStreak: 1,
+    });
+    expect(resolveFocusStreak('fisico', -5, 'fisico')).toEqual({
+      repeats: 0, // focusStreak negativo saneado (Math.max(0, …)) — defensivo
+      lastFocus: 'fisico',
+      focusStreak: 1,
+    });
   });
 });
 
