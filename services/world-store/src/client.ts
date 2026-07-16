@@ -3,7 +3,7 @@
 // `DATABASE_URL` é server-only (OP-02/OP-12) — nunca hardcoded, nunca no cliente.
 import { drizzle, type NodePgDatabase } from 'drizzle-orm/node-postgres';
 import { Pool } from 'pg';
-import * as schema from './schema/world.js';
+import * as schema from './schema/index.js';
 
 export type Db = NodePgDatabase<typeof schema>;
 
