@@ -9,7 +9,8 @@
   },
   "packageManager": "npm@11.13.0",
   "workspaces": [
-    "packages/*"
+    "packages/*",
+    "services/*"
   ],
   "scripts": {
     "lint": "eslint . && prettier --check .",

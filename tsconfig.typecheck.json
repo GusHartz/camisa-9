@@ -9,5 +9,11 @@
     "sourceMap": false,
     "types": ["node"]
   },
-  "include": ["packages/*/src/**/*.ts", "harness/**/*.ts"]
+  "include": [
+    "packages/*/src/**/*.ts",
+    "harness/**/*.ts",
+    "services/*/src/**/*.ts",
+    "services/*/test/**/*.ts",
+    "services/*/*.ts"
+  ]
 }

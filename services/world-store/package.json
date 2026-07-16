@@ -1,0 +1,21 @@
+{
+  "name": "@camisa-9/world-store",
+  "version": "0.0.0",
+  "private": true,
+  "type": "module",
+  "description": "Camada de dados (SPEC-013 — Fase 0.2, Fatia 1): persistência do WorldState em Postgres. Borda IMPURA — vive em services/*, fora de packages/* (world-engine fica puro, OP-17). Rodada via tsx/vitest (sem build para dist na Fatia 1).",
+  "scripts": {
+    "test": "vitest run",
+    "db:generate": "drizzle-kit generate",
+    "db:migrate": "tsx src/migrate.ts"
+  },
+  "dependencies": {
+    "@camisa-9/world-engine": "*",
+    "drizzle-orm": "^0.45.2",
+    "pg": "^8.22.0"
+  },
+  "devDependencies": {
+    "@types/pg": "^8.20.0",
+    "drizzle-kit": "^0.31.10"
+  }
+}
