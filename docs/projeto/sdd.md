@@ -9,7 +9,7 @@
 ### Motor do mundo (servidor)
 - **Linguagem/runtime:** TypeScript (Node.js). Stack já dominada pelo time.
 - **Persistência:** Postgres (Neon). Serverless, branch por ambiente.
-- **Orquestração da rodada:** job agendado 3×/semana que processa todas as ligas.
+- **Orquestração da rodada:** job agendado diário (uma rodada/dia, às 15h Brasília) que processa todas as ligas.
 - **Determinismo por seed:** simulação reproduzível a partir de seed + estado. Auditável, testável por propriedade, replay verificável.
 - **Atomicidade:** resultado publicado numa única transação. **Nunca** rodada meio-publicada — a linha do tempo do mundo é all-or-nothing.
 - **Protocolo de falha:** adiar com transparência > publicar errado. Definido em SPEC dedicada antes de qualquer código do motor.
@@ -125,7 +125,7 @@
 ### Gates específicos
 | Gate | Regra |
 |------|-------|
-| **Money path — a rodada** | Nenhuma SPEC que toque o motor entra sem testes de propriedade (determinismo, fuso, replay, falha parcial) **e** protocolo de falha pública definido. Rodada de sábado falhando com todos online = pior acidente possível. |
+| **Money path — a rodada** | Nenhuma SPEC que toque o motor entra sem testes de propriedade (determinismo, fuso, replay, falha parcial) **e** protocolo de falha pública definido. A rodada das 15h falhando com todos online = pior acidente possível. |
 | **Arte** | Nenhum sprite/venue sem aprovação do founder em contexto real — screenshot da faixa a 110px sobre desktop de verdade. |
 | **Economia** | Toda SPEC de monetização/quota checada contra as regras NUNCA (campo 05) antes do Claude Code: nada de stats compráveis, nada de ponte com apostas. |
 | **Lançamento público** | Filtro de nomes + report funcionando. Moderação plena adiada no beta (decisão consciente — network confiável). |

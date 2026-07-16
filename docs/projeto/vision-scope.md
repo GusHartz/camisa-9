@@ -14,13 +14,13 @@ A dor é real e verificada, em três camadas:
 
 ## Visão
 
-**Você vive a carreira de UM jogador de futebol — da várzea às lendas — numa faixa discreta acima da taskbar, no mesmo time dos seus amigos, num mundo persistente que joga terça, quinta e sábado às 15h com ou sem você.**
+**Você vive a carreira de UM jogador de futebol — da várzea às lendas — numa faixa discreta acima da taskbar, no mesmo time dos seus amigos, num mundo persistente que joga TODO DIA às 15h com ou sem você.**
 
 Quatro pilares sustentam a tese:
 
 - **Presença ambiente:** o jogo trabalha *junto* com o expediente, nunca contra. Três níveis — faixa (~110px) → modo mini — faixa compacta ancorada à taskbar (postura A/topmost, validada na SPEC-006; render dentro da shell é inviável no Win11) → fechado (só notificações nativas). Promessa pública: **<1% CPU, zero anti-cheat no cliente** (o anti-*TBH* como posicionamento).
 - **Cooperação, não gestão:** você **é** o atleta; seus amigos estão no **mesmo** time. "Meu passe, seu gol" — frase que nenhum manager produz. O clube é palco (NPC), não propriedade.
-- **Ritual coletivo sincronizado:** 3 jogos/semana em horário fixo (ter/qui/sáb 15h) — o mesmo pull de "conferir o placar" que já existe em milhões de pessoas, redirecionado para um placar onde *você* joga.
+- **Ritual coletivo sincronizado:** jogo diário (7/7) às 15h Brasília — liga de 20, temporada de 38 rodadas ≈ 6 semanas — o mesmo pull de "conferir o placar" que já existe em milhões de pessoas, redirecionado para um placar onde *você* joga, todo dia.
 - **Mundo vivo com história permanente:** o mundo nasce 100% NPC e jogando; cada humano substitui um NPC (escassez real via waiting list); carreiras terminam e viram lendas permanentes (hall, recordes, camisas aposentadas).
 
 **North star:** times com **≥3 humanos presentes** no jogo das 15h.
@@ -41,22 +41,22 @@ Quatro pilares sustentam a tese:
 
 **Capacidades centrais (o produto completo — fatiamento no bloco 08):**
 
-- **Motor do mundo (server-side, o coração):** simula TODAS as ligas 3×/semana — partidas, tabelas, transferências, evolução e aposentadoria de NPCs. O mundo vive sem nenhum humano. **Determinístico e auditável** (rigor de money path).
+- **Motor do mundo (server-side, o coração):** simula TODAS as ligas todo dia (jogo diário 7/7) — partidas, tabelas, transferências, evolução e aposentadoria de NPCs. O mundo vive sem nenhum humano. **Determinístico e auditável** (rigor de money path).
 - **Entrada por substituição + waiting list real:** todas as ligas definidas no dia 1; cada humano assume a vaga de um NPC (posição/camisa/clube/cidade); o mundo cresce em Pirâmide Elástica: topo único e eterno, ramificação 2× por nível descendo; expansão (novos grupos no andar de entrada; novo andar quando a largura satura) disparada a ~70% de ocupação humana da base, só na virada de temporada. Novatos entram sempre no andar mais baixo. Escassez eterna = altitude (Div 1) e identidade, não entrada. Vaga congelada 30 dias em abandono, depois reverte a NPC.
-- **Cadastro solo/team com código de time:** solo = vaga em clube NPC; team = código distribuível — amigos entram direto no elenco escolhendo posição. Jogável desde o humano nº 1 (11 fecha as vagas, não o jogo; marco celebrado). Posições marcáveis como NPC fixo (goleiro default). Fundação em massa só na divisão de entrada (absorve o takeover de quinteto).
+- **Cadastro solo/team com código de time:** solo = vaga em clube NPC; team = código distribuível — amigos entram direto no elenco escolhendo posição. Jogável desde o humano nº 1 (o 11º humano completa o **primeiro onze**, o 16º fecha o **elenco completo** — vagas até 16, marcos celebrados; nunca fecha o jogo). Posições marcáveis como NPC fixo (goleiro default). Fundação em massa só na divisão de entrada (absorve o takeover de quinteto).
 - **Presença em 3 níveis:** faixa acima da taskbar → modo mini ancorado à taskbar → notificações nativas com botões (decisões respondidas do meio do Outlook). Regras de silêncio: nunca em tela cheia/apresentação; horário configurável.
-- **Dia de jogo (o evento):** ter/qui/sáb 15h (Brasília); quinta alterna Liga e Copa; ~15 min comprimidos; câmera no SEU jogador; nota ao vivo; 1–2 eventos de escolha/partida (resolvidos por atributos + moral); 1 intervenção por tempo. Perdeu ao vivo = resumo de 20s + nota — presença dá cor, nunca resultado.
+- **Dia de jogo (o evento):** jogo diário (7/7) às 15h (Brasília) — liga de 20, temporada de 38 rodadas ≈ 6 semanas (encaixe da Copa no calendário diário = pendência de SPEC); ~15 min comprimidos; câmera no SEU jogador; nota ao vivo; 1–2 eventos de escolha/partida (resolvidos por atributos + moral); 1 intervenção por tempo; a stamina de partida guia as substituições do técnico NPC (até 5/jogo). Perdeu ao vivo = resumo de 20s + nota — presença dá cor, nunca resultado.
 - **Decisões de carreira (3–5/dia):** do cotidiano (treino extra vs. descanso) ao dramático (proposta 2× salário vs. ficar com os amigos). Sem resposta = agente decide conservadoramente às 18h.
-- **Treino & progressão diária:** cada treino gera pontos de atributo a distribuir; pontos ACUMULAM se o jogador faltar (nunca expiram — anti-culpa); distribuir no dia dá bônus pequeno de "treino focado".
-- **Batida semanal (a novela em volta do jogo):** SEG treino + jornal do mundo · TER JOGO · QUA entrevista pós-jogo + notas · QUI JOGO · SEX véspera + ESCALAÇÃO ÀS 18H + evento de vida · SÁB JOGO · DOM resenha mundial (passiva). Um beat de ~30s por dia; nada obrigatório. Linha de design: **o FOMO diário vem do MUNDO, não da partida** (R4 reaberto e mantido em 3 jogos/semana; jogo diário rejeitado — obrigação estilo BeReal; caminho reversível: amistoso de segunda se o beta pedir).
+- **Treino & progressão diária:** cada treino gera pontos de atributo a distribuir sob um FOCO do dia (Físico/Técnico/Tático/Mental; sem escolha = o técnico decide); pontos ACUMULAM se o jogador faltar (nunca expiram — anti-culpa); distribuir no dia dá bônus pequeno de "treino focado", com rendimento decrescente ao repetir o mesmo foco.
+- **Batida diária — o Dia do Jogador (a novela em volta do jogo):** manhã = jornal do mundo + FOCO DO TREINO + pontos de ontem · 12h escalação do dia · 13–15h pré-jogo (ambiente) · 15h JOGO · pós-jogo nota + card + entrevista ocasional · 18h deadline de decisões · noite livre (domingo à noite: resumo semanal do mundo). Carga: mínimo 0s, típico ~3min, máximo ~18min; nada obrigatório. Linha de design: **o FOMO diário vem do MUNDO, não da partida** (R4 FINAL: jogo diário 7/7 ratificado; riscos aceitos = fadiga do horário fixo e fim de semana fraco; rede de segurança = telemetria de presença por dia da semana no beta como gate, antes do público).
 - **Salário & estilo de vida:** salário/luvas/prêmios viram poder de compra pessoal em itens com trade-off narrativo (carro = moral+fama+eventos de risco; academia em casa = físico−vestiário). **A casa da mãe** = marco de carreira com card compartilhável próprio. O patrimônio aparece NA FAIXA (cena de casa evolui: pensão → quitinete → casa → cobertura), amarrado ao gradiente várzea→elite. **Trava inegociável:** dinheiro do jogo jamais comprável com dinheiro real.
 - **Resumo de Retorno:** ao reabrir após ausência + beat fixo de segunda ("+2 finalização, torcida cantou seu nome…"). Dopamina de reabertura.
-- **Simulação do atleta (faseada):** barras (forma/moral/fôlego) + 12 atributos evolutivos no MVP; traços de personalidade + química com amigos (entrosamento = bônus real, razão mecânica para recrutar humanos) na F2.
+- **Simulação do atleta (faseada):** DUAS barras persistentes — Forma e Moral (fôlego diário cortado) — + 12 atributos evolutivos no MVP; a stamina existe só DENTRO da partida (drena por atributos físicos — Resistência = tanque —, define rendimento e as substituições do técnico NPC, invisível fora dos 90 min); traços de personalidade + química com amigos (entrosamento = bônus real, razão mecânica para recrutar humanos) na F2.
 - **Lesões narrativas:** raras, nunca punição cega, sempre com arco.
 - **Carreira com fim + lendas permanentes:** ~15–20 temporadas com declínio físico; aposentadoria → hall de lendas, recordes, camisa aposentada; novo atleta herda legado.
 - **Gradiente várzea→elite:** Div 4 = campo de terra, "Copa da Baixada", uniforme desparelho; elite = estádio, "Liga Nacional", transmissão. Subir de divisão muda o mundo visualmente.
 - **Card compartilhável:** fim de partida e fim de temporada — desenhado para o WhatsApp (a "grade do Wordle" deste produto).
-- **Live-ops pelo calendário do futebol:** janelas de transferência, Copa das quintas, temporadas temáticas; F2 amplia (seleções, amistosos, Copa do Mundo fictícia).
+- **Live-ops pelo calendário do futebol:** janelas de transferência, Copa (encaixe no calendário diário = pendência de SPEC), temporadas temáticas; F2 amplia (seleções, amistosos, Copa do Mundo fictícia).
 - **i18n desde o dia 1** (PT nativo; EN na F3).
 
 **F2 (comprometida na visão, fora do beta):** técnico com personalidade; reputação ídolo vs. mercenário por torcida; fama como economia secundária; comissão pessoal (preparador/nutricionista/psicólogo).
