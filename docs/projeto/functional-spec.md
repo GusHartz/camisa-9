@@ -1,4 +1,4 @@
-# Especificação Funcional — Nexus Flow (H1VE)
+# Especificação Funcional — Camisa 9 (codinome · método H1VE)
 
 ## Capacidades centrais
 
@@ -20,7 +20,7 @@ O produto é um jogo de carreira de futebol de baixa atenção, onde um mundo si
 
 ### 3. Presença em 3 níveis
 - **Faixa** acima da taskbar (vida do atleta: CT, casa, véspera).
-- **Modo mini** NA taskbar.
+- **Modo mini** — faixa compacta ancorada à taskbar (postura A/topmost, validada na SPEC-006; render dentro da shell é inviável no Win11).
 - **Notificações nativas com botões** (decidir do meio do Outlook).
 - **Regras de silêncio**: nunca em tela cheia/apresentação; horário configurável.
 
@@ -65,6 +65,32 @@ O produto é um jogo de carreira de futebol de baixa atenção, onde um mundo si
 
 ### 13. i18n desde o dia 1
 - **PT nativo**; EN na F3. Nenhuma string hardcoded na UI.
+
+### 14. Treino & progressão diária
+- Treino gera **pontos de atributo** que o jogador distribui.
+- Pontos **acumulam sem expirar** (ausência nunca perde); distribuir no dia dá **bônus de treino focado**.
+
+### 15. Batida semanal & mundo vivo (dias sem jogo)
+- **Jornal do mundo** (resultados, lesão do rival, artilharia, transferências NPC) — consumo passivo.
+- **Entrevista pós-jogo** (qua) com escolha de tom → moral/fama/torcida.
+- **Trash talk** do adversário de sábado → modificador de moral do jogo.
+- **Escalação da véspera às 18h** (seg/qua/sex) — conferir leva 5s; banco gera evento.
+- **Resenha de domingo** — resumo mundial passivo, zero decisão.
+- Regra: **um beat de ~30s por dia; nada obrigatório**. O FOMO vem do mundo, não da partida.
+
+### 16. Salário & estilo de vida
+- Salário/luvas/prêmios → compras pessoais com **trade-off narrativo** (nunca loja de stats).
+- **Casa da mãe** = marco de carreira com card próprio.
+- **Patrimônio visível na faixa** (cena de casa evolui com a carreira).
+- **Trava:** dinheiro do jogo **jamais** comprável com dinheiro real.
+
+### 17. Monetização (Steam)
+- App **Free-to-Play** + compra única in-app/DLC **"Carreira"** (R$ 49,90 / $9.99) liberada ao fim da T1.
+- **Oferta antecipada** no pico emocional do meio da T1 (mitigação do paywall tardio).
+- DLC cosmética como live-ops. Checada contra as regras NUNCA em toda SPEC.
+
+### 18. Convite para vaga do clube (social mínimo do beta)
+- Link de convite coloca o amigo **direto numa vaga do MESMO clube** (criação de atleta → mesmo elenco).
 
 ### Fora do beta (F2 — comprometido na visão)
 Técnico com personalidade, reputação ídolo/mercenário por torcida, fama como economia secundária, comissão pessoal, takeover de clube por quinteto.
