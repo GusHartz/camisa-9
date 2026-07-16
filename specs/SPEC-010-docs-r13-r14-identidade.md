@@ -29,6 +29,12 @@ Aplicar o **ADENDO 3** do relatório de auditoria (`auditoria-docs-camisa9.md`) 
 
 ---
 
+## Contexto e motivação
+
+Continuação direta da SPEC-007 (v1.4/Steam-only/SPEC-006) e da SPEC-008 (A1-A6: R13 Pirâmide Elástica + R14 código de time — **já mergeadas**, ver Nota de baseline). O founder decidiu a **identidade oficial** (design doc v1.8): nome **NEXT GOAT — Taskbar Football**, mascote (bode coroado, camisa 10) e duas leis novas — **dois níveis de pixel art** e **inteligência do mundo por heurística + personalidade + seed** (nunca IA cara/não-determinística; protege golden/replay). O ADENDO 3 (A7-A9) leva essas decisões aos docs de fundação; o CLAUDE.md precisa refletir 001-009 mergeadas + o nome oficial. Sem isso, os docs seguem chamando o produto pelo codinome e sem lei de arte/IA — bloqueando a Trilha GTM (a página Steam exige nome + capsule).
+
+---
+
 ## Nota de baseline — DISCREPÂNCIA REGISTRADA (protocolo de conflito)
 
 A tarefa pediu "aplicar os ADENDOS 1, 2 e 3 — **patches A1-A9**". **Verificação no repositório (2026-07-16):**
@@ -80,13 +86,43 @@ A tarefa pediu "aplicar os ADENDOS 1, 2 e 3 — **patches A1-A9**". **Verificaç
 
 ---
 
-## Riscos
+## Segurança (se aplicável)
+
+N/A — docs-only. Sem código, sem superfície de rede, sem segredos.
+
+---
+
+## Riscos e dependências
 
 | Risco | Mitigação |
 |---|---|
 | Reaplicar A1-A6 por engano (conflito/duplicação) | Nota de baseline: A1-A6 verificados em `main`; SPEC-010 só aplica A7-A9. |
 | Deixar o "funil de nomes" como pendente após a decisão | Passada de consistência reconcilia G.1/G.2. |
 | Conflito de `CLAUDE.md` "Estado atual" com edições paralelas | Nenhuma SPEC aberta em paralelo (009 já mergeada); o bloco é reescrito por inteiro. |
+
+**Dependências:** SPEC-008 (A1-A6 em `main`) é pré-requisito lógico — o ADENDO 3 assenta sobre o R13/R14. Desbloqueia a Trilha GTM (G.1 briefing de identidade) ao cravar nome + lei de arte.
+
+---
+
+## Notas de implementação
+
+- **Patches verbatim:** A7-A9 aplicados exatamente como o ADENDO 3 os redige; a única edição derivada é a consistência do roadmap G.1/G.2 (nome decidido), documentada no DONE.
+- **Não reaplicar A1-A6** (já em `main`): verificar por grep antes de qualquer edição; reaplicação = conflito, não patch.
+- **Só o bloco "Estado atual" do CLAUDE.md muda** — o resto do arquivo fica intocado.
+- **Títulos dos docs ficam** "Camisa 9 (codinome · método H1VE)": A7 adiciona o nome oficial como bloco após o título, não renomeia (o codinome interno é regra da própria decisão).
+
+---
+
+## Checklist de aprovação
+
+- [x] Objetivo claro e verificável
+- [x] Escopo delimitado (A7-A9 + Estado atual; A1-A6 fora — já em `main`)
+- [x] Arquivos listados corretos
+- [x] Mudanças de schema documentadas (N/A — docs-only)
+- [x] Critérios de aceitação testáveis (grep + diff)
+- [x] Riscos avaliados (reaplicação de A1-A6 é o risco central — mitigado)
+- [x] Appetite razoável (meio dia)
+- [x] **Aprovada** — founder (docs-only, continuação SPEC-007/008)
 
 ---
 
