@@ -22,5 +22,10 @@ export default defineConfig({
     root: fileURLToPath(new URL('.', import.meta.url)),
     environment: 'node',
     include: ['packages/*/src/**/*.test.ts', 'services/*/test/**/*.test.ts'],
+    // Os testes de services/* são de INTEGRAÇÃO contra UM Postgres compartilhado e
+    // truncam tabelas comuns (world, published_round) sem filtro. Rodá-los em paralelo
+    // faria um suite apagar as linhas do outro no meio do teste. Serial = determinístico.
+    // Custo: ~1s nos testes puros do engine (milissegundos cada). SPEC-015.
+    fileParallelism: false,
   },
 });

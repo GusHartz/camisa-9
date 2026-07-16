@@ -15,6 +15,13 @@
       "when": 1784221180137,
       "tag": "0001_publish_round",
       "breakpoints": true
+    },
+    {
+      "idx": 2,
+      "version": "7",
+      "when": 1784224257106,
+      "tag": "0002_season_anchor",
+      "breakpoints": true
     }
   ]
 }

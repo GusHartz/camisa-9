@@ -49,6 +49,48 @@ export async function readRound(
   return rows[0]?.result ?? null;
 }
 
+/** Rodada-do-mundo: a rodada N de TODAS as ligas, publicada junta. */
+export interface WorldRoundInput {
+  readonly seasonId: string;
+  readonly round: number;
+  readonly leagues: readonly { readonly leagueId: string; readonly result: RoundResult }[];
+}
+
+/**
+ * Publica a rodada N de TODAS as ligas numa ÚNICA transação (grão-MUNDO, all-or-nothing —
+ * charter: a linha do tempo do mundo é all-or-nothing). Advisory lock world-day + INSERT
+ * multi-linha + seam. Idempotente por (season_id, round). Falha (sync/async) → ROLLBACK total.
+ */
+export async function publishWorldRound(
+  db: Db,
+  input: WorldRoundInput,
+  onBeforeCommit?: () => void | Promise<void>,
+): Promise<PublishOutcome> {
+  const { seasonId, round } = input;
+  const key = `world:${seasonId}:${round}`;
+  return db.transaction(async (tx) => {
+    if (!(await acquireLock(tx, key))) return { status: 'locked', round };
+    if (await worldRoundExists(tx, seasonId, round)) return { status: 'idempotent', round };
+    await tx
+      .insert(publishedRound)
+      .values(
+        input.leagues.map((l) => ({ leagueId: l.leagueId, seasonId, round, result: l.result })),
+      );
+    await onBeforeCommit?.();
+    return { status: 'published', round };
+  });
+}
+
+/** Existe QUALQUER liga publicada em (season, round)? Grão-mundo é all-or-nothing → uma ⇔ todas. */
+async function worldRoundExists(tx: Tx, seasonId: string, round: number): Promise<boolean> {
+  const rows = await tx
+    .select({ leagueId: publishedRound.leagueId })
+    .from(publishedRound)
+    .where(and(eq(publishedRound.seasonId, seasonId), eq(publishedRound.round, round)))
+    .limit(1);
+  return rows.length > 0;
+}
+
 /** try-advisory-xact-lock: true se adquiriu; false se outra sessão o segura (→ locked). */
 async function acquireLock(tx: Tx, key: string): Promise<boolean> {
   const res = await tx.execute(
