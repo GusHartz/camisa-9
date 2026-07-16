@@ -1,4 +1,4 @@
-# Especificação Técnica (SDD) — Nexus Flow / H1VE
+# Especificação Técnica (SDD) — Camisa 9 (codinome · método H1VE)
 
 > ⚠️ Todas as decisões técnicas marcadas com ⚠️ estão **pendentes de ratificação pelo founder** no F0.
 
@@ -24,16 +24,17 @@
 - **Orçamentos ratificados:** `<1% CPU` (governante, gate de CI) e `<150 MB RAM` (medido contra o **process tree inteiro**).
 - **Alternativas avaliadas (ver ADR-001):** Rust/Win32 (footprint vencedor, maior custo de dev → gatilho de revisão) · Tauri/WebView2 (CPU não de-riscada, mesmo motor do Electron) · WinUI3 (dominado por WPF). "Web-wrapper ultraleve" só conta se usar **WebView2 do sistema** **e** passar o gate `<1% CPU` sob build real medido.
 - **Forma padrão:** janela sem borda, always-on-bottom (validada em WPF na SPEC-003; risco baixo).
-- **Widget na taskbar:** spike de risco alto (APIs não-oficiais). **Plano B já aceito em design:** modo compacto da própria faixa. Nunca no caminho crítico.
+- **Modo mini — RESOLVIDO (SPEC-006, GO-com-ressalvas):** render dentro da shell da taskbar é inviável no Win11 (deskband removido; hacks colidem com "zero anti-cheat"; Widgets = MSIX). Forma ratificada: **faixa compacta ANCORADA à taskbar, postura A (topmost)** — CPU 0,186%, RAM <80 MB, sem injeção/MSIX. Postura B (AppBar) como modo opcional (reserva de borda com latência de ~15-30s no Win11 — achado L1). Pendências herdadas: multi-monitor, auto-hide/tela-cheia/Win+D ao vivo, soak, DPI≠100%.
 - **Gate items pós-ratificação (no build do cliente, não bloqueiam a ratificação):** soak de 8 h · check de hardware fraco · solução WorkerW/Win+D (Win+D via DWM cloaking).
 
 ### Notificações
 - Toasts nativos WinRT com botões de ação — decisões respondidas sem abrir o jogo.
 
-### Distribuição
-- **Canais:** Steam (descoberta do gênero + Next Fest/Idler Fest) + instalador próprio com autoupdate (margem preservada).
-- **Preço:** R$ 49,90 / $9.99 vitalício, liberado pós-T1.
-- ⚠️ **Calibrar preço regional Steam BR** sem canibalizar o site.
+### Distribuição (rev. 15/07 — Steam-only)
+- **Canal ÚNICO do lançamento: Steam** (descoberta do gênero + Next Fest/Idler Fest; confiança/SmartScreen resolvidos pela plataforma).
+- **Monetização na Steam:** app Free-to-Play + compra única in-app/DLC "Carreira" (R$ 49,90 / $9.99) pós-T1; DLC cosmética como live-ops. ⚠️ Calibrar preço regional Steam BR.
+- **Instalador próprio: DEFERIDO** (não descartado). Gatilho de reativação: certificado de code-signing OV via CNPJ (lead time de semanas; Azure Trusted Signing individual = US/CA apenas — gap BR registrado). Iniciar emissão SE/quando o canal próprio voltar ao plano.
+- **Beta:** distribuído via **Steam Playtest** (founder aprova coortes).
 
 ### Contas & identidade
 - **Auth:** e-mail + Steam auth. Conta **obrigatória** (o atleta vive no servidor).
@@ -56,9 +57,11 @@
 | D3 | Adiar > publicar errado | Confiança no resultado > pontualidade. Protocolo de falha pública ("evento de reparação") preserva o vínculo. |
 | D4 | Anti-fraude server-side puro | Cliente sob controle do usuário nunca é confiável. Toda validação de presença/rate/replay no servidor. |
 | D5 | **Cliente `C#/WPF` (.NET LTS)** — ratificado ([ADR-001](../adr/ADR-001-stack-do-cliente-windows.md)) | Único candidato medido; passa `<1% CPU` (0,249%) e `<150 MB RAM` (~87 MB) com folga na SPEC-003. Con = footprint 161 MB, aceito e reversível (thin renderer). Electron descartado. |
-| D6 | Widget taskbar como spike opcional | APIs não-oficiais = risco alto; plano B (modo compacto) garante o produto mesmo sem o widget. |
+| D6 | Modo mini = faixa compacta ancorada (postura A/topmost) — SPEC-006 | Dentro da shell é inviável; postura A é fiel ao ethos ("cede a tela ao trabalho"), mesmo custo de CPU e sem a reserva preguiçosa/leak-em-force-kill do AppBar. |
 | D7 | i18n desde SPEC-001 | Retrofit de i18n é caro; externalizar cedo é barato. |
 | D8 | Química social apenas na F2 | Compra tempo para desenhar anti-abuso antes de expor superfície de fraude. |
+| D9 | Steam como canal único do lançamento (15/07) | Confiança/SmartScreen de graça; code-signing (gap BR) fora do caminho crítico; foco do founder solo. Instalador próprio deferido com gatilho. |
+| D10 | Validação de demanda via trilho nativo | Página Coming Soon (wishlist = waiting list nativa + crédito algorítmico) + Discord (quintetos = a validação SOCIAL que a wishlist não mede) + Playtest (beta sem infra própria). |
 
 ---
 
@@ -152,7 +155,7 @@
 |---|-------|-------|---------|-----------|
 | R1 | Motor do mundo mais caro que o estimado — simular todas as ligas com consistência é a peça técnica central | Alta | Alto | Primeiro spike do F0; arquitetura determinística simples antes de qualquer feature. **Kill-criteria: spike >3 semanas = reavaliar.** |
 | R2 | Ritual das 15h não pega em desktop — aposta comportamental inédita | Média | Fatal | Gates de beta (presença ≥50%, D30 ≥30%); perder ao vivo nunca custa resultado; resumo de 20s; horário único BR. |
-| R3 | Paywall tardio — compra chega após 6 semanas de trial; se a T1 vazar retenção, conversão desaba | Média | Alto | T1 é prioridade máxima de design (densidade de momentos); oferta antecipada no pico emocional do meio da temporada; **gate conversão ≥8%.** |
-| R4 | Widget na taskbar falha tecnicamente (APIs não-oficiais) | Alta | Médio | Spike isolado no F0 com plano B aceito (modo compacto). Nunca no caminho crítico. |
+| R3 | Paywall tardio — compra chega após 6 semanas de trial; se a T1 vazar retenção, conversão desaba | Média | Alto | T1 é prioridade máxima de design (densidade de momentos); oferta antecipada no pico emocional do meio da temporada; **gate conversão ≥8%.** Modelo Steam F2P+compra muda a mecânica do trial (conta Steam, reviews de não-pagantes) — detalhar na SPEC de monetização. |
+| R4 | Widget na taskbar — **RESOLVIDO (SPEC-006):** faixa compacta ancorada validada nas duas posturas <1% CPU | — | — | Pendências residuais (multi-monitor, soak, DPI) herdadas pelo cliente real. |
 | R5 | Cópia rápida — TBH/clones adicionam futebol; Football Rising adiciona modo ambiente | Média | Alto | Velocidade (F0-F1 em semanas); fosso = rede de times (switching cost social) + lendas acumuladas, não a mecânica. |
 | R6 | Deslize de licenciamento — nome/escudo parecido demais com clube real | Baixa | Alto | Regra NUNCA nº 1 auditada

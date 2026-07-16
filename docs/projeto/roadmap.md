@@ -1,4 +1,4 @@
-# Roadmap — Nexus Flow (H1VE)
+# Roadmap — Camisa 9 (codinome · método H1VE)
 
 > **Contexto operacional:** founder solo (Gustavo) em todos os papéis H1VE, operando agentes como ferramentas. Cada spec deve ser autocontida, testável por um único operador e mergeada por gate humano. O sequenciamento abaixo prioriza **provar o coração (motor do mundo)** antes de qualquer camada de superfície.
 
@@ -23,6 +23,17 @@ Objetivo: infra determinística e auditável antes de qualquer feature de jogado
 
 > **De-risk do cliente (paralelo) — SPEC-006 ✅ validado (2026-07-15).** Spike **#4 — widget na taskbar** (nível 2 da presença, a "mini na taskbar"). **Achado de pesquisa:** renderizar **dentro** da shell da taskbar do Win11 é **inviável** (deskband removido; hacks por injeção/reparent quebram em update + AV, colidem com "zero anti-cheat"; Widgets oficiais = MSIX + flyout Win+W) → o spike **reformula o #4 como faixa compacta ANCORADA à taskbar** (o Plano B que o CLAUDE.md já aceita) e compara **duas posturas** (unpackaged, não-elevado, sobre WPF/ADR-001): **A — topmost flutuante** vs **B — AppBar (`SHAppBarMessage` reserva a borda)**. **GO-com-ressalvas → postura A padrão, B opcional.** Ambas ancoram sem injeção/MSIX e **dentro de <1% CPU** (A **0,186%** / B **0,189%**, RAM pico <80 MB); footprint **159,8 MB** sc. **Achados ao vivo:** **(L1)** a reserva de work-area do AppBar assenta com **latência** no Win11 (~15–30 s) e a liberação por `ABM_REMOVE` também — funciona, sem leak na saída graciosa, mas enfraquece a vantagem única de B; **(L2)** `CloseMainWindow()` é **no-op** numa janela `WS_EX_TOOLWINDOW` (fecha-se via `WM_CLOSE` direto ao HWND). **Pendências:** multi-monitor; auto-hide/tela-cheia/Win+D **ao vivo**; Win+D/WorkerW (herdado da SPEC-003); soak longo; DPI≠100%. Ver `spikes/widget-taskbar/RESULTS.md`.
 
+### Trilha GTM (paralela — destrava com a fase de arte)
+Objetivo: o relógio de wishlist só começa com nome + capsule no ar.
+
+| # | Spec | Entrega |
+|---|------|---------|
+| G.1 | **Briefing de identidade visual** | DNA do personagem/mundo, anti-brief (erros já cometidos documentados), paleta anti-CBF, teste de capsule em 120×45. Veste os finalistas de nome (gaveta: Next Goat⚠️ líder, Cria, Manto, Peneira, Cabra, Gingado⚠️). |
+| G.2 | **Decisão do NOME + verificação jurídica** | Founder bate o martelo sobre os finalistas vestidos; INPI/classes + stores + domínio do vencedor. Encerra o P1. |
+| G.3 | **Página Coming Soon na Steam** | Capsule + descrição + tags; wishlist acumulando. **Gate: ≥2.000 wishlists em 90 dias + 1 festival.** |
+| G.4 | **Discord da comunidade** | Canal "monte seu quinteto" (bot simples). **Gate: ≥50 quintetos pré-beta.** |
+| G.5 | **Steam Playtest** | Distribuição do beta fechado (founder aprova coortes). |
+
 ### Fase 1 — Motor do mundo (o coração)
 Objetivo: **o mundo vive sem nenhum humano.** Esta é a fatia que valida a tese.
 
@@ -44,6 +55,9 @@ Objetivo: um humano assume uma vaga e vive uma carreira.
 | 2.3 | **Simulação do atleta (MVP)** | Barras (forma/moral/fôlego) + 12 atributos evolutivos. |
 | 2.4 | **Decisões de carreira (3-5/dia)** | Cotidiano → dramático; sem resposta = agente decide conservador às 18h. |
 | 2.5 | **Lesões narrativas com arco** | Raras, sempre recuperação → volta por cima. |
+| 2.6 | **Convite para vaga do clube** | Link coloca o amigo direto numa vaga do MESMO clube — o social mínimo do beta. |
+| 2.7 | **Pontos de treino com banking** | Pontos acumulam sem expirar; bônus de treino focado no dia. |
+| 2.8 | **Salário & estilo de vida (básico)** | 4-6 compras com trade-off; casa da mãe (marco+card); patrimônio na cena de casa da faixa; trava anti-dinheiro-real. |
 
 ### Fase 3 — Dia de jogo (o evento) e presença
 Objetivo: a dopamina ao vivo e a presença de 3 níveis.
@@ -53,9 +67,10 @@ Objetivo: a dopamina ao vivo e a presença de 3 níveis.
 | 3.1 | **Dia de jogo ao vivo** | ~15 min comprimidos, câmera no seu jogador, nota ao vivo. |
 | 3.2 | **Eventos de escolha + intervenção** | 1-2 escolhas/partida (atributos+moral); 1 intervenção/tempo. |
 | 3.3 | **Resumo 20s (perdeu ao vivo)** | Presença dá cor, nunca resultado. |
-| 3.4 | **Presença 3 níveis** | Faixa acima da taskbar → mini na taskbar → notificações nativas com botões. |
+| 3.4 | **Presença 3 níveis** | Faixa acima da taskbar → mini ancorada à taskbar → notificações nativas com botões. |
 | 3.5 | **Regras de silêncio** | Nunca em tela cheia/apresentação; horário configurável. |
 | 3.6 | **Resumo de Retorno + beat de segunda** | Dopamina de reabertura. |
+| 3.7 | **Batida semanal (dias sem jogo)** | Jornal do mundo, entrevista com tom, trash talk, escalação da véspera às 18h, resenha de domingo — 1 beat/dia. |
 
 ### Fase 4 — Mundo visível e viralidade
 Objetivo: fazer o mundo ser sentido e compartilhado.
@@ -66,6 +81,9 @@ Objetivo: fazer o mundo ser sentido e compartilhado.
 | 4.2 | **Carreira com fim + hall de lendas** | ~15-20 temporadas; camisa aposentada, recordes, herança de legado. |
 | 4.3 | **Card compartilhável** | Fim de partida e fim de temporada — desenhado para o WhatsApp. |
 | 4.4 | **Live-ops pelo calendário** | Janelas de transferência, Copa das quintas, temporadas temáticas. |
+| 4.5 | **Monetização Steam** | F2P + compra única "Carreira" pós-T1 + oferta antecipada do meio da T1; checada contra regras NUNCA. |
+| 4.6 | **Moderação mínima (GATE de público)** | Filtro de nomes + report + fila de revisão. |
+| 4.7 | **Telemetria de gates** | Presença ao vivo, D30, funil, conversão — dashboard do founder. |
 
 ### Fase 5 — Pós-beta (comprometido na visão)
 | # | Spec | Entrega |
@@ -76,7 +94,7 @@ Objetivo: fazer o mundo ser sentido e compartilhado.
 | 5.4 | Seleções + amistosos + Copa do Mundo fictícia + takeover de clube por quinteto. |
 | 5.5 | i18n EN (F3 na visão). |
 
-> **[SUPOSIÇÃO — revisar]** O beta público corta ao final da Fase 4. Fases 0-1 são pré-requisito absoluto; Fases 2-4 formam o MVP jogável.
+> **Corte do beta — ratificado (P6):** o beta fechado (via Playtest, G.5) corta ao final da **Fase 3 + 2.6** (o núcleo social mínimo); **Fases 4 + Trilha GTM completas = lançamento público** ("escopo completo no público; beta com o núcleo"). Fases 0-1 seguem pré-requisito absoluto.
 
 ---
 

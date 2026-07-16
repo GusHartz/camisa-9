@@ -1,4 +1,4 @@
-# Visão & Escopo — Nexus Flow (H1VE)
+# Visão & Escopo — Camisa 9 (codinome · método H1VE)
 
 ## Problema
 
@@ -16,7 +16,7 @@ A dor é real e verificada, em três camadas:
 
 Quatro pilares sustentam a tese:
 
-- **Presença ambiente:** o jogo trabalha *junto* com o expediente, nunca contra. Três níveis — faixa (~110px) → modo mini na taskbar (placar + nota ao vivo, ~130px) → fechado (só notificações nativas). Promessa pública: **<1% CPU, zero anti-cheat no cliente** (o anti-*TBH* como posicionamento).
+- **Presença ambiente:** o jogo trabalha *junto* com o expediente, nunca contra. Três níveis — faixa (~110px) → modo mini — faixa compacta ancorada à taskbar (postura A/topmost, validada na SPEC-006; render dentro da shell é inviável no Win11) → fechado (só notificações nativas). Promessa pública: **<1% CPU, zero anti-cheat no cliente** (o anti-*TBH* como posicionamento).
 - **Cooperação, não gestão:** você **é** o atleta; seus amigos estão no **mesmo** time. "Meu passe, seu gol" — frase que nenhum manager produz. O clube é palco (NPC), não propriedade.
 - **Ritual coletivo sincronizado:** 3 jogos/semana em horário fixo (ter/qui/sáb 15h) — o mesmo pull de "conferir o placar" que já existe em milhões de pessoas, redirecionado para um placar onde *você* joga.
 - **Mundo vivo com história permanente:** o mundo nasce 100% NPC e jogando; cada humano substitui um NPC (escassez real via waiting list); carreiras terminam e viram lendas permanentes (hall, recordes, camisas aposentadas).
@@ -41,9 +41,12 @@ Quatro pilares sustentam a tese:
 
 - **Motor do mundo (server-side, o coração):** simula TODAS as ligas 3×/semana — partidas, tabelas, transferências, evolução e aposentadoria de NPCs. O mundo vive sem nenhum humano. **Determinístico e auditável** (rigor de money path).
 - **Entrada por substituição + waiting list real:** todas as ligas definidas no dia 1; cada humano assume a vaga de um NPC (posição/camisa/clube/cidade); pool 100% humano dispara criação automática de times na divisão de entrada. Vaga congelada 30 dias em abandono, depois reverte a NPC.
-- **Presença em 3 níveis:** faixa acima da taskbar → modo mini NA taskbar → notificações nativas com botões (decisões respondidas do meio do Outlook). Regras de silêncio: nunca em tela cheia/apresentação; horário configurável.
+- **Presença em 3 níveis:** faixa acima da taskbar → modo mini ancorado à taskbar → notificações nativas com botões (decisões respondidas do meio do Outlook). Regras de silêncio: nunca em tela cheia/apresentação; horário configurável.
 - **Dia de jogo (o evento):** ter/qui/sáb 15h (Brasília); quinta alterna Liga e Copa; ~15 min comprimidos; câmera no SEU jogador; nota ao vivo; 1–2 eventos de escolha/partida (resolvidos por atributos + moral); 1 intervenção por tempo. Perdeu ao vivo = resumo de 20s + nota — presença dá cor, nunca resultado.
 - **Decisões de carreira (3–5/dia):** do cotidiano (treino extra vs. descanso) ao dramático (proposta 2× salário vs. ficar com os amigos). Sem resposta = agente decide conservadoramente às 18h.
+- **Treino & progressão diária:** cada treino gera pontos de atributo a distribuir; pontos ACUMULAM se o jogador faltar (nunca expiram — anti-culpa); distribuir no dia dá bônus pequeno de "treino focado".
+- **Batida semanal (a novela em volta do jogo):** SEG treino + jornal do mundo · TER JOGO · QUA entrevista pós-jogo + notas · QUI JOGO · SEX véspera + ESCALAÇÃO ÀS 18H + evento de vida · SÁB JOGO · DOM resenha mundial (passiva). Um beat de ~30s por dia; nada obrigatório. Linha de design: **o FOMO diário vem do MUNDO, não da partida** (R4 reaberto e mantido em 3 jogos/semana; jogo diário rejeitado — obrigação estilo BeReal; caminho reversível: amistoso de segunda se o beta pedir).
+- **Salário & estilo de vida:** salário/luvas/prêmios viram poder de compra pessoal em itens com trade-off narrativo (carro = moral+fama+eventos de risco; academia em casa = físico−vestiário). **A casa da mãe** = marco de carreira com card compartilhável próprio. O patrimônio aparece NA FAIXA (cena de casa evolui: pensão → quitinete → casa → cobertura), amarrado ao gradiente várzea→elite. **Trava inegociável:** dinheiro do jogo jamais comprável com dinheiro real.
 - **Resumo de Retorno:** ao reabrir após ausência + beat fixo de segunda ("+2 finalização, torcida cantou seu nome…"). Dopamina de reabertura.
 - **Simulação do atleta (faseada):** barras (forma/moral/fôlego) + 12 atributos evolutivos no MVP; traços de personalidade + química com amigos (entrosamento = bônus real, razão mecânica para recrutar humanos) na F2.
 - **Lesões narrativas:** raras, nunca punição cega, sempre com arco.
@@ -55,10 +58,14 @@ Quatro pilares sustentam a tese:
 
 **F2 (comprometida na visão, fora do beta):** técnico com personalidade; reputação ídolo vs. mercenário por torcida; fama como economia secundária; comissão pessoal (preparador/nutricionista/psicólogo); takeover de clube por quinteto.
 
-**Baseline técnico não-negociável (H1VE) [SUPOSIÇÃO — revisar]:**
+**Baseline técnico não-negociável (H1VE)** — arquitetura e qualidade já **ratificadas/provadas** (SPECs 001-006, ADR-001); a baseline de segurança segue **[SUPOSIÇÃO — revisar]** (roadmap 0.4, ainda não exercida):
 - **Arquitetura:** toda regra de negócio e progressão em libs no servidor; rotas só orquestram; cliente **apenas renderiza** (posiciona F3/Mac). Motor do mundo isolado como serviço determinístico.
 - **Segurança, nesta ordem:** autenticação → autorização → validação de input em toda superfície. Nenhum segredo hardcoded (variáveis de ambiente); menor privilégio por serviço; respostas de erro genéricas (sem stack/SQL). Progressão 100% server-side.
 - **Qualidade:** gates de CI obrigatórios; testes onde há lógica crítica (motor de simulação, waiting list, money path); duplo sign-off **QA + Data** e merge pelo arquiteto.
+
+## Modelo de negócio
+
+**Temporada 1 grátis → compra única vitalícia (R$ 49,90 / $9.99) + DLC cosmética.** Canal ÚNICO do lançamento: **Steam** (decisão 15/07 — resolve confiança/SmartScreen, é onde o gênero vive; instalador próprio deferido com gatilho). Na Steam, o modelo materializa-se como **Free-to-Play + compra única in-app/DLC "Carreira"**. Validação de demanda: página Coming Soon (wishlist) + Discord ("monte seu quinteto") + Steam Playtest para o beta.
 
 ## Fora do escopo
 
