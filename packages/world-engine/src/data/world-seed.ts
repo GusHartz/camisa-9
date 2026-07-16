@@ -57,7 +57,14 @@ function createClub(seed: Seed, tier: number, globalIndex: number): WorldClub {
   const archetype = pick(ARCHETYPES, rng);
   const weights = Array.from({ length: WORLD.weightCount }, () => nextInt(rng, WORLD.weightMax));
   const roster = buildRoster(rng, tier, id);
-  return { id, name: clubName(globalIndex), strength: clubStrength(roster), archetype, weights, roster };
+  return {
+    id,
+    name: clubName(globalIndex),
+    strength: clubStrength(roster),
+    archetype,
+    weights,
+    roster,
+  };
 }
 
 /** Monta o elenco na ordem das POSITIONS; por atleta sorteia IDADE e depois HABILIDADE. */

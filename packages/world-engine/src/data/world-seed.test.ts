@@ -117,7 +117,9 @@ describe('seedWorld — unicidade de identificadores', () => {
   it('ids de atleta são globalmente únicos', () => {
     const ids = clubs.flatMap((c) => c.roster.map((a) => a.id));
     expect(new Set(ids).size).toBe(ids.length);
-    expect(ids.length).toBe(WORLD.tiers * WORLD.leaguesPerTier * WORLD.clubsPerLeague * WORLD.rosterSize);
+    expect(ids.length).toBe(
+      WORLD.tiers * WORLD.leaguesPerTier * WORLD.clubsPerLeague * WORLD.rosterSize,
+    );
   });
 
   it('nomes de clube são únicos (bijeção por índice global)', () => {

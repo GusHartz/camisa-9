@@ -20,7 +20,10 @@ export function turnoverReport(before: WorldState, after: WorldState): TurnoverR
   };
 }
 
-function diffClubs(before: WorldState, after: WorldState): {
+function diffClubs(
+  before: WorldState,
+  after: WorldState,
+): {
   promoted: ClubMove[];
   relegated: ClubMove[];
 } {
@@ -34,10 +37,16 @@ function diffClubs(before: WorldState, after: WorldState): {
     if (toTier < fromTier) promoted.push(move);
     else relegated.push(move);
   }
-  return { promoted: sortBy(promoted, (m) => m.clubId), relegated: sortBy(relegated, (m) => m.clubId) };
+  return {
+    promoted: sortBy(promoted, (m) => m.clubId),
+    relegated: sortBy(relegated, (m) => m.clubId),
+  };
 }
 
-function diffAthletes(before: WorldState, after: WorldState): {
+function diffAthletes(
+  before: WorldState,
+  after: WorldState,
+): {
   retired: string[];
   born: string[];
   transferred: AthleteMove[];

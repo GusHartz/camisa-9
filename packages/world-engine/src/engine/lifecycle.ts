@@ -11,9 +11,7 @@ import { athleteName } from '../data/names.js';
 
 /** Envelhece todos em 1 temporada e remove quem atingiu a idade de aposentadoria. */
 export function ageAndRetire(roster: readonly Athlete[]): Athlete[] {
-  return roster
-    .map((a) => ({ ...a, age: a.age + 1 }))
-    .filter((a) => a.age < WORLD.retirementAge);
+  return roster.map((a) => ({ ...a, age: a.age + 1 })).filter((a) => a.age < WORLD.retirementAge);
 }
 
 /**
