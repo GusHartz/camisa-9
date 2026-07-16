@@ -13,7 +13,7 @@ O produto é um jogo de carreira de futebol de baixa atenção, onde um mundo si
 
 ### 2. Entrada por substituição + waiting list real
 - Todas as ligas definidas no **dia 1**; cada humano assume a vaga de um NPC (posição, camisa, clube, cidade).
-- Pool 100% humano em uma liga **dispara criação automática de times** na divisão de entrada.
+- **Pirâmide Elástica:** ramificação 2× por nível (topo único; Div 3 = 2 grupos, Div 4 = 4...); expansão a **~70% de ocupação humana** do andar de entrada (colchão NPC permanente), **somente na virada de temporada**; novatos entram **sempre no andar mais baixo**; conservação de fluxo por fronteira (rebaixados = promovidos; playoff de acesso entre campeões de grupo — números exatos por SPEC).
 - Vaga em abandono **congelada por 30 dias**, depois **reverte a NPC**.
 - **Entrada por quinteto fura a fila** da waiting list (unidade de aquisição é o grupo).
 - **[SUPOSIÇÃO — revisar]** Estado da vaga (`humano | congelada | npc`) e o relógio de abandono são propriedade do motor, não da camada de sessão — evita divergência entre "quem está logado" e "quem ocupa a vaga".
@@ -89,11 +89,15 @@ O produto é um jogo de carreira de futebol de baixa atenção, onde um mundo si
 - **Oferta antecipada** no pico emocional do meio da T1 (mitigação do paywall tardio).
 - DLC cosmética como live-ops. Checada contra as regras NUNCA em toda SPEC.
 
-### 18. Convite para vaga do clube (social mínimo do beta)
-- Link de convite coloca o amigo **direto numa vaga do MESMO clube** (criação de atleta → mesmo elenco).
+### 18. Cadastro solo/team + código de time (R14)
+- **Bifurcação no cadastro:** SOLO (vaga em clube com elenco NPC) ou TEAM (código de time).
+- **Código de time:** distribuível em mensagem; amigo se cadastra com ele e cai **direto no elenco**, escolhendo posição entre as vagas restantes.
+- **Jogável desde o humano nº 1** — completar 11 fecha as vagas (código expira), nunca bloqueia o jogo; tranca manual do fundador disponível. 11 humanos = **marco celebrado** (card + histórico do mundo).
+- **NPC fixo por posição** (goleiro como default sugerido) — fora do código; ganha nome/personalidade.
+- **Fundação em massa só na divisão de entrada** (integridade dos andares de cima; em clubes existentes, o código só preenche vagas NPC preexistentes). Absorve o takeover de quinteto.
 
 ### Fora do beta (F2 — comprometido na visão)
-Técnico com personalidade, reputação ídolo/mercenário por torcida, fama como economia secundária, comissão pessoal, takeover de clube por quinteto.
+Técnico com personalidade, reputação ídolo/mercenário por torcida, fama como economia secundária, comissão pessoal.
 
 ---
 

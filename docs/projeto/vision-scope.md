@@ -40,7 +40,8 @@ Quatro pilares sustentam a tese:
 **Capacidades centrais (o produto completo — fatiamento no bloco 08):**
 
 - **Motor do mundo (server-side, o coração):** simula TODAS as ligas 3×/semana — partidas, tabelas, transferências, evolução e aposentadoria de NPCs. O mundo vive sem nenhum humano. **Determinístico e auditável** (rigor de money path).
-- **Entrada por substituição + waiting list real:** todas as ligas definidas no dia 1; cada humano assume a vaga de um NPC (posição/camisa/clube/cidade); pool 100% humano dispara criação automática de times na divisão de entrada. Vaga congelada 30 dias em abandono, depois reverte a NPC.
+- **Entrada por substituição + waiting list real:** todas as ligas definidas no dia 1; cada humano assume a vaga de um NPC (posição/camisa/clube/cidade); o mundo cresce em Pirâmide Elástica: topo único e eterno, ramificação 2× por nível descendo; expansão (novos grupos no andar de entrada; novo andar quando a largura satura) disparada a ~70% de ocupação humana da base, só na virada de temporada. Novatos entram sempre no andar mais baixo. Escassez eterna = altitude (Div 1) e identidade, não entrada. Vaga congelada 30 dias em abandono, depois reverte a NPC.
+- **Cadastro solo/team com código de time:** solo = vaga em clube NPC; team = código distribuível — amigos entram direto no elenco escolhendo posição. Jogável desde o humano nº 1 (11 fecha as vagas, não o jogo; marco celebrado). Posições marcáveis como NPC fixo (goleiro default). Fundação em massa só na divisão de entrada (absorve o takeover de quinteto).
 - **Presença em 3 níveis:** faixa acima da taskbar → modo mini ancorado à taskbar → notificações nativas com botões (decisões respondidas do meio do Outlook). Regras de silêncio: nunca em tela cheia/apresentação; horário configurável.
 - **Dia de jogo (o evento):** ter/qui/sáb 15h (Brasília); quinta alterna Liga e Copa; ~15 min comprimidos; câmera no SEU jogador; nota ao vivo; 1–2 eventos de escolha/partida (resolvidos por atributos + moral); 1 intervenção por tempo. Perdeu ao vivo = resumo de 20s + nota — presença dá cor, nunca resultado.
 - **Decisões de carreira (3–5/dia):** do cotidiano (treino extra vs. descanso) ao dramático (proposta 2× salário vs. ficar com os amigos). Sem resposta = agente decide conservadoramente às 18h.
@@ -56,7 +57,7 @@ Quatro pilares sustentam a tese:
 - **Live-ops pelo calendário do futebol:** janelas de transferência, Copa das quintas, temporadas temáticas; F2 amplia (seleções, amistosos, Copa do Mundo fictícia).
 - **i18n desde o dia 1** (PT nativo; EN na F3).
 
-**F2 (comprometida na visão, fora do beta):** técnico com personalidade; reputação ídolo vs. mercenário por torcida; fama como economia secundária; comissão pessoal (preparador/nutricionista/psicólogo); takeover de clube por quinteto.
+**F2 (comprometida na visão, fora do beta):** técnico com personalidade; reputação ídolo vs. mercenário por torcida; fama como economia secundária; comissão pessoal (preparador/nutricionista/psicólogo).
 
 **Baseline técnico não-negociável (H1VE)** — arquitetura e qualidade já **ratificadas/provadas** (SPECs 001-006, ADR-001); a baseline de segurança segue **[SUPOSIÇÃO — revisar]** (roadmap 0.4, ainda não exercida):
 - **Arquitetura:** toda regra de negócio e progressão em libs no servidor; rotas só orquestram; cliente **apenas renderiza** (posiciona F3/Mac). Motor do mundo isolado como serviço determinístico.

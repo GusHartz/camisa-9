@@ -40,7 +40,7 @@ Objetivo: **o mundo vive sem nenhum humano.** Esta é a fatia que valida a tese.
 | # | Spec | Entrega |
 |---|------|---------|
 | 1.1 | **Simulação de partida (server-side)** | Resolução determinística por atributos+moral; resultado auditável. |
-| 1.2 | **Motor de temporada (3×/semana)** | Ter/qui/sáb; tabelas, rodadas, calendário do futebol. |
+| 1.2 | **Motor de temporada (3×/semana)** | Ter/qui/sáb; tabelas, rodadas, calendário do futebol; calendário e promoção/rebaixamento cientes de grupos paralelos (fundação do R13). |
 | 1.3 | **Ciclo de vida do NPC** | Evolução, declínio físico, aposentadoria, criação de novos atletas. |
 | 1.4 | **Transferências NPC** | Janelas, movimentação entre clubes/divisões. |
 | 1.5 | **Painel de auditoria interno** | Inspeção de qualquer tick/temporada (ferramenta de founder). |
@@ -51,11 +51,11 @@ Objetivo: um humano assume uma vaga e vive uma carreira.
 | # | Spec | Entrega |
 |---|------|---------|
 | 2.1 | **Substituição de NPC + waiting list** | Humano assume vaga (posição/camisa/clube); vaga congela 30 dias em abandono → reverte a NPC. |
-| 2.2 | **Pool 100% humano → criação de times** | Divisão de entrada gera times automaticamente. |
+| 2.2 | **Pirâmide Elástica (expansão do mundo)** | Ramificação 2× por nível; gatilho de ~70% de ocupação humana da base; novos grupos/andares só na virada de temporada; playoff de acesso entre campeões de grupo. |
 | 2.3 | **Simulação do atleta (MVP)** | Barras (forma/moral/fôlego) + 12 atributos evolutivos. |
 | 2.4 | **Decisões de carreira (3-5/dia)** | Cotidiano → dramático; sem resposta = agente decide conservador às 18h. |
 | 2.5 | **Lesões narrativas com arco** | Raras, sempre recuperação → volta por cima. |
-| 2.6 | **Convite para vaga do clube** | Link coloca o amigo direto numa vaga do MESMO clube — o social mínimo do beta. |
+| 2.6 | **Cadastro solo/team + código de time (R14)** | Bifurcação solo/team; código coloca amigos direto no elenco; jogável desde o humano nº 1; NPC fixo por posição (goleiro default); fundação em massa só na divisão de entrada. O social mínimo do beta. |
 | 2.7 | **Pontos de treino com banking** | Pontos acumulam sem expirar; bônus de treino focado no dia. |
 | 2.8 | **Salário & estilo de vida (básico)** | 4-6 compras com trade-off; casa da mãe (marco+card); patrimônio na cena de casa da faixa; trava anti-dinheiro-real. |
 
@@ -91,7 +91,7 @@ Objetivo: fazer o mundo ser sentido e compartilhado.
 | 5.1 | Química com amigos + traços de personalidade (razão mecânica para recrutar humanos). |
 | 5.2 | Técnico com personalidade + reputação ídolo/mercenário por torcida. |
 | 5.3 | Fama como economia secundária + comissão pessoal (preparador/nutri/psicólogo). |
-| 5.4 | Seleções + amistosos + Copa do Mundo fictícia + takeover de clube por quinteto. |
+| 5.4 | Seleções + amistosos + Copa do Mundo fictícia. |
 | 5.5 | i18n EN (F3 na visão). |
 
 > **Corte do beta — ratificado (P6):** o beta fechado (via Playtest, G.5) corta ao final da **Fase 3 + 2.6** (o núcleo social mínimo); **Fases 4 + Trilha GTM completas = lançamento público** ("escopo completo no público; beta com o núcleo"). Fases 0-1 seguem pré-requisito absoluto.
