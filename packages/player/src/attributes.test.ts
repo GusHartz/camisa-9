@@ -4,7 +4,12 @@ import { allocateAttributes } from './attributes.js';
 import { CREATION_TOTAL } from './constants.js';
 import type { Focus } from './types.js';
 
-function attrs(fisico: number, tecnico: number, tatico: number, mental: number): Record<Focus, number> {
+function attrs(
+  fisico: number,
+  tecnico: number,
+  tatico: number,
+  mental: number,
+): Record<Focus, number> {
   return { fisico, tecnico, tatico, mental };
 }
 function overall(a: Record<Focus, number>): number {

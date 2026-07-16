@@ -33,12 +33,17 @@ export async function createAccountWithAthlete(db: Db, input: SignupInput): Prom
       return { accountId, athleteId };
     });
   } catch (err) {
-    throw isUniqueViolation(err) ? new Error('e-mail já em uso') : new Error('não foi possível criar a conta');
+    throw isUniqueViolation(err)
+      ? new Error('e-mail já em uso')
+      : new Error('não foi possível criar a conta');
   }
 }
 
 async function insertAccount(tx: Tx, email: string, passwordHash: string): Promise<string> {
-  const [row] = await tx.insert(account).values({ email, passwordHash }).returning({ id: account.id });
+  const [row] = await tx
+    .insert(account)
+    .values({ email, passwordHash })
+    .returning({ id: account.id });
   if (!row) throw new Error('falha ao criar conta');
   return row.id;
 }

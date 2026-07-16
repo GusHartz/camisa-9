@@ -34,5 +34,4 @@ export interface AthleteDraft {
 
 /** Validação: sucesso com valor, ou falha com motivo (genérico, sem detalhe interno). */
 export type Result<T> =
-  | { readonly ok: true; readonly value: T }
-  | { readonly ok: false; readonly reason: string };
+  { readonly ok: true; readonly value: T } | { readonly ok: false; readonly reason: string };

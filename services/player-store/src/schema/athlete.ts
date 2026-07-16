@@ -3,7 +3,16 @@
 // 0..99 (CHECK); `training_xp` é o SEAM da barra de treino (o card 13 enche). Índice único
 // parcial `(account_id) WHERE active` = invariante "1 atleta ativo por conta".
 import { sql } from 'drizzle-orm';
-import { boolean, check, integer, jsonb, text, timestamp, uniqueIndex, uuid } from 'drizzle-orm/pg-core';
+import {
+  boolean,
+  check,
+  integer,
+  jsonb,
+  text,
+  timestamp,
+  uniqueIndex,
+  uuid,
+} from 'drizzle-orm/pg-core';
 import type { Appearance } from '@camisa-9/player';
 import { account, playerSchema } from './account.js';
 
@@ -26,7 +35,9 @@ export const athlete = playerSchema.table(
     createdAt: timestamp('created_at', { withTimezone: true }).notNull().defaultNow(),
   },
   (t) => ({
-    oneActive: uniqueIndex('athlete_one_active_per_account').on(t.accountId).where(sql`${t.active}`),
+    oneActive: uniqueIndex('athlete_one_active_per_account')
+      .on(t.accountId)
+      .where(sql`${t.active}`),
     fisicoRange: check('athlete_fisico_range', sql`${t.fisico} between 0 and 99`),
     tecnicoRange: check('athlete_tecnico_range', sql`${t.tecnico} between 0 and 99`),
     taticoRange: check('athlete_tatico_range', sql`${t.tatico} between 0 and 99`),

@@ -18,7 +18,8 @@ export function allocateAttributes(values: Readonly<Record<Focus, number>>): Res
     }
     sum += v;
   }
-  if (sum !== CREATION_TOTAL) return fail(`a soma dos atributos deve ser ${CREATION_TOTAL} (é ${sum})`);
+  if (sum !== CREATION_TOTAL)
+    return fail(`a soma dos atributos deve ser ${CREATION_TOTAL} (é ${sum})`);
   return {
     ok: true,
     value: {

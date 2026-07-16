@@ -63,7 +63,11 @@ describe.skipIf(!DB_URL)('player-store — conta + atleta contra Postgres real',
   });
 
   it('a senha é argon2id (nunca plaintext) e o verify faz round-trip', async () => {
-    await createAccountWithAthlete(handle.db, { email: 'h@x.com', password: PASSWORD, draft: draft() });
+    await createAccountWithAthlete(handle.db, {
+      email: 'h@x.com',
+      password: PASSWORD,
+      draft: draft(),
+    });
     const [row] = await handle.db.select({ hash: account.passwordHash }).from(account).limit(1);
     expect(row?.hash).toBeTruthy();
     expect(row?.hash).not.toBe(PASSWORD);
@@ -73,9 +77,17 @@ describe.skipIf(!DB_URL)('player-store — conta + atleta contra Postgres real',
   });
 
   it('e-mail duplicado → erro genérico + ROLLBACK (sem conta/atleta órfão)', async () => {
-    await createAccountWithAthlete(handle.db, { email: 'dup@x.com', password: PASSWORD, draft: draft('Um') });
+    await createAccountWithAthlete(handle.db, {
+      email: 'dup@x.com',
+      password: PASSWORD,
+      draft: draft('Um'),
+    });
     await expect(
-      createAccountWithAthlete(handle.db, { email: 'dup@x.com', password: PASSWORD, draft: draft('Dois') }),
+      createAccountWithAthlete(handle.db, {
+        email: 'dup@x.com',
+        password: PASSWORD,
+        draft: draft('Dois'),
+      }),
     ).rejects.toThrow('e-mail já em uso');
     expect(await countRows(account)).toBe(1);
     expect(await countRows(athlete)).toBe(1); // o atleta do 2º NÃO foi criado
