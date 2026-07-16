@@ -12,7 +12,7 @@ Objetivo: infra determinística e auditável antes de qualquer feature de jogado
 | # | Spec | Entrega |
 |---|------|---------|
 | 0.1 | **Bootstrap de repositório + CI** ✅ | Monorepo, gates de lint/type/test, pipeline de build. *(SPEC-001 — concluído 2026-07-14.)* |
-| 0.1.5 | **Spike — motor do mundo** ✅ | De-risca R1 (compute/determinismo/atomicidade/fuso) **antes** de 0.2: 1 liga fictícia, 10 clubes NPC, 18 rodadas determinísticas por seed, publicação atômica, âncora de fuso sem `Intl`/`Date`, golden vectors cross-ambiente e bench K-ligas. Lib descartável/evoluível `packages/world-engine`; valida antecipadamente partes de 0.3 (RNG+auditoria) e 1.1/1.2. *(SPEC-002 — concluído 2026-07-14.)* |
+| 0.1.5 | **Spike — motor do mundo** ✅ | De-risca R1 (compute/determinismo/atomicidade/fuso) **antes** de 0.2: 1 liga fictícia, 10 clubes NPC, temporada determinística por seed (turno-returno), publicação atômica, âncora de fuso sem `Intl`/`Date`, golden vectors cross-ambiente e bench K-ligas. Lib descartável/evoluível `packages/world-engine`; valida antecipadamente partes de 0.3 (RNG+auditoria) e 1.1/1.2. *(SPEC-002 — concluído 2026-07-14; a SPEC-009 expandiu para liga de 20 → 38 rodadas.)* |
 | 0.2 | **Camada de dados + seed do mundo** | Schema de ligas/clubes/atletas/temporadas; migrations versionadas. Persiste o que o spike (0.1.5) provou em memória. |
 | 0.3 | **RNG determinístico + auditoria** | Seed por temporada, log replayable de toda tick do mundo (rigor money path). |
 | 0.4 | **Baseline de segurança** | Auth, autorização por recurso, validação de input, segredos em env. |
@@ -40,10 +40,12 @@ Objetivo: **o mundo vive sem nenhum humano.** Esta é a fatia que valida a tese.
 | # | Spec | Entrega |
 |---|------|---------|
 | 1.1 | **Simulação de partida (server-side)** | Resolução determinística por atributos+moral; resultado auditável. |
-| 1.2 | **Motor de temporada (3×/semana)** | Ter/qui/sáb; tabelas, rodadas, calendário do futebol; calendário e promoção/rebaixamento cientes de grupos paralelos (fundação do R13). |
+| 1.2 | **Motor de temporada (rodada diária 15h)** | Liga de 20, temporada de 38 rodadas ≈ 6 semanas; jogo diário (7/7) às 15h Brasília; **encaixe da Copa no calendário diário** (quartas intercaladas / entre temporadas / domingos de mata-mata — dentro do escopo desta spec); tabelas, rodadas, calendário do futebol; calendário e promoção/rebaixamento cientes de grupos paralelos (fundação do R13). |
 | 1.3 | **Ciclo de vida do NPC** | Evolução, declínio físico, aposentadoria, criação de novos atletas. |
 | 1.4 | **Transferências NPC** | Janelas, movimentação entre clubes/divisões. |
 | 1.5 | **Painel de auditoria interno** | Inspeção de qualquer tick/temporada (ferramenta de founder). |
+
+> **Ajuste de tunáveis — spec de CÓDIGO curta (pendente, decorre do R4 FINAL / Dia do Jogador):** **elenco de 16** (11 titulares + 5 reservas) — no `world-engine`: `rosterSize` 20→16, `positionCounts` rebalanceado ~2GK·5DEF·5MEI·4ATA, invariante `roster===16`, golden regenerado; `clubStrength` = top 11 **intacto**. Pode pegar carona na spec 1.2 (rodadas) ou ser spec-ajuste própria. A SPEC-009 fica com `rosterSize: 20` até esta spec. *(Docs-only até lá — nenhuma mudança de código nesta higiene de documentação.)*
 
 ### Fase 2 — Entrada humana e o atleta
 Objetivo: um humano assume uma vaga e vive uma carreira.
@@ -52,11 +54,11 @@ Objetivo: um humano assume uma vaga e vive uma carreira.
 |---|------|---------|
 | 2.1 | **Substituição de NPC + waiting list** | Humano assume vaga (posição/camisa/clube); vaga congela 30 dias em abandono → reverte a NPC. |
 | 2.2 | **Pirâmide Elástica (expansão do mundo)** | Ramificação 2× por nível; gatilho de ~70% de ocupação humana da base; novos grupos/andares só na virada de temporada; playoff de acesso entre campeões de grupo. |
-| 2.3 | **Simulação do atleta (MVP)** | Barras (forma/moral/fôlego) + 12 atributos evolutivos. |
+| 2.3 | **Simulação do atleta (MVP)** | DUAS barras persistentes (Forma e Moral) + 12 atributos evolutivos; stamina só dentro da partida (drena por físico, guia as substituições do técnico NPC, até 5/jogo). Fôlego diário cortado. |
 | 2.4 | **Decisões de carreira (3-5/dia)** | Cotidiano → dramático; sem resposta = agente decide conservador às 18h. |
 | 2.5 | **Lesões narrativas com arco** | Raras, sempre recuperação → volta por cima. |
 | 2.6 | **Cadastro solo/team + código de time (R14)** | Bifurcação solo/team; código coloca amigos direto no elenco; jogável desde o humano nº 1; NPC fixo por posição (goleiro default); fundação em massa só na divisão de entrada. O social mínimo do beta. |
-| 2.7 | **Pontos de treino com banking** | Pontos acumulam sem expirar; bônus de treino focado no dia. |
+| 2.7 | **Pontos de treino com banking** | Pontos acumulam sem expirar; FOCO do dia (Físico/Técnico/Tático/Mental; sem escolha = técnico decide); bônus de treino focado no dia, com rendimento decrescente ao repetir o mesmo foco. |
 | 2.8 | **Salário & estilo de vida (básico)** | 4-6 compras com trade-off; casa da mãe (marco+card); patrimônio na cena de casa da faixa; trava anti-dinheiro-real. |
 
 ### Fase 3 — Dia de jogo (o evento) e presença
@@ -64,13 +66,13 @@ Objetivo: a dopamina ao vivo e a presença de 3 níveis.
 
 | # | Spec | Entrega |
 |---|------|---------|
-| 3.1 | **Dia de jogo ao vivo** | ~15 min comprimidos, câmera no seu jogador, nota ao vivo. |
+| 3.1 | **Dia de jogo ao vivo** | Jogo diário (7/7) às 15h; ~15 min comprimidos, câmera no seu jogador, nota ao vivo; stamina de partida guia as substituições do técnico NPC (até 5/jogo). |
 | 3.2 | **Eventos de escolha + intervenção** | 1-2 escolhas/partida (atributos+moral); 1 intervenção/tempo. |
 | 3.3 | **Resumo 20s (perdeu ao vivo)** | Presença dá cor, nunca resultado. |
 | 3.4 | **Presença 3 níveis** | Faixa acima da taskbar → mini ancorada à taskbar → notificações nativas com botões. |
 | 3.5 | **Regras de silêncio** | Nunca em tela cheia/apresentação; horário configurável. |
 | 3.6 | **Resumo de Retorno + beat de segunda** | Dopamina de reabertura. |
-| 3.7 | **Batida semanal (dias sem jogo)** | Jornal do mundo, entrevista com tom, trash talk, escalação da véspera às 18h, resenha de domingo — 1 beat/dia. |
+| 3.7 | **Batida diária (o Dia do Jogador)** | Manhã jornal + foco do treino, 12h escalação do dia, 15h jogo, 18h decisões, noite notas; resumo semanal no domingo à noite. Carga: 0s–~18min/dia, nada obrigatório. |
 
 ### Fase 4 — Mundo visível e viralidade
 Objetivo: fazer o mundo ser sentido e compartilhado.
@@ -80,7 +82,7 @@ Objetivo: fazer o mundo ser sentido e compartilhado.
 | 4.1 | **Gradiente várzea→elite** | Div 4 (terra/Copa da Baixada) até elite (estádio/transmissão); subir muda o visual. |
 | 4.2 | **Carreira com fim + hall de lendas** | ~15-20 temporadas; camisa aposentada, recordes, herança de legado. |
 | 4.3 | **Card compartilhável** | Fim de partida e fim de temporada — desenhado para o WhatsApp. |
-| 4.4 | **Live-ops pelo calendário** | Janelas de transferência, Copa das quintas, temporadas temáticas. |
+| 4.4 | **Live-ops pelo calendário** | Janelas de transferência, Copa (encaixe no calendário diário), temporadas temáticas. |
 | 4.5 | **Monetização Steam** | F2P + compra única "Carreira" pós-T1 + oferta antecipada do meio da T1; checada contra regras NUNCA. |
 | 4.6 | **Moderação mínima (GATE de público)** | Filtro de nomes + report + fila de revisão. |
 | 4.7 | **Telemetria de gates** | Presença ao vivo, D30, funil, conversão — dashboard do founder. |
@@ -95,6 +97,8 @@ Objetivo: fazer o mundo ser sentido e compartilhado.
 | 5.5 | i18n EN (F3 na visão). |
 
 > **Corte do beta — ratificado (P6):** o beta fechado (via Playtest, G.5) corta ao final da **Fase 3 + 2.6** (o núcleo social mínimo); **Fases 4 + Trilha GTM completas = lançamento público** ("escopo completo no público; beta com o núcleo"). Fases 0-1 seguem pré-requisito absoluto.
+
+> **Gate de cadência (R4 — beta):** a **telemetria de presença POR DIA DA SEMANA** no beta decide a cadência (jogo diário 7/7) **ANTES** do lançamento público — fadiga do horário fixo diário / fim de semana fraco afundando = reavaliar (o beta é o único momento reversível).
 
 ---
 

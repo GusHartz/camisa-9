@@ -5,7 +5,7 @@
 O produto é um jogo de carreira de futebol de baixa atenção, onde um mundo simulado vive continuamente no servidor e o humano ocupa a vaga de um atleta. As capacidades abaixo são o produto completo (fatiamento em SPECs fica no campo 08).
 
 ### 1. Motor do mundo (coração — money path)
-- Simula **todas as ligas 3×/semana**: partidas, tabelas, transferências NPC, evolução e aposentadoria de NPCs.
+- Simula **todas as ligas todo dia (jogo diário 7/7)**: partidas, tabelas, transferências NPC, evolução e aposentadoria de NPCs.
 - O mundo vive **sem nenhum humano presente**.
 - **Determinístico e auditável**: mesma seed + mesmo estado → mesmo resultado; toda rodada é reproduzível (replay).
 - **Regra de arquitetura**: toda regra de simulação vive em `lib/world-engine` (puro, testável, sem I/O). Rotas apenas orquestram (agendam rodadas, persistem resultado). UI só lê.
@@ -20,16 +20,17 @@ O produto é um jogo de carreira de futebol de baixa atenção, onde um mundo si
 - **[SUPOSIÇÃO — revisar]** Estado da vaga (`humano | congelada | npc`) e o relógio de abandono são propriedade do motor, não da camada de sessão — evita divergência entre "quem está logado" e "quem ocupa a vaga".
 
 ### 3. Presença em 3 níveis
-- **Faixa** acima da taskbar (vida do atleta: CT, casa, véspera).
+- **Faixa** acima da taskbar (vida do atleta: CT, casa, pré-jogo).
 - **Modo mini** — faixa compacta ancorada à taskbar (postura A/topmost, validada na SPEC-006; render dentro da shell é inviável no Win11).
 - **Notificações nativas com botões** (decidir do meio do Outlook).
 - **Regras de silêncio**: nunca em tela cheia/apresentação; horário configurável.
 
 ### 4. Dia de jogo (o evento)
-- **Ter/Qui/Sáb às 15h Brasília**; quinta alterna Liga e Copa.
+- **Jogo diário (7/7) às 15h Brasília** — liga de 20 clubes, temporada de 38 rodadas ≈ 6 semanas.
 - ~15 min comprimidos; **câmera no SEU jogador**; nota ao vivo.
 - **1–2 eventos de escolha** por partida (ex.: "min 12 — passe curto/longo/finalizar"), resolvidos por **atributos + moral**.
 - **1 intervenção por tempo.**
+- **Stamina de partida**: existe só nos 90 min (não persiste, invisível fora do jogo), drena por **atributos físicos** (Resistência = tanque), define rendimento e guia as **substituições do técnico NPC** (até 5/jogo — a razão legível do reserva entrar).
 - **Perdeu ao vivo** = resumo de 20s + nota. Presença dá cor, **nunca resultado**.
 
 ### 5. Decisões de carreira
@@ -40,7 +41,7 @@ O produto é um jogo de carreira de futebol de baixa atenção, onde um mundo si
 - Ao reabrir após ausência + **beat fixo de segunda** ("+2 finalização, torcida cantou seu nome…"). Dopamina de reabertura.
 
 ### 7. Simulação do atleta (faseada)
-- **MVP**: barras (forma/moral/fôlego) + 12 atributos evolutivos.
+- **MVP**: **DUAS barras persistentes — Forma e Moral** + 12 atributos evolutivos. **Fôlego diário cortado** — a stamina existe só dentro da partida (ver capacidade 4).
 - **F2**: traços de personalidade + **química com amigos** (entrosamento acumulado = bônus real — razão mecânica para recrutar humanos).
 
 ### 8. Lesões narrativas
@@ -61,23 +62,25 @@ O produto é um jogo de carreira de futebol de baixa atenção, onde um mundo si
 - Desenhado para o **grupo de WhatsApp** (a "grade do Wordle" do produto).
 
 ### 12. Live-ops pelo calendário do futebol
-- Janelas de transferência, Copa das quintas, temporadas temáticas.
-- **F2**: seleções (convocação), amistosos em semanas mortas, Copa do Mundo fictícia a cada N temporadas.
+- Janelas de transferência, Copa, temporadas temáticas.
+- **Pendência de SPEC (encaixe da Copa no calendário diário):** quartas intercaladas / entre temporadas / domingos de mata-mata — a definir na spec de rodadas.
+- **F2**: seleções (convocação), amistosos em janelas de seleção, Copa do Mundo fictícia a cada N temporadas.
 
 ### 13. i18n desde o dia 1
 - **PT nativo**; EN na F3. Nenhuma string hardcoded na UI.
 
 ### 14. Treino & progressão diária
-- Treino gera **pontos de atributo** que o jogador distribui.
-- Pontos **acumulam sem expirar** (ausência nunca perde); distribuir no dia dá **bônus de treino focado**.
+- Treino gera **pontos de atributo** que o jogador distribui sob um **FOCO do dia** (Físico/Técnico/Tático/Mental; **sem escolha = o técnico decide**).
+- Pontos **acumulam sem expirar** (ausência nunca perde); distribuir no dia dá **bônus de treino focado**, com **rendimento decrescente** ao repetir o mesmo foco.
 
-### 15. Batida semanal & mundo vivo (dias sem jogo)
+### 15. Batida diária & o Dia do Jogador (o mundo vivo em volta do jogo)
+- **O Dia do Jogador (batida comprimida):** manhã = jornal do mundo + foco do treino + pontos de ontem · **12h escalação do dia** · 13–15h pré-jogo (ambiente) · **15h JOGO** · pós-jogo nota + card + entrevista ocasional · **18h deadline de decisões** · noite livre. **Domingo à noite:** resumo semanal do mundo.
 - **Jornal do mundo** (resultados, lesão do rival, artilharia, transferências NPC) — consumo passivo.
-- **Entrevista pós-jogo** (qua) com escolha de tom → moral/fama/torcida.
-- **Trash talk** do adversário de sábado → modificador de moral do jogo.
-- **Escalação da véspera às 18h** (seg/qua/sex) — conferir leva 5s; banco gera evento.
-- **Resenha de domingo** — resumo mundial passivo, zero decisão.
-- Regra: **um beat de ~30s por dia; nada obrigatório**. O FOMO vem do mundo, não da partida.
+- **Entrevista pós-jogo** (ocasional) com escolha de tom → moral/fama/torcida.
+- **Trash talk** do adversário do dia → modificador de moral do jogo.
+- **Escalação do dia às 12h** — conferir leva 5s; banco gera evento.
+- **Resumo semanal** (domingo à noite) — resenha mundial passiva, zero decisão.
+- Carga: **mínimo 0s, típico ~3min, máximo ~18min; nada obrigatório**. O FOMO vem do mundo, não da partida.
 
 ### 16. Salário & estilo de vida
 - Salário/luvas/prêmios → compras pessoais com **trade-off narrativo** (nunca loja de stats).
@@ -93,7 +96,7 @@ O produto é um jogo de carreira de futebol de baixa atenção, onde um mundo si
 ### 18. Cadastro solo/team + código de time (R14)
 - **Bifurcação no cadastro:** SOLO (vaga em clube com elenco NPC) ou TEAM (código de time).
 - **Código de time:** distribuível em mensagem; amigo se cadastra com ele e cai **direto no elenco**, escolhendo posição entre as vagas restantes.
-- **Jogável desde o humano nº 1** — completar 11 fecha as vagas (código expira), nunca bloqueia o jogo; tranca manual do fundador disponível. 11 humanos = **marco celebrado** (card + histórico do mundo).
+- **Jogável desde o humano nº 1** — vagas humanas até **16**: o 11º humano completa o **primeiro onze**, o 16º fecha o **elenco completo** (o código expira nas 16; nunca bloqueia o jogo; tranca manual do fundador disponível). 11 humanos = **primeiro onze completo**; 16 humanos = **elenco completo** — ambos marcos celebrados (card + histórico do mundo).
 - **NPC fixo por posição** (goleiro como default sugerido) — fora do código; ganha nome/personalidade.
 - **Fundação em massa só na divisão de entrada** (integridade dos andares de cima; em clubes existentes, o código só preenche vagas NPC preexistentes). Absorve o takeover de quinteto.
 
@@ -147,7 +150,10 @@ Técnico com personalidade, reputação ídolo/mercenário por torcida, fama com
 ### Gate do money path — a rodada
 - Nenhuma SPEC que toque o motor entra sem **testes de propriedade**: determinismo, fuso, replay, falha parcial.
 - **Protocolo de falha pública definido**: transparência estilo post-mortem + "evento de reparação".
-- Contexto: **uma rodada de sábado falhando com todos online é o pior acidente possível** — este gate é inegociável.
+- Contexto: **a rodada das 15h falhando com todos online é o pior acidente possível** — este gate é inegociável.
+
+### Gate de cadência (R4 — beta)
+- **Telemetria de presença POR DIA DA SEMANA** no beta é gate: fadiga do horário fixo diário / fim de semana fraco afundando a presença → **reavaliar a cadência (jogo diário) ANTES do público** — o beta é o único momento reversível.
 
 ### Gate de arte
 - Nenhum sprite/venue entra sem aprovação do founder **em contexto real**: screenshot da faixa em **110px sobre um desktop de verdade**.

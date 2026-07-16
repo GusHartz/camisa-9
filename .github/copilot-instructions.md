@@ -4,14 +4,14 @@
 
 **camisa-9** (nome de fundação: Nexus Flow / H1VE) é um jogo de carreira de futebol de **baixa atenção** que roda numa faixa discreta acima da taskbar, enquanto o usuário trabalha no desktop.
 
-**A visão em uma frase:** você vive a carreira de UM jogador de futebol — da várzea às lendas — numa faixa acima da taskbar, no mesmo time dos seus amigos, num mundo persistente que joga **terça, quinta e sábado às 15h (Brasília)** com ou sem você.
+**A visão em uma frase:** você vive a carreira de UM jogador de futebol — da várzea às lendas — numa faixa acima da taskbar, no mesmo time dos seus amigos, num mundo persistente que joga **TODO DIA às 15h (Brasília)** com ou sem você.
 
 **O problema.** Quem passa 6–10h/dia no computador e ama futebol só consome o esporte de forma passiva no expediente (placar, zoeira no grupo, portal). Jogos de futebol exigem atenção integral (Football Manager, tela cheia) ou vivem no celular com monetização odiada (ads). Existe uma lacuna verificada: o gênero de *desktop ambiente* (Rusty's Retirement, TBH) é demanda massiva, mas 100% solitário — sem servidor, sem eventos, sem esporte. A interseção **ambiente + futebol + social síncrono está vaga**.
 
 **Quatro pilares da tese:**
 - **Presença ambiente** — o jogo trabalha *junto* com o expediente, nunca contra. Promessa pública: **<1% CPU, zero anti-cheat no cliente**.
 - **Cooperação, não gestão** — você **é** o atleta; seus amigos estão no **mesmo** time. O clube é palco (NPC), não propriedade.
-- **Ritual coletivo sincronizado** — 3 jogos/semana em horário fixo, redirecionando o pull de "conferir o placar".
+- **Ritual coletivo sincronizado** — jogo diário (7/7) às 15h Brasília (liga de 20, 38 rodadas ≈ 6 semanas), redirecionando o pull de "conferir o placar".
 - **Mundo vivo com história permanente** — nasce 100% NPC; cada humano substitui um NPC (escassez via waiting list); carreiras terminam e viram lendas permanentes.
 
 **North star:** times com **≥3 humanos presentes** no jogo das 15h.
@@ -32,7 +32,7 @@
 **Motor do mundo (servidor) — o coração / money path:**
 - **Linguagem/runtime:** TypeScript (Node.js).
 - **Persistência:** Postgres (Neon), serverless, branch por ambiente.
-- **Orquestração da rodada:** job agendado 3×/semana que processa todas as ligas; idempotente, protegido por lock e chave de idempotência (retry seguro).
+- **Orquestração da rodada:** job agendado diário (uma rodada/dia às 15h Brasília) que processa todas as ligas; idempotente, protegido por lock e chave de idempotência (retry seguro).
 - **Determinismo por seed:** simulação reproduzível a partir de seed + estado; auditável, testável por propriedade, replay verificável.
 - **Atomicidade:** resultado publicado em transação única. **Nunca** rodada meio-publicada — a linha do tempo do mundo é all-or-nothing.
 - **Protocolo de falha:** adiar com transparência > publicar errado.
