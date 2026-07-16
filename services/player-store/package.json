@@ -1,0 +1,22 @@
+{
+  "name": "@camisa-9/player-store",
+  "version": "0.0.0",
+  "private": true,
+  "type": "module",
+  "description": "Camada de dados do jogador (SPEC-016 — Fase 1): persistência de conta + atleta em Postgres, ISOLADA do world-store (schema `player`). Borda IMPURA (services/*); argon2id vive aqui. Consome a lib pura @camisa-9/player.",
+  "scripts": {
+    "test": "vitest run",
+    "db:generate": "drizzle-kit generate",
+    "db:migrate": "tsx src/migrate.ts"
+  },
+  "dependencies": {
+    "@camisa-9/player": "*",
+    "@node-rs/argon2": "^2.0.2",
+    "drizzle-orm": "^0.45.2",
+    "pg": "^8.22.0"
+  },
+  "devDependencies": {
+    "@types/pg": "^8.20.0",
+    "drizzle-kit": "^0.31.10"
+  }
+}

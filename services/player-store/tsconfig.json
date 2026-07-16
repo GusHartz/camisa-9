@@ -1,0 +1,9 @@
+{
+  "//": "Type-check do player-store (SPEC-016). NÃO é composite e NÃO entra no `tsc -b` (mesmo motivo do world-store: TS6310). Borda IMPURA rodada via tsx/vitest; consome @camisa-9/player pelo alias `paths` (→ src). O gate autoritativo é `tsconfig.typecheck.json` (raiz), que já inclui services/*.",
+  "extends": "../../tsconfig.base.json",
+  "compilerOptions": {
+    "noEmit": true,
+    "resolveJsonModule": true
+  },
+  "include": ["src/**/*.ts", "test/**/*.ts"]
+}

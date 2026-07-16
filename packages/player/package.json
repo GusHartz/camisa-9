@@ -1,0 +1,16 @@
+{
+  "name": "@camisa-9/player",
+  "version": "0.0.0",
+  "private": true,
+  "type": "module",
+  "description": "Domínio do jogador humano (SPEC-016) — criação do atleta: filtro de nome, alocação de atributos (4 focos), visual e política de senha. Lib PURA, sem I/O (OP-17), sob o guardrail de determinismo.",
+  "main": "dist/index.js",
+  "types": "dist/index.d.ts",
+  "scripts": {
+    "build": "tsc -b",
+    "test": "vitest run"
+  },
+  "devDependencies": {
+    "@camisa-9/world-engine": "*"
+  }
+}
