@@ -46,3 +46,21 @@ export const TRAINING = {
   zone3BaseXp: 1500, // elite: 15 treinos/ponto no início da cauda...
   zone3RampXp: 25, // ...+0,25 treino por ponto de progresso (a cauda vira grind orgulhoso)
 } as const;
+
+/**
+ * Time do quinteto (SPEC-018, card R14). Tunáveis da identidade + do elenco de 16 vagas.
+ * `squad` espelha `WORLD.squadShape` do engine (soma 16) — drift coberto por teste.
+ * `code.alphabet` sem ambíguos (sem O/0/I/1/L) — código legível em mensagem.
+ */
+export const TEAM = {
+  /** Forma do elenco por posição (soma 16). */
+  squad: { GK: 2, DEF: 5, MID: 5, FWD: 4 },
+  name: { minLen: 2, maxLen: 24 },
+  /** Nº de opções por eixo da camisa (índices válidos: 0..n-1). */
+  kit: { primaryColor: 12, secondaryColor: 12, crest: 16 },
+  /** Código distribuível: comprimento + alfabeto (a geração aleatória vive no serviço). */
+  code: { len: 6, alphabet: 'ABCDEFGHJKMNPQRSTUVWXYZ23456789' },
+  /** Marcos celebrados. */
+  firstEleven: 11,
+  fullSquad: 16,
+} as const;
