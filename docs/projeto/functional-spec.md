@@ -9,6 +9,7 @@ O produto é um jogo de carreira de futebol de baixa atenção, onde um mundo si
 - O mundo vive **sem nenhum humano presente**.
 - **Determinístico e auditável**: mesma seed + mesmo estado → mesmo resultado; toda rodada é reproduzível (replay).
 - **Regra de arquitetura**: toda regra de simulação vive em `lib/world-engine` (puro, testável, sem I/O). Rotas apenas orquestram (agendam rodadas, persistem resultado). UI só lê.
+- **Inteligência de mercado NPC (transferências e renovações):** heurística em camadas — carência do elenco → score de alvos (fit × força × idade × alcançabilidade por tier) → **arquétipo do clube como pesos** (formador, resultadista, ama-jovens...; sorteado por seed na criação) → renovação = clube-quer × atleta-quer (a mesma máquina do contrato do humano) → fechamento determinístico via PRNG do seed. Alimenta o jornal do mundo. Implementação plena na spec 1.4; o shape (archetype/weights no clube) nasce na fundação do mundo.
 - **[SUPOSIÇÃO — revisar]** Rodada executada por job agendado idempotente (uma execução por rodada, protegida por lock e chave de idempotência), permitindo retry seguro após falha parcial.
 
 ### 2. Entrada por substituição + waiting list real
