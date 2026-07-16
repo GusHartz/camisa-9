@@ -14,7 +14,7 @@
 | **Feature** | Rodadas diárias (roadmap 1.2) — primeira fatia |
 | **Card (board)** | `7c8c8451-e4fc-4a14-b2c2-c8c0bf7e3ccf` |
 | **Owner** | gustavo-hartz (dev) |
-| **Branch** | `feat/gustavo-hartz/rodadas-ter-qui-sab-15h` *(rótulo = cadência revogada; ver drift-check da SPEC)* |
+| **Branch** | `feat/gustavo-hartz/rodadas-ter-qui-sab-15h` *(rótulo = cadência REVOGADA; o escopo é o diário 7/7 — ver drift-check da SPEC)* |
 | **PR** | *pendente de confirmação do founder* |
 | **Desenvolvimento iniciado/concluído** | 2026-07-16 |
 | **Dias utilizados vs appetite** | ~½ dia vs 1 a 2 dias |
@@ -23,15 +23,14 @@
 
 ## Resumo do que foi feito
 
-**O primeiro batimento cardíaco do mundo.** As três peças da 0.2/engine agora se **compõem** num loop vivo: dado um `epochMs` **injetado**, o orquestrador publica a **rodada do dia de TODAS as ligas** numa **transação atômica de nível-mundo**, reusando o engine **puro e intocado** (`readWorld` + `simulateWorldSeason` — zero simulação nova, OP-17) e a mecânica transacional da Fatia 2.
+**O primeiro batimento cardíaco do mundo.** Compus as peças da Fatia 1 (`readWorld`) e da Fatia 2 (`publishRound`) no primeiro loop vivo: um **orquestrador de tick diário** que, dado um `epochMs` **injetado**, publica a **rodada do dia de TODAS as ligas** numa **única transação de nível-mundo** (all-or-nothing, à letra do charter), reusando o engine **puro e intocado** (OP-17). Alinhei a âncora de fuso à cadência **diária 7/7** ratificada (R4 FINAL) e implementei o **protocolo de rodada falha** ("adiar com transparência > publicar errado"), parando **limpo** no fim da temporada (`season_complete`, **sem** viragem — seam para a Fatia 3).
 
-- **Âncora diária (engine puro):** `anchor.ts` — `MATCH_DAYS` removido; `isMatchWindow = hour === MATCH_HOUR` (15h **todo dia**, 7/7). Alinha o código à cadência **R4 FINAL** ratificada (invertendo a antiga ter/qui/sáb — o rótulo do card). `dayOfWeek` continua exposto no `RoundSlot`. Mudança **pura** (não toca o stream do PRNG).
-- **Golden aditivo:** `anchor.golden.json` regenerado por `harness/regen-anchor-golden.ts` (borda impura, com **oráculo independente** que aborta em divergência) — os **9 vetores originais byte-idênticos** + **4 novos** (dom/seg/qua/sex 15h → `isMatchWindow: true`; sob a regra antiga seriam `false`). `git diff` dos goldens = **só** `anchor.golden.json`.
-- **Âncora de temporada (dados):** tabela `season(world_seed, season_id, start_day_index)` (migration aditiva `0002`, OP-01) — guarda o `dayIndex` do round 1, que o snapshot **não** tem; **input de ops** (`setSeasonAnchor`/`readSeasonAnchor`), não derivável da seed. Destrava o **Model B** (calendar-derived): `targetRound = dayIndex − start_day_index + 1`.
-- **Rodada-do-mundo atômica (decisão do founder #1 — grão-MUNDO):** `publishWorldRound(db, input, onBeforeCommit?)` — **uma transação** com advisory lock world-day (`world:${seasonId}:${round}`, namespace distinto do por-liga), **INSERT multi-linha** da rodada N de todas as ligas, idempotente por `(season_id, round)`. Cumpre o charter à letra: *"nunca rodada meio-publicada — a linha do tempo do mundo é all-or-nothing."* `publishRound` (por-liga) da Fatia 2 **permanece** como primitivo.
-- **Orquestrador de tick (impuro):** `runDailyRound(db, seed, epochMs)` → `DailyRoundReport`. Guarda de janela (`fora_de_janela`) → `readWorld` (`sem_mundo`) → `readSeasonAnchor` (`sem_ancora`) → boundary (`before_season` / `season_complete` **sem viragem** — seam limpo p/ Fatia 3) → publica. **Protocolo de falha (decisão do founder #2 — derivar):** publish que estoura → tx reverte → `status: 'deferred'` + log server-side **genérico** (OP-11); "deferido" = **ausência da linha**, zero estado novo.
+- **Âncora diária (engine puro):** `anchor.ts` perdeu `MATCH_DAYS` — `isMatchWindow = hour === 15` (15h **todo dia**). `dayOfWeek` segue exposto no `RoundSlot`. `anchor.golden.json` **regen aditiva**: os 9 vetores originais **byte-idênticos** + **4 novos** (dom/seg/qua/sex 15h → `isMatchWindow: true`; sob a regra antiga seriam `false`). `harness/regen-anchor-golden.ts` reproduz o arquivo com **oráculo independente** (aborta se divergir).
+- **Âncora de temporada (dados):** tabela `season(world_seed, season_id, start_day_index)` (migration aditiva `0002`, OP-01) — o `start_day_index` é o `dayIndex` do round 1, **input de ops** (não derivável da seed), que destrava o mapa **calendário→rodada** (`targetRound = dayIndex - start_day_index + 1`). `setSeasonAnchor`/`readSeasonAnchor`.
+- **Rodada-do-mundo atômica (decisão do founder #1):** `publishWorldRound` — **uma** transação com advisory lock **world-day** (`world:${seasonId}:${round}`, namespace distinto do lock por-liga), **um INSERT multi-linha** de todas as ligas, idempotência por `(season_id, round)`. Falha (sync/async) → **ROLLBACK total** (nenhuma liga publicada). `publishRound` por-liga (Fatia 2) **permanece** como primitivo.
+- **Orquestrador (impuro):** `runDailyRound(db, seed, epochMs)` → `resolveSlot` (guarda `fora_de_janela`) → `readWorld` (`sem_mundo`) → `readSeasonAnchor` (`sem_ancora`) → `targetRound` → guardas de boundary (`before_season`/`season_complete`) → `simulateWorldSeason` → `publishWorldRound` → `DailyRoundReport`. **Protocolo de falha (decisão do founder #2):** publish que estoura → `deferred` (derivado da **ausência** da linha) + log server-side **genérico** (OP-11), zero estado novo.
 
-**Verificação (contra Postgres real via Docker):** `typecheck` ✅ · `eslint` ✅ (OP-14/15/16) · **`test` 115/115 ✅** (89 do engine intactos + 2 round-trip + 10 publish + **14 novos** do tick) · `build` ✅ · prettier LF-clean ✅. Sem `DATABASE_URL`: **89 ✅ / 26 skip** — inner loop sem Docker segue verde. **Nenhum golden além de `anchor.golden.json`** (`season`/`prng`/`world` diff = 0).
+**Verificação (contra Postgres real via Docker):** `typecheck` ✅ · `eslint` ✅ (OP-14/15/16 + guardrail de determinismo) · `build` ✅ · **`test` 115/115 ✅** (101 anteriores intactos + 14 novos ao vivo). Sem `DATABASE_URL`: **89 ✅ / 26 skip** — inner loop sem Docker segue verde. **Isolamento de golden:** `git diff` dos `*.golden.json` lista **só** `anchor.golden.json` (+44 aditivas); `season`/`prng`/`world.golden` diff = 0.
 
 ---
 
@@ -39,41 +38,42 @@
 
 | Arquivo | Descrição |
 |---|---|
-| `harness/regen-anchor-golden.ts` | Regen determinística do golden da âncora com oráculo independente (aborta em divergência). |
-| `services/world-store/src/schema/season.ts` | Tabela `season` (âncora de temporada) — PK `(world_seed, season_id)`, FK → `world.seed`. |
-| `services/world-store/src/migrations/0002_season_anchor.sql` | Migration aditiva (só `season`) + `meta/0002_snapshot.json`. |
+| `harness/regen-anchor-golden.ts` | Regen determinística do `anchor.golden.json` com **oráculo independente** (borda impura; `Date`/`fs` permitidos fora de `packages/*/src`). |
+| `services/world-store/src/schema/season.ts` | Tabela `season` (âncora de temporada; PK `(world_seed, season_id)`, FK `world_seed → world.seed`). |
 | `services/world-store/src/store/season-repo.ts` | `setSeasonAnchor` (upsert) + `readSeasonAnchor`. |
-| `services/world-store/src/store/daily-round.ts` | `runDailyRound` + helpers (`publishTarget`/`toWorldRoundInput`/`report`) + `DailyRoundReport`/`DailyRoundStatus`. |
-| `services/world-store/test/daily-round.test.ts` | 14 property tests ao vivo (gated por `DATABASE_URL`). |
+| `services/world-store/src/store/daily-round.ts` | `runDailyRound` + helpers + `DailyRoundReport`/`DailyRoundStatus`. |
+| `services/world-store/src/migrations/0002_season_anchor.sql` | Migration aditiva (só `season`) + `meta/0002_snapshot.json`. |
+| `services/world-store/test/daily-round.test.ts` | 14 cenários ao vivo contra Postgres real (gated por `DATABASE_URL`). |
 | `specs/SPEC-015-*.md`, `specs/DONE-015-*.md` | SPEC (aprovada no card) + este documento. |
 
 ## Arquivos modificados
 
 | Arquivo | O que mudou |
 |---|---|
-| `packages/world-engine/src/orchestration/anchor.ts` | `MATCH_DAYS` removido; `isMatchWindow = hour===15` (diário 7/7). |
+| `packages/world-engine/src/orchestration/anchor.ts` | Remove `MATCH_DAYS`; `isMatchWindow = hour === 15` (diário 7/7). Mudança **pura**. |
 | `packages/world-engine/src/orchestration/anchor.test.ts` | `it` de janela → **iff diário** (janela ⇔ `hour===15`, dia irrelevante). |
-| `packages/world-engine/src/__fixtures__/anchor.golden.json` | Regen **aditiva**: 9 idênticos + 4 novos. |
+| `packages/world-engine/src/__fixtures__/anchor.golden.json` | Regen **aditiva**: 9 idênticos + 4 novos (+44 linhas, 0 remoções). |
 | `services/world-store/src/schema/index.ts` | `export * from './season.js'`. |
-| `services/world-store/src/store/round-repo.ts` | `+publishWorldRound` (1 tx world-day) + `WorldRoundInput` + helper. |
+| `services/world-store/src/store/round-repo.ts` | `+publishWorldRound` (1 tx world-day, INSERT multi-linha) + `WorldRoundInput` + helper. |
 | `services/world-store/src/index.ts` | Exporta `publishWorldRound`/`WorldRoundInput`/`setSeasonAnchor`/`readSeasonAnchor`/`runDailyRound`/`DailyRoundReport`/`DailyRoundStatus`. |
-| `services/world-store/drizzle.config.ts` | `schema` cobre `season.ts`. |
-| `services/world-store/test/round-trip.test.ts` | `beforeEach` apaga `season` antes de `world` (FK nova). |
-| `vitest.config.ts` | `fileParallelism: false` — testes de integração compartilham 1 Postgres (ver desvios). |
+| `services/world-store/drizzle.config.ts` | `schema` cobre também `season.ts` (o kit lê os arquivos explicitamente, não o barrel). |
 | `services/world-store/src/migrations/meta/_journal.json` | Entrada da migration `0002` (gerado pelo drizzle-kit). |
-| `CLAUDE.md`, `docs/projeto/roadmap.md` | "Estado atual" + 1.2 primeira fatia ✅. |
+| `services/world-store/test/round-trip.test.ts` | `beforeEach` apaga `season` **antes** de `world` (ripple da nova FK). |
+| `vitest.config.ts` | `fileParallelism: false` (suítes de integração compartilham UM Postgres e truncam tabelas comuns — ver Desvios). |
+| `CLAUDE.md` | "Estado atual": SPEC-015 / 1.2 primeira fatia. |
+| `docs/projeto/roadmap.md` | 1.2 🚧 com a primeira fatia ✅. |
 
-**Intocado:** `simulateSeason`/`resolveMatch`/`advanceWorld`/PRNG; `season`/`prng`/`world.golden.json` (diff = 0); migrations `0000`/`0001`.
+**Intocado:** `simulateSeason`/`resolveMatch`/`advanceWorld`/PRNG do engine; migrations `0000`/`0001`; `season`/`prng`/`world.golden.json` (diff = 0).
 
 ---
 
 ## Mudanças de schema aplicadas
 
-Migration **aditiva** `0002_season_anchor.sql` (OP-01), gerada por `drizzle-kit generate` e revisada: `CREATE TABLE season` com PK `(world_seed, season_id)` e FK `world_seed → world.seed`. Não toca `0000`/`0001`. Aplicar do zero (`0000`+`0001`+`0002`) num DB limpo reproduz o schema (provado local + no CI).
+Migration **aditiva** `0002_season_anchor.sql` (OP-01), gerada por `drizzle-kit generate` e revisada: `CREATE TABLE season` com PK composta `(world_seed, season_id)`, `start_day_index integer NOT NULL`, FK `world_seed → world.seed`. Não toca `0000`/`0001`. Aplicar do zero (`0000`+`0001`+`0002`) num DB limpo reproduz o schema (provado local + a rodar no CI via `postgres:16`).
 
 ## Mudanças de API entregues
 
-`@camisa-9/world-store` ganha `publishWorldRound` + `WorldRoundInput`, `setSeasonAnchor`/`readSeasonAnchor`, e `runDailyRound` + `DailyRoundReport`/`DailyRoundStatus`. API pública do `world-engine` **inalterada** (só o valor de `isMatchWindow` mudou — mesmo contrato).
+`@camisa-9/world-store` ganha `runDailyRound`/`DailyRoundReport`/`DailyRoundStatus` (orquestrador), `publishWorldRound`/`WorldRoundInput` (publicador grão-mundo) e `setSeasonAnchor`/`readSeasonAnchor` (âncora). API pública do `world-engine` **inalterada** exceto a semântica de `isMatchWindow` (agora 7/7) — assinatura de `resolveSlot`/`RoundSlot` idêntica.
 
 ---
 
@@ -81,16 +81,16 @@ Migration **aditiva** `0002_season_anchor.sql` (OP-01), gerada por `drizzle-kit 
 
 | Critério (SPEC-015) | Status | Evidência |
 |---|---|---|
-| 1 — Isolamento de golden (só `anchor.golden.json`) | ✅ | `git diff --stat` dos `*.golden.json` = só `anchor.golden.json` (44 inserções, 0 remoções); `season`/`prng`/`world` = 0. |
-| 2 — Golden aditivo (9 idênticos + 4 novos; oráculo concorda) | ✅ | `regen-anchor-golden.ts`: 13 vetores / 8 janelas; oráculo independente (via `new Date` no harness) não divergiu. |
-| 3 — Âncora verde (janela ⇔ `hour===15`) | ✅ | `anchor.test.ts` 5/5; "14:59 sábado" segue `false`; negativos + TZ-independência intactos. |
-| 4 — Publicação do dia atômica de mundo (published, 4 ligas, byte-exato) | ✅ | Teste "publica a rodada do dia de TODAS as ligas" (`leagueCount===4`) + reconciliação por liga. |
-| 5 — Determinismo ponta a ponta (4×38 rodadas = engine) | ✅ | Teste "38 dias → 4×38 rodadas byte-idênticas": `count===152`; toda rodada de toda liga `toEqual` a temporada pura. |
-| 6 — Idempotência (mesmo dia 2× → idempotent, count inalterado) | ✅ | Teste de idempotência: 2ª execução `idempotent`, 4 linhas. |
-| 7 — All-or-nothing (falha → nada publicado, deferred; retry publica) | ✅ | (a) `publishWorldRound` + seam que estoura → 0 linhas; (b) CHECK temporária força o INSERT a estourar dentro do tick → `deferred`, 0 linhas, e o retry publica as 4. |
-| 8 — Boundary (dia 39 → `season_complete`, sem viragem) | ✅ | Teste de boundary: `season_complete`, `targetRound===39`, 0 linhas (nenhum `advanceWorld`). `before_season` no dia < âncora. |
-| 9 — Guarda de janela (fora das 15h → `fora_de_janela`) | ✅ | Teste de guarda: `fora_de_janela`, `complete:false`, 0 linhas. |
-| 10 — OPs & gates | ✅ | `eslint` verde (OP-14/15/16); erros genéricos (OP-11); migration `0002` (OP-01); engine sem simulação nova (OP-17); `lint`/`typecheck`/`build`/`test` verdes; 89 do engine intactos. |
+| 1 — Isolamento de golden (só `anchor.golden.json`) | ✅ | `git diff --stat` dos fixtures: só `anchor.golden.json` (+44); `season`/`prng`/`world.golden` diff = 0. |
+| 2 — Golden aditivo (9 idênticos + 4 novos; oráculo concorda) | ✅ | Regen por `harness/regen-anchor-golden.ts` (oráculo independente aborta em divergência); 13 vetores / 8 janelas. |
+| 3 — Âncora verde (janela ⇔ `hour===15`; "14:59" false; TZ-indep.) | ✅ | `anchor.test.ts` 5/5; iff diário + negativos + independência de fuso intactos. |
+| 4 — Publicação do dia atômica de mundo (todas as ligas, 1 tx) | ✅ | Teste "publica a rodada do dia de TODAS as ligas" (`published`, `complete`, `leagueCount===4`, 4 linhas) + reconciliação por rodada. |
+| 5 — Determinismo ponta-a-ponta (38 dias → 4×38 = tabela do engine) | ✅ | Teste "38 dias → 4×38 rodadas byte-idênticas": toda rodada de toda liga `toEqual` `simulateWorldSeason(...).rounds[N-1]` (a tabela deriva das rodadas). |
+| 6 — Idempotência (mesmo `epochMs` 2× → 2ª `idempotent`) | ✅ | Teste de idempotência: 2ª execução `idempotent`, `count` inalterado (4). |
+| 7 — Atomicidade all-or-nothing + retry | ✅ | (a) seam `onBeforeCommit` lança → `publishWorldRound` ROLLBACK, `count===0`; (b) CHECK temporária força o publish a estourar → `runDailyRound` retorna `deferred`, `count===0`, e o **retry publica o dia inteiro**. |
+| 8 — Boundary `season_complete` sem viragem | ✅ | Dia 39 → `season_complete`, `targetRound===39`, `count===0`; `advanceWorld` **não** chamado. |
+| 9 — Guarda de janela | ✅ | `epochMs` às 10h → `fora_de_janela`, nada publicado. |
+| 10 — OPs & gates | ✅ | `eslint` verde (OP-14/15/16); `daily-round.ts`/`round-repo.ts` decompostos; erros genéricos sem SQL/DSN/stack (OP-11); migration `0002` versionada (OP-01); zero simulação nova no engine (OP-17); `lint`/`typecheck`/`build`/`test` verdes; 89 testes do engine intactos (fora a âncora). |
 
 ---
 
@@ -99,18 +99,18 @@ Migration **aditiva** `0002_season_anchor.sql` (OP-01), gerada por `drizzle-kit 
 ```
 POSTGRES_PORT=5434 docker compose -f services/world-store/docker-compose.yml up -d
 export DATABASE_URL=postgres://postgres:postgres@localhost:5434/camisa9_dev
-npm run db:migrate -w services/world-store      # aplica 0000 + 0001 + 0002
+npm run db:migrate -w services/world-store          # aplica 0000 + 0001 + 0002
 npm run lint && npm run typecheck && npm test && npm run build   # 115/115 (14 do tick ao vivo)
 # Sem Docker: unset DATABASE_URL → 89 pass / 26 skip.
 ```
 
-**Dados de teste necessários:** nenhum — seed `"decada"` + `start_day_index` injetado são determinísticos.
+**Dados de teste necessários:** nenhum — seed `"decada"` (mundo de 4 divisões × 20 clubes) + `start_day_index` arbitrário são determinísticos.
 
 ---
 
 ## Testes automatizados
 
-**14 testes novos** em `services/world-store/test/daily-round.test.ts` (gated por `DATABASE_URL`): guarda de janela · `sem_mundo` · `sem_ancora` · publicação atômica de mundo (4 ligas) · mapa calendário→rodada · `before_season` · `season_complete` (sem viragem) · idempotência · `locked` (advisory lock por outra sessão) · concorrência (2 ticks → 1 publica, 4 linhas) · reconciliação por liga · atomicidade de seam · **protocolo de falha (`deferred` + retry)** · determinismo de 38 dias (4×38 = engine). Total do repo: **115** (89 do engine preservados). CI roda os 14 ao vivo contra `postgres:16`.
+**14 testes novos** em `services/world-store/test/daily-round.test.ts` (gated por `DATABASE_URL`): guarda de janela, `sem_mundo`, `sem_ancora`, publicação atômica de mundo (4 ligas), mapa calendário→rodada, `before_season`, `season_complete` (sem viragem), idempotência, `locked` (lock segurado em 2ª conexão — determinístico), concorrência (2 ticks → 1 publica, 4 linhas), reconciliação grão-mundo, atomicidade do seam, `deferred` + retry, determinismo de 38 dias (4×38 byte-idêntico ao engine). Total do repo: **115** (101 preservados). CI roda os 14 ao vivo contra `postgres:16`.
 
 **Comando:** `npm run lint && npm run typecheck && npm test && npm run build`
 
@@ -120,15 +120,16 @@ npm run lint && npm run typecheck && npm test && npm run build   # 115/115 (14 d
 
 | Arquivo | % gerado por IA | Revisado manualmente? |
 |---|---|---|
-| `packages/world-engine/src/orchestration/anchor.ts` + `anchor.test.ts` | ~100% | Sim — flip p/ diário conferido; golden verificado aditivo (nenhum flip dos 9). |
-| `harness/regen-anchor-golden.ts` | ~100% | Sim — oráculo independente (via `new Date`) confirmado divergir-e-abortar. |
-| `services/world-store/src/schema/season.ts` + migration `0002` | ~100% (kit, revisado) | Sim — PK/FK conferidos; só `season`; `0000`/`0001` intocadas. |
-| `services/world-store/src/store/season-repo.ts` + `round-repo.ts` (`publishWorldRound`) | ~100% | Sim — 1 tx world-day / lock / idempotência `(season,round)` conferidos contra a Fatia 2. |
-| `services/world-store/src/store/daily-round.ts` | ~100% | Sim — fluxo/boundary/protocolo-de-falha conferidos contra a SPEC; erros genéricos (OP-11). |
-| `test/daily-round.test.ts`, `test/round-trip.test.ts`, `vitest.config.ts`, wiring + `SPEC/DONE-015`, `CLAUDE.md`, `roadmap.md` | ~100% | Sim. |
+| `packages/world-engine/src/orchestration/anchor.ts` + `anchor.test.ts` | ~100% | Sim — flip diário conferido; golden regen aditiva provada vetor a vetor. |
+| `harness/regen-anchor-golden.ts` | ~100% | Sim — oráculo independente (outra via de cálculo) que aborta em divergência. |
+| `services/world-store/src/schema/season.ts` + `store/season-repo.ts` | ~100% | Sim — PK/FK e upsert conferidos; migration aditiva revisada. |
+| `services/world-store/src/store/round-repo.ts` (`publishWorldRound`) | ~100% | Sim — grão-mundo (1 lock world-day + INSERT multi-linha + seam) conferido contra o `publishRound` por-liga. |
+| `services/world-store/src/store/daily-round.ts` | ~100% | Sim — fluxo/guardas/protocolo de falha conferidos contra a SPEC; OP-11/15/16. |
+| `services/world-store/test/daily-round.test.ts` | ~100% | Sim — 14 cenários ao vivo (115/115); `locked` determinístico; `deferred` via CHECK temporária restaurada no `finally`. |
+| Wiring (`index.ts`, `schema/index.ts`, `drizzle.config.ts`) + `SPEC/DONE-015`, `CLAUDE.md`, `roadmap.md`, `vitest.config.ts`, `round-trip.test.ts` | ~100% | Sim. |
 
 **A IA sugeriu mudanças fora do escopo da SPEC original?**
-- [x] Sim — **dois ajustes de mecanismo de teste** (não de comportamento de produto), forçados pela evolução do schema. Ver "Desvios".
+- [x] Nada de escopo/comportamento. **Dois ajustes de mecanismo fora da lista de arquivos da SPEC**, ambos consequência direta da própria SPEC (a nova FK `season → world` e a nova suíte de integração): `vitest.config.ts` (`fileParallelism: false`) e `round-trip.test.ts` (apagar `season` antes de `world`). Detalhados abaixo.
 
 ---
 
@@ -136,21 +137,23 @@ npm run lint && npm run typecheck && npm test && npm run build   # 115/115 (14 d
 
 | Item | O que foi feito | Motivo |
 |---|---|---|
-| **`vitest.config.ts` — `fileParallelism: false`** | Serializei os arquivos de teste do repo. | Os testes de `services/*` são de **integração contra UM Postgres compartilhado** e truncam tabelas comuns (`world`, `published_round`) **sem filtro**. Ao adicionar a suíte do tick (que toca `world` **e** `published_round` **e** `season`), rodar em paralelo faria uma suíte apagar as linhas da outra no meio do teste (flaky). Serial = determinístico; custo ~1s (testes puros do engine são milissegundos). **Sem** mudança de produto. |
-| **`round-trip.test.ts` — apagar `season` antes de `world`** | Adicionei `delete(season)` no `beforeEach`. | A nova tabela `season` referencia `world.seed` por **FK**; a limpeza pré-existente de `round-trip` (que apaga `world`) passaria a violar a FK enquanto houver linha em `season`. Ajuste de ordem de limpeza forçado pelo schema novo; nenhum comportamento de produto muda. |
-| **`world-store` segue typecheck-only** | Não virou composite/buildable (nota da memória "Fatia 2+ → converter"). | Ainda **sem consumidor runtime externo** — só os testes consomem (via alias→src). Converter quando isso surgir (dívida registrada permanece). |
+| **Serialização dos testes** (`vitest.config.ts`) | `fileParallelism: false` — **fora** da lista de arquivos da SPEC. | As 3 suítes de `services/*` são de **integração contra UM Postgres** e truncam tabelas comuns (`world`, `published_round`) **sem filtro**. Antes eram disjuntas (round-trip=world, publish=published_round). A nova `daily-round` toca **ambas** → em paralelo uma suíte apagaria as linhas da outra no meio do teste (flaky). Serial = determinístico; custo ~1s nos testes puros do engine. Correção de infra, não de escopo. |
+| **Ripple da FK** (`round-trip.test.ts`) | `beforeEach` passa a apagar `season` **antes** de `world` — **fora** da lista da SPEC. | A tabela `season` (criada por esta SPEC) referencia `world.seed`. O `delete(world)` do round-trip passou a violar a FK enquanto houvesse `season`. Ordem FK-child→parent. Zero mudança de comportamento do teste. |
+| **`drizzle.config.ts`** | Adicionado `season.ts` à lista `schema`. | O drizzle-kit lê os arquivos de schema **explicitamente** (não o barrel), então o `generate` não via `season` até incluí-lo. A SPEC listava só o barrel `schema/index.ts`. Mecanismo. |
+| **Nomes dos helpers** | `publishTarget`/`toWorldRoundInput`/`report` (a SPEC sugeria `resolveTarget`/`publishAll`/`buildReport`). | Decomposição equivalente (OP-15/16); nomes ajustados ao fluxo real. Sem impacto. |
+| **Tipos do engine reusados** | `WorldSeasonResult`/`PublishOutcome`/`RoundResult` importados do engine (já públicos), sem novos tipos no store. | Uma fonte de verdade do contrato; engine intocado (OP-17). |
 
-**Protocolo de conflito (parar+registrar):** não acionado — a mudança de âncora ter/qui/sáb→diária **reconcilia** o código com o R4 FINAL ratificado (documentado no drift-check da SPEC, aprovado pelo founder); os desvios acima são de **mecanismo de teste**, não de escopo/OP.
+**Protocolo de conflito (parar+registrar):** não acionado — nenhum desvio de escopo/comportamento nem violação de OP. Os dois itens acima são custo mecânico da própria SPEC (FK + suíte live) e estão sinalizados ao founder no fecho.
 
 ---
 
 ## Limitações conhecidas
 
-- **Snapshot imutável dentro da temporada** é invariante cravado: o tick **re-simula** a temporada do snapshot a cada dia e fatia `rounds[N−1]`. v1 é 100% NPC congelado (ok). Substituição humano↔NPC tornaria o snapshot mutável → exigirá **congelar o plano da temporada** no início (fatia futura).
-- **Dia adiado = buraco na timeline** (Model B) a menos que ops **re-ancore** (`setSeasonAnchor` deliberado). "Perder a rodada vs empurrar o calendário" é ação de ops **explícita**, nunca automação silenciosa aqui.
-- **Sem tabela durável de adiamento** (decisão do founder #2): "deferido" é derivado da ausência da linha + report. Ledger replayable é da **0.3** (quando houver consumidor: retry-worker/UI de reparação).
-- **Quem lê o relógio** (o scheduler de produção que chama `runDailyRound` uma vez/dia) é deploy — o tick é 100% invocável/testável por injeção de `epochMs`.
-- **Encaixe da Copa** no calendário diário → fatia dedicada de 1.2.
+- **Re-simula a temporada a cada tick** e fatia `rounds[N-1]`. Seguro **enquanto o snapshot for imutável dentro da temporada** (v1 = 100% NPC congelado). Substituição humano↔NPC tornaria o snapshot mutável → fatia futura (congelar o plano da temporada no início).
+- **Model B (calendar-derived):** um dia caído vira **buraco** na timeline a menos que ops **re-ancore** (`setSeasonAnchor` deliberado). "Perder a rodada vs empurrar o calendário" é **ação de ops explícita**, nunca automação silenciosa aqui.
+- **`start_day_index` é pré-condição:** sem `setSeasonAnchor`, o tick recua `sem_ancora`. O passo de ops que ancora a temporada é da 1.2 (encaixe da Copa) / da viragem (Fatia 3).
+- **Sem scheduler de produção:** quem lê `Date.now()` **uma** vez e chama `runDailyRound(epochMs)` é deploy. O tick é 100% testável por injeção.
+- **`season_complete` só detecta:** a viragem (`advanceWorld` → snapshot versionado + `turnoverReport` persistido) é a **Fatia 3**.
 
 ---
 
@@ -158,9 +161,10 @@ npm run lint && npm run typecheck && npm test && npm run build   # 115/115 (14 d
 
 | Item | Impacto | Quando resolver |
 |---|---|---|
-| `world-store` typecheck-only (sem `dist`) | Baixo — tipos cobertos; roda via tsx/vitest. | Ao surgir consumidor runtime externo: virar composite. |
-| Congelar plano da temporada (pré-condição de humano↔NPC) | Médio — hoje mitigado pela imutabilidade NPC. | Fatia de substituição humano↔NPC. |
-| Scheduler de produção (cron/worker → `runDailyRound`) | — | Deploy da 1.2 / infra. |
+| Título do card = cadência revogada (`ter/qui/sáb`) | Cosmético — o escopo entregue é o diário 7/7 ratificado. | Higiene de board do founder (renomear/mover na UI). |
+| `MATCH_DAYS` removido (só `MATCH_HOUR`) | Nenhum — cadência diária é a ratificada. | — |
+| `world-store` typecheck-only (herdado) | Baixo — sem consumidor runtime externo ainda. | Quando surgir consumidor runtime: virar composite. |
+| Cards das Fatias 3-5 (0.2) e do encaixe da Copa (1.2) | Board incompleto. | Founder cria na UI H1VE. |
 
 ---
 
@@ -169,12 +173,13 @@ npm run lint && npm run typecheck && npm test && npm run build   # 115/115 (14 d
 - [x] Todos os critérios de aceitação verificados (10/10)
 - [x] Testes passando (115/115 ao vivo; 89/26-skip sem DB)
 - [x] Typecheck limpo
-- [x] Lint limpo (`eslint` ✅; prettier LF-normalizado ✅ — CRLF local é gotcha)
-- [x] Nenhum log de debug / `any` / segredo hardcoded (log de deferimento é genérico — OP-11)
+- [x] Lint limpo (`eslint` ✅; prettier LF-normalizado ✅ — CRLF local é gotcha conhecida)
+- [x] Nenhum log de debug / `any` / segredo hardcoded
 - [x] AI Declaration preenchida acima
 - [x] `CLAUDE.md` "Estado atual" atualizado (SPEC-015)
+- [x] `docs/projeto/roadmap.md` atualizado (1.2 primeira fatia)
 - [x] Este DONE está completo e commitado na branch *(commit no fluxo do PR)*
 
 ---
 
-*DONE-015 — método H1VE. Primeira fatia de 1.2: o primeiro batimento cardíaco do mundo. Alinha a âncora à cadência diária ratificada (R4 FINAL) e compõe engine puro + store transacional num tick que publica a rodada-do-mundo numa transação atômica (charter: a linha do tempo do mundo é all-or-nothing). Viragem e Copa são fatias seguintes; o seam `season_complete` já as isola.*
+*DONE-015 — método H1VE. Primeira fatia de 1.2: o primeiro batimento cardíaco do mundo. Alinha a âncora à cadência diária ratificada (R4 FINAL) e entrega o tick que publica a rodada-do-mundo numa transação atômica (charter: a linha do tempo do mundo é all-or-nothing), reusando o engine puro intocado (OP-17). Viragem (Fatia 3), Copa e scheduler são fatias seguintes; o seam `season_complete` já as isola.*
