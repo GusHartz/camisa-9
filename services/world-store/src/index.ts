@@ -8,4 +8,6 @@ export {
   type WorldReadRows,
   type WorldRows,
 } from './mapping/world-mapper.js';
-export * as schema from './schema/world.js';
+export { publishRound, readRound } from './store/round-repo.js';
+export type { PublishInput, PublishOutcome, PublishStatus } from '@camisa-9/world-engine';
+export * as schema from './schema/index.js';

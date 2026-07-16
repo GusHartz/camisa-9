@@ -8,6 +8,13 @@
       "when": 1784217458551,
       "tag": "0000_init_world_snapshot",
       "breakpoints": true
+    },
+    {
+      "idx": 1,
+      "version": "7",
+      "when": 1784221180137,
+      "tag": "0001_publish_round",
+      "breakpoints": true
     }
   ]
 }
