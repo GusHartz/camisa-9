@@ -1,18 +1,18 @@
 {
   "seed": "decada",
   "seasons": 11,
-  "note": "SPEC-009 — âncora cross-ambiente. hashes[0] = mundo semeado; hashes[i] = após i viragens. Regerar só com mudança INTENCIONAL do stream do PRNG (rompe replay).",
+  "note": "SPEC-012 — âncora cross-ambiente (elenco 16 + transfersPerLeague 10). hashes[0] = mundo semeado; hashes[i] = após i viragens. Regerar só com mudança INTENCIONAL do stream do PRNG (rompe replay) — via harness/regen-world-golden.ts.",
   "hashes": [
-    "63ab72a602a3f64969087e3037d213a6",
-    "dc32ee16232892dded355d8061a9437f",
-    "035ca3167b4f0e7d05a2b98af81c8cc1",
-    "4383bf6d3ccfe396dcb99dd8b44b7a5d",
-    "5fa868443c95821c432bcbcd8ce0d0e1",
-    "4f8341c4d896afd9479480fb04b462be",
-    "9f1f16b931bd5234830949c7150aa7e3",
-    "fbbfed831d240735e160dfc3f1f26ffa",
-    "ee0cb8b78fc0607b0555ec2d01cc6ee2",
-    "6b9a7c98a7b9953f7fe87bc077d4cdd3",
-    "5c47f20d91bc717884cf6995820a1dc3"
+    "b9d56bdb469b96828671ce610fec22d8",
+    "76e7d832307de76f4abbf4657f2635e9",
+    "9c669f88f8435dafd2b626d3f82d8702",
+    "ac7de773d47fb8c9fb48727debf53539",
+    "ee1bf3958cd40670007f9d3765a01264",
+    "e20a6a4fb9cbce7d03051f781529f5f2",
+    "655980cb2345fc87e0075fe6b83493d1",
+    "dfd227277d7abeedf1cfb00bcbf882ce",
+    "a2e468a41b31371acdf863ea98b1ac3e",
+    "59ffc16b85a33e0c766995f532e14bec",
+    "ed72017865f29c3ca4e3c51c02cd2722"
   ]
 }

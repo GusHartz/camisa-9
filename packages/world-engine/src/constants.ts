@@ -44,8 +44,8 @@ export const WORLD = {
   leaguesPerTier: 1,
   /** Clubes por liga. */
   clubsPerLeague: 20,
-  /** Atletas por clube — invariante testado após qualquer viragem (ajuste #4). */
-  rosterSize: 20,
+  /** Atletas por clube — invariante testado após qualquer viragem (ajuste #4). SPEC-012: 20→16 (11 titulares + 5 reservas, R4 final). */
+  rosterSize: 16,
   /** Força = média inteira das N melhores habilidades do elenco. */
   strengthTopN: 11,
   /** Aposenta na viragem com idade ≥ este valor. Futuro: janela seed 33..38. */
@@ -60,8 +60,8 @@ export const WORLD = {
    * andar i+1 e o i+2. `tiers - 1` entradas. Conservação de fluxo por fronteira.
    */
   promoteRelegate: [3, 3, 3],
-  /** Transferências por liga na viragem (placeholder — mercado real = 1.4). */
-  transfersPerLeague: 12,
+  /** Transferências por liga na viragem (placeholder — mercado real = 1.4). SPEC-012: 12→10 (cascata proporcional ao elenco 16). */
+  transfersPerLeague: 10,
   /** Tamanho do vetor de pesos do arquétipo (seed-sorteado; fundação da 1.4). */
   weightCount: 4,
   /** Faixa (exclusiva) de cada peso do arquétipo: `nextInt` em [0, weightMax). */
@@ -76,6 +76,6 @@ export const WORLD = {
     { min: 42, max: 74 }, // tier 3
     { min: 34, max: 66 }, // tier 4 (várzea)
   ],
-  /** Formação do elenco por posição. Soma = `rosterSize` (3+6+7+4 = 20). */
-  squadShape: { GK: 3, DEF: 6, MID: 7, FWD: 4 },
+  /** Formação do elenco por posição. Soma = `rosterSize` (2+5+5+4 = 16). */
+  squadShape: { GK: 2, DEF: 5, MID: 5, FWD: 4 },
 } as const;
