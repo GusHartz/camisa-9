@@ -4,3 +4,4 @@ export * from './account.js';
 export * from './team.js';
 export * from './athlete.js';
 export * from './purchase.js';
+export * from './decision.js';

@@ -36,6 +36,7 @@ describe.skipIf(!DB_URL)('economy-repo — salário e estilo de vida contra Post
   });
 
   beforeEach(async () => {
+    await handle.db.delete(schema.decision);
     await handle.db.delete(schema.purchase);
     await handle.db.delete(schema.athlete);
     await handle.db.delete(schema.team);

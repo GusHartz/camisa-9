@@ -50,3 +50,17 @@ export {
   type Tradeoff,
   type MatchResult,
 } from './economy.js';
+export {
+  DECISIONS,
+  DECISIONS_PER_DAY,
+  generateDailyDecisions,
+  templateById,
+  optionById,
+  conservativeOption,
+  type Decision,
+  type DecisionType,
+  type DecisionOption,
+  type DecisionOutcome,
+  type DecisionTemplate,
+  type DecisionContext,
+} from './decisions.js';

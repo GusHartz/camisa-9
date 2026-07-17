@@ -36,6 +36,13 @@
       "when": 1784297203315,
       "tag": "0004_economy",
       "breakpoints": true
+    },
+    {
+      "idx": 5,
+      "version": "7",
+      "when": 1784301656854,
+      "tag": "0005_decisions",
+      "breakpoints": true
     }
   ]
 }

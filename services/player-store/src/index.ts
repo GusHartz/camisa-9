@@ -30,4 +30,11 @@ export {
   type TeamView,
 } from './store/team-repo.js';
 export { accrueRound, purchaseItem, readWallet, type Wallet } from './store/economy-repo.js';
+export {
+  generateForDay,
+  answerDecision,
+  resolveDeadline,
+  readDecisionLog,
+  type DecisionLogEntry,
+} from './store/decision-repo.js';
 export * as schema from './schema/index.js';
