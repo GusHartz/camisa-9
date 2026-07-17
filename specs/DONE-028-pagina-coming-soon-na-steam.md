@@ -14,7 +14,7 @@
 | **Feature** | Página Coming Soon na Steam |
 | **Owner** | Gustavo (founder/solo) — handle de branch `24bit` |
 | **Branch** | `feat/24bit/pagina-coming-soon-na-steam` |
-| **PR** | {preencher ao abrir} |
+| **PR** | https://github.com/GusHartz/camisa-9/pull/30 |
 | **Desenvolvimento iniciado** | 2026-07-17 |
 | **Desenvolvimento concluído** | 2026-07-17 |
 | **Dias utilizados vs appetite** | <1 dia (artefatos de repo) vs 14 dias (card; go-live externo gated) |
