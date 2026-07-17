@@ -142,6 +142,8 @@ async function reapplyOccupations(
       humanName: o.humanName,
       ability: o.ability,
       regenRequested: o.regenRequested, // o pedido de regen VOLUNTÁRIO sobrevive à virada (SPEC-022)
+      lastActiveDay: o.lastActiveDay, // o relógio de congelamento sobrevive à virada (SPEC-023)
+      frozenSinceDay: o.frozenSinceDay,
     });
   }
 }

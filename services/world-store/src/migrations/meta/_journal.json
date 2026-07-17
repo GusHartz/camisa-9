@@ -43,6 +43,13 @@
       "when": 1784263183748,
       "tag": "0005_regen_hall_of_fame",
       "breakpoints": true
+    },
+    {
+      "idx": 6,
+      "version": "7",
+      "when": 1784293591542,
+      "tag": "0006_vacancy_freeze",
+      "breakpoints": true
     }
   ]
 }

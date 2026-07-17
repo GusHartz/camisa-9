@@ -22,6 +22,7 @@ import { season } from '../src/schema/season.js';
 import { readWorld, writeWorld } from '../src/store/world-repo.js';
 import { readSeasonAnchor, setSeasonAnchor } from '../src/store/season-repo.js';
 import { occupyNpcSlot, readOccupation, requestRegen } from '../src/store/occupation-repo.js';
+import { markActive, readVacancyState, runVacancyPass } from '../src/store/vacancy-repo.js';
 import { persistWorldTurnover } from '../src/store/turnover-repo.js';
 
 const DB_URL = process.env.DATABASE_URL;
@@ -148,6 +149,25 @@ describe.skipIf(!DB_URL)('turnover-repo — viragem persistida contra Postgres r
       .from(worldOccupation)
       .where(eq(worldOccupation.humanAthleteId, H1));
     expect(rows[0]?.f).toBe(true);
+  });
+
+  it('congelamento de vaga sobrevive à virada: last_active_day + frozen_since_day re-aplicados (SPEC-023)', async () => {
+    const clubId = entryClubId((await readWorld(handle.db, SEED))!);
+    await occupyNpcSlot(handle.db, {
+      worldSeed: SEED,
+      clubId,
+      position: 'GK',
+      humanAthleteId: H1,
+      humanName: 'Ausente',
+      ability: 40,
+    });
+    await markActive(handle.db, SEED, H1, 500); // relógio de atividade
+    await runVacancyPass(handle.db, SEED, 505); // inativo 5 → congela (frozen_since_day = 505)
+    const { results } = await currentResults();
+    await persistWorldTurnover(handle.db, SEED, results, ROLL_DAY);
+    // se a virada zerasse os campos, o relógio de 30 dias reiniciaria (bug do reapplyOccupations)
+    const st = await readVacancyState(handle.db, SEED, H1);
+    expect(st).toEqual({ lastActiveDay: 500, frozenSinceDay: 505 });
   });
 
   it('idempotência: virar 2× com os mesmos results → a 2ª é already_rolled, mundo fica em 2027', async () => {

@@ -91,6 +91,9 @@ export interface OccupationView {
   readonly ability: number;
   /** Regen VOLUNTÁRIO pedido (SPEC-022) — a viragem re-aplica (senão o gatilho seria zerado). */
   readonly regenRequested: boolean;
+  /** Congelamento de vaga (SPEC-023): relógio de atividade + transição. `null` = sem dado. */
+  readonly lastActiveDay: number | null;
+  readonly frozenSinceDay: number | null;
 }
 
 /** A ocupação de um humano num mundo (null se não ocupa nenhuma vaga). */
@@ -134,6 +137,8 @@ function toView(r: typeof worldOccupation.$inferSelect): OccupationView {
     humanName: r.humanName,
     ability: r.ability,
     regenRequested: r.regenRequested,
+    lastActiveDay: r.lastActiveDay,
+    frozenSinceDay: r.frozenSinceDay,
   };
 }
 

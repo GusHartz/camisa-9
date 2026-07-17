@@ -37,6 +37,15 @@ export {
 export { reassignSlot, type ReassignInput } from './store/reassign-repo.js';
 export { REGEN_AGE } from './store/regen-age.js';
 export {
+  markActive,
+  runVacancyPass,
+  readVacancyState,
+  type VacancyHooks,
+  type VacancyReport,
+  type VacancyState,
+} from './store/vacancy-repo.js';
+export { VACANCY } from './store/vacancy-policy.js';
+export {
   persistWorldTurnover,
   TurnoverError,
   type TurnoverOutcome,
