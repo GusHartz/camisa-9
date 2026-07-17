@@ -3,6 +3,7 @@
 // transação (OP-17). Erros GENÉRICOS (OP-11); a régua 0..99 tem o CHECK do banco como rede.
 import { and, eq } from 'drizzle-orm';
 import {
+  MOOD,
   applyPoint,
   coachFocus,
   nextThreshold,
@@ -17,6 +18,7 @@ import {
 } from '@camisa-9/player';
 import type { Db } from '../client.js';
 import { athlete } from '../schema/athlete.js';
+import { bumpForma } from './mood-repo.js';
 
 type Tx = Parameters<Parameters<Db['transaction']>[0]>[0];
 
@@ -67,6 +69,7 @@ export async function applyTraining(
         focusStreak: streak.focusStreak,
       })
       .where(eq(athlete.id, athleteId));
+    await bumpForma(tx, athleteId, MOOD.trainFormaBump); // treino sobe a forma (SPEC-027), na mesma tx
     return toProgress(
       row.attributes,
       r.trainingXp,

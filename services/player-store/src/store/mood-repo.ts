@@ -1,0 +1,115 @@
+// Forma & Moral persistidas (SPEC-027, card 2.3) — as duas barras. `applyDailyMood` é o PASSE
+// diário (decai a moral rumo ao alvo do estilo de vida + a forma rumo ao baseline, rebaixado se
+// recuperando); `readMood` lê o par; `bumpMoral`/`bumpForma` são as primitivas de EVENTO-NA-FONTE
+// (os repos irmãos as chamam DENTRO da própria transação: decisão → moral, comeback → moral, treino
+// → forma). A MATEMÁTICA é da lib pura (@camisa-9/player). SÓ player-store. Erros genéricos (OP-11).
+import { and, eq } from 'drizzle-orm';
+import {
+  aggregateTradeoffs,
+  bumpBar,
+  isAvailable,
+  isSeverity,
+  lifestyleMoralOffset,
+  nextForma,
+  nextMoral,
+  type Injury,
+} from '@camisa-9/player';
+import type { Db } from '../client.js';
+import { athlete } from '../schema/athlete.js';
+import { purchase } from '../schema/purchase.js';
+import { injury } from '../schema/injury.js';
+
+type Tx = Parameters<Parameters<Db['transaction']>[0]>[0];
+
+export interface Mood {
+  readonly forma: number;
+  readonly moral: number;
+}
+
+/** O par (Forma, Moral) do atleta — `null` se não existe. */
+export async function readMood(db: Db, athleteId: string): Promise<Mood | null> {
+  const [row] = await db
+    .select({ forma: athlete.forma, moral: athlete.moral })
+    .from(athlete)
+    .where(eq(athlete.id, athleteId))
+    .limit(1);
+  return row ?? null;
+}
+
+/** O PASSE diário (`FOR UPDATE`): decai a Moral rumo a `baseline + offset do estilo de vida` (as
+ *  compras possuídas) e a Forma rumo ao `baseline` (rebaixado enquanto recuperando de lesão no `day`).
+ *  Monotônico (converge ao alvo, não oscila). Os eventos já entraram como bumps na fonte. */
+export async function applyDailyMood(db: Db, athleteId: string, day: number): Promise<Mood> {
+  return db.transaction(async (tx) => {
+    const [row] = await tx
+      .select({ forma: athlete.forma, moral: athlete.moral })
+      .from(athlete)
+      .where(eq(athlete.id, athleteId))
+      .limit(1)
+      .for('update');
+    if (!row) throw new Error('atleta não encontrado');
+    const owned = await tx
+      .select({ itemId: purchase.itemId })
+      .from(purchase)
+      .where(eq(purchase.athleteId, athleteId));
+    const offset = lifestyleMoralOffset(aggregateTradeoffs(owned.map((o) => o.itemId)));
+    const recovering = await isRecovering(tx, athleteId, day);
+    const moral = nextMoral(row.moral, offset);
+    const forma = nextForma(row.forma, recovering);
+    await tx.update(athlete).set({ forma, moral }).where(eq(athlete.id, athleteId));
+    return { forma, moral };
+  });
+}
+
+/** Aplica um delta de EVENTO à Moral, clampeado, DENTRO da transação do repo-fonte (`FOR UPDATE`
+ *  para serializar contra o passe/outros bumps). No-op se delta 0 ou atleta inexistente. */
+export async function bumpMoral(tx: Tx, athleteId: string, delta: number): Promise<void> {
+  if (delta === 0) return;
+  const [row] = await tx
+    .select({ moral: athlete.moral })
+    .from(athlete)
+    .where(eq(athlete.id, athleteId))
+    .limit(1)
+    .for('update');
+  if (!row) return;
+  await tx
+    .update(athlete)
+    .set({ moral: bumpBar(row.moral, delta) })
+    .where(eq(athlete.id, athleteId));
+}
+
+/** Aplica um delta de EVENTO à Forma, clampeado, DENTRO da transação do repo-fonte. */
+export async function bumpForma(tx: Tx, athleteId: string, delta: number): Promise<void> {
+  if (delta === 0) return;
+  const [row] = await tx
+    .select({ forma: athlete.forma })
+    .from(athlete)
+    .where(eq(athlete.id, athleteId))
+    .limit(1)
+    .for('update');
+  if (!row) return;
+  await tx
+    .update(athlete)
+    .set({ forma: bumpBar(row.forma, delta) })
+    .where(eq(athlete.id, athleteId));
+}
+
+/** O atleta está numa lesão ATIVA ainda recuperando no `day`? (o driver da Forma). */
+async function isRecovering(tx: Tx, athleteId: string, day: number): Promise<boolean> {
+  const [row] = await tx
+    .select({
+      severity: injury.severity,
+      startedDay: injury.startedDay,
+      recoveryDays: injury.recoveryDays,
+    })
+    .from(injury)
+    .where(and(eq(injury.athleteId, athleteId), eq(injury.status, 'active')))
+    .limit(1);
+  if (!row || !isSeverity(row.severity)) return false;
+  const inj: Injury = {
+    severity: row.severity,
+    startedDay: row.startedDay,
+    recoveryDays: row.recoveryDays,
+  };
+  return !isAvailable(inj, day);
+}
