@@ -118,6 +118,9 @@ export const worldOccupation = pgTable(
     position: text('position').notNull(),
     humanName: text('human_name').notNull(),
     ability: integer('ability').notNull(),
+    // Regen voluntário (SPEC-022): o jogador liga esta flag (idade ≥ 25) para renascer na próxima
+    // virada. O regen forçado (idade ≥ 42) não depende dela. O `runRegenPass` a consome pós-virada.
+    regenRequested: boolean('regen_requested').notNull().default(false),
     occupiedAt: timestamp('occupied_at', { withTimezone: true }).notNull().defaultNow(),
   },
   (t) => ({

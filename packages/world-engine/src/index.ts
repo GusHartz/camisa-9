@@ -18,6 +18,7 @@ export { DEMO_LEAGUE } from './data/league-seed.js';
 // Mundo — pirâmide + elenco NPC (SPEC-009).
 export { WORLD, ARCHETYPES, POSITIONS } from './constants.js';
 export { seedWorld } from './data/world-seed.js';
+export { athleteName } from './data/names.js';
 export { clubStrength, positionCounts, tierAbilityRange } from './engine/roster.js';
 export { simulateWorldSeason } from './engine/world-season.js';
 export { advanceWorld } from './engine/world-turnover.js';

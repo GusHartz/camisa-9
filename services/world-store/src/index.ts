@@ -19,11 +19,23 @@ export {
   occupyNpcSlot,
   readOccupation,
   readWorldOccupations,
+  requestRegen,
+  vacateSlot,
   OccupyError,
   type OccupyInput,
   type OccupyResult,
   type OccupationView,
 } from './store/occupation-repo.js';
+export {
+  archiveLegend,
+  readLegends,
+  readRegenEligible,
+  type LegendInput,
+  type LegendView,
+  type RegenCandidate,
+} from './store/legend-repo.js';
+export { reassignSlot, type ReassignInput } from './store/reassign-repo.js';
+export { REGEN_AGE } from './store/regen-age.js';
 export {
   persistWorldTurnover,
   TurnoverError,

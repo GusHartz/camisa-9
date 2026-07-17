@@ -5,10 +5,11 @@
 // (a re-simulação a cada tick exige snapshot imutável na temporada). A projeção focos→ability
 // é da lib pura (OP-17); aqui só orquestra. Erros GENÉRICOS, sem SQL/stack (OP-11).
 import { and, asc, eq, sql } from 'drizzle-orm';
-import type { Position } from '@camisa-9/world-engine';
+import { WORLD, type Position } from '@camisa-9/world-engine';
 import type { Db } from '../client.js';
 import { athlete, club, league, world, worldOccupation, worldTier } from '../schema/world.js';
 import { publishedRound } from '../schema/round.js';
+import { REGEN_AGE } from './regen-age.js';
 
 type Tx = Parameters<Parameters<Db['transaction']>[0]>[0];
 
@@ -22,6 +23,9 @@ export interface OccupyInput {
   readonly humanAthleteId: string;
   readonly humanName: string;
   readonly ability: number;
+  /** Regen (SPEC-022): o renascido re-ocupa o MESMO clube, que pode já ter subido de tier —
+   *  pula a guarda de divisão de entrada (que vale só para ENTRADAS novas de gênese). */
+  readonly allowAnyTier?: boolean;
 }
 
 export interface OccupyResult {
@@ -43,11 +47,13 @@ export async function occupyNpcSlot(db: Db, input: OccupyInput): Promise<OccupyR
       // o TOCTOU: nenhuma rodada 1 commita entre o assertGenesis e o commit da ocupação.
       await acquireSeasonStartLock(tx, seasonId);
       await assertGenesis(tx, seasonId);
-      await assertEntryClub(tx, input.worldSeed, input.clubId);
+      if (!input.allowAnyTier) await assertEntryClub(tx, input.worldSeed, input.clubId);
       const worldAthleteId = await weakestNpcSlotId(tx, input);
+      // O humano ENTRA aos 17 (SPEC-022) — não herda a idade do NPC substituído; a idade é o
+      // relógio de carreira do Regen (envelhece +1/temporada, imune; regen ≥25/forçado ≥42).
       await tx
         .update(athlete)
-        .set({ name: input.humanName, ability: input.ability, isHuman: true })
+        .set({ name: input.humanName, ability: input.ability, isHuman: true, age: WORLD.youthAge })
         .where(and(eq(athlete.worldSeed, input.worldSeed), eq(athlete.id, worldAthleteId)));
       await tx.insert(worldOccupation).values({
         worldSeed: input.worldSeed,
@@ -83,6 +89,8 @@ export interface OccupationView {
   readonly position: string;
   readonly humanName: string;
   readonly ability: number;
+  /** Regen VOLUNTÁRIO pedido (SPEC-022) — a viragem re-aplica (senão o gatilho seria zerado). */
+  readonly regenRequested: boolean;
 }
 
 /** A ocupação de um humano num mundo (null se não ocupa nenhuma vaga). */
@@ -125,7 +133,62 @@ function toView(r: typeof worldOccupation.$inferSelect): OccupationView {
     position: r.position,
     humanName: r.humanName,
     ability: r.ability,
+    regenRequested: r.regenRequested,
   };
+}
+
+/** Liga a flag de regen VOLUNTÁRIO da ocupação de um humano (SPEC-022). Autoridade server-side:
+ *  trava idade ≥ 25 (lê a `age` da vaga). Consumida pós-virada pelo `runRegenPass`. */
+export async function requestRegen(
+  db: Db,
+  worldSeed: string,
+  humanAthleteId: string,
+): Promise<void> {
+  const rows = await db
+    .select({ age: athlete.age })
+    .from(worldOccupation)
+    .innerJoin(
+      athlete,
+      and(
+        eq(athlete.worldSeed, worldOccupation.worldSeed),
+        eq(athlete.id, worldOccupation.athleteId),
+      ),
+    )
+    .where(
+      and(
+        eq(worldOccupation.worldSeed, worldSeed),
+        eq(worldOccupation.humanAthleteId, humanAthleteId),
+      ),
+    )
+    .limit(1);
+  const r = rows[0];
+  if (!r) throw new OccupyError('ocupação não encontrada');
+  if (r.age < REGEN_AGE.voluntary) throw new OccupyError('idade insuficiente para regen');
+  await db
+    .update(worldOccupation)
+    .set({ regenRequested: true })
+    .where(
+      and(
+        eq(worldOccupation.worldSeed, worldSeed),
+        eq(worldOccupation.humanAthleteId, humanAthleteId),
+      ),
+    );
+}
+
+/** Solta a vaga do Regen (SPEC-022): remove a ocupação e reverte a linha do atleta a NPC
+ *  (`is_human=false`). Idempotente (rodar 2× é no-op). */
+export async function vacateSlot(db: Db, worldSeed: string, athleteId: string): Promise<void> {
+  await db.transaction(async (tx) => {
+    await tx
+      .delete(worldOccupation)
+      .where(
+        and(eq(worldOccupation.worldSeed, worldSeed), eq(worldOccupation.athleteId, athleteId)),
+      );
+    await tx
+      .update(athlete)
+      .set({ isHuman: false })
+      .where(and(eq(athlete.worldSeed, worldSeed), eq(athlete.id, athleteId)));
+  });
 }
 
 /** Lock advisory COMPARTILHADO na chave da rodada 1 da temporada — mesmo namespace que o

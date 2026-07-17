@@ -9,6 +9,7 @@ export default defineConfig({
     './src/schema/round.ts',
     './src/schema/season.ts',
     './src/schema/turnover.ts',
+    './src/schema/legend.ts',
   ],
   out: './src/migrations',
   dialect: 'postgresql',

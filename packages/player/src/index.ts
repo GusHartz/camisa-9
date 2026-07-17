@@ -4,6 +4,7 @@ export { PLAYER, FOCI, POSITIONS, CREATION_TOTAL, TRAINING, TEAM } from './const
 export { validateName } from './name-filter.js';
 export { allocateAttributes } from './attributes.js';
 export { overall, abilityFromFocos } from './ability.js';
+export { regenLegacyPoints } from './regen.js';
 export { validateAppearance } from './appearance.js';
 export { validatePassword } from './password-policy.js';
 export { createAthlete } from './create.js';
