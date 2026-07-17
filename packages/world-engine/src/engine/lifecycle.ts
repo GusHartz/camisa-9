@@ -9,9 +9,18 @@ import type { RngState } from './prng.js';
 import { positionCounts, tierAbilityRange } from './roster.js';
 import { athleteName } from '../data/names.js';
 
-/** Envelhece todos em 1 temporada e remove quem atingiu a idade de aposentadoria. */
-export function ageAndRetire(roster: readonly Athlete[]): Athlete[] {
-  return roster.map((a) => ({ ...a, age: a.age + 1 })).filter((a) => a.age < WORLD.retirementAge);
+/**
+ * Envelhece todos em 1 temporada e remove quem atingiu a idade de aposentadoria. `immuneIds`
+ * (SPEC-021) sobrevivem à aposentadoria (envelhecem +1, mas nunca são cortados). Sem RNG →
+ * não toca o stream; set vazio ⇒ filtro idêntico ao original.
+ */
+export function ageAndRetire(
+  roster: readonly Athlete[],
+  immuneIds: ReadonlySet<string> = new Set(),
+): Athlete[] {
+  return roster
+    .map((a) => ({ ...a, age: a.age + 1 }))
+    .filter((a) => immuneIds.has(a.id) || a.age < WORLD.retirementAge);
 }
 
 /**

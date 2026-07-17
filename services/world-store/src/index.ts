@@ -18,11 +18,18 @@ export { readSeasonAnchor, setSeasonAnchor } from './store/season-repo.js';
 export {
   occupyNpcSlot,
   readOccupation,
+  readWorldOccupations,
   OccupyError,
   type OccupyInput,
   type OccupyResult,
   type OccupationView,
 } from './store/occupation-repo.js';
+export {
+  persistWorldTurnover,
+  TurnoverError,
+  type TurnoverOutcome,
+  type TurnoverStatus,
+} from './store/turnover-repo.js';
 export {
   runDailyRound,
   type DailyRoundReport,

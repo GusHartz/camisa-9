@@ -103,6 +103,19 @@ export async function readOccupation(
     .limit(1);
   const r = rows[0];
   if (!r) return null;
+  return toView(r);
+}
+
+/** TODAS as ocupações humanas de um mundo — a borda deriva os `immuneIds` da viragem (SPEC-021). */
+export async function readWorldOccupations(db: Db, worldSeed: string): Promise<OccupationView[]> {
+  const rows = await db
+    .select()
+    .from(worldOccupation)
+    .where(eq(worldOccupation.worldSeed, worldSeed));
+  return rows.map(toView);
+}
+
+function toView(r: typeof worldOccupation.$inferSelect): OccupationView {
   return {
     worldSeed: r.worldSeed,
     athleteId: r.athleteId,
