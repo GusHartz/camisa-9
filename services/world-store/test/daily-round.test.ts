@@ -1,8 +1,8 @@
 // Contrato do orquestrador de TICK diário contra Postgres REAL (SPEC-015 — 1.2).
 // Prova, ponta a ponta: (a) a guarda de janela 15h 7/7; (b) o mapa calendário→rodada
 // (Model B: targetRound = dayIndex - start_day_index + 1); (c) a publicação grão-MUNDO
-// atômica (as 4 ligas numa tacada) reusando o engine puro; (d) parada limpa no fim da
-// temporada SEM viragem; (e) idempotência/locked/concorrência herdadas da Fatia 2.
+// atômica (as 4 ligas numa tacada) reusando o engine puro; (d) a VIRAGEM no fim da
+// temporada (season_rolled, SPEC-021); (e) idempotência/locked/concorrência herdadas da Fatia 2.
 //
 // Gated por DATABASE_URL: sem Postgres, a suíte é PULADA (npm test segue verde).
 import { fileURLToPath } from 'node:url';
@@ -13,8 +13,9 @@ import { seedWorld, simulateWorldSeason, type WorldSeasonResult } from '@camisa-
 import { createDb, type DbHandle } from '../src/client.js';
 import { publishedRound } from '../src/schema/round.js';
 import { season } from '../src/schema/season.js';
+import { turnoverReport } from '../src/schema/turnover.js';
 import { athlete, club, league, world, worldOccupation, worldTier } from '../src/schema/world.js';
-import { writeWorld } from '../src/store/world-repo.js';
+import { readWorld, writeWorld } from '../src/store/world-repo.js';
 import { setSeasonAnchor } from '../src/store/season-repo.js';
 import { publishWorldRound, readRound, type WorldRoundInput } from '../src/store/round-repo.js';
 import { runDailyRound } from '../src/store/daily-round.js';
@@ -59,6 +60,7 @@ describe.skipIf(!DB_URL)('runDailyRound — orquestrador diário contra Postgres
   });
 
   async function wipeAll(): Promise<void> {
+    await handle.db.delete(turnoverReport); // sem FK — pode sair a qualquer hora (SPEC-021)
     await handle.db.delete(worldOccupation); // ordem inversa das FKs (SPEC-020: filho de athlete)
     await handle.db.delete(publishedRound);
     await handle.db.delete(season);
@@ -129,12 +131,16 @@ describe.skipIf(!DB_URL)('runDailyRound — orquestrador diário contra Postgres
     expect(await countRounds()).toBe(0);
   });
 
-  it('após a última rodada → season_complete, SEM viragem, nada gravado', async () => {
+  it('após a última rodada → season_rolled, o mundo VIRA (SPEC-021)', async () => {
     await setSeasonAnchor(handle.db, SEED, SEASON, START);
     const rep = await runDailyRound(handle.db, SEED, epochAt(START + ROUNDS)); // targetRound 39
-    expect(rep.status).toBe('season_complete');
-    expect(rep.targetRound).toBe(ROUNDS + 1);
-    expect(await countRounds()).toBe(0);
+    expect(rep.status).toBe('season_rolled');
+    expect(rep.complete).toBe(true);
+    expect(await countRounds()).toBe(0); // o dia da virada não publica rodada
+    expect((await readWorld(handle.db, SEED))?.seasonId).toBe('2027'); // o mundo virou
+    // restaura o mundo compartilhado da suíte (season 2026) para os demais testes
+    await wipeAll();
+    await writeWorld(handle.db, SEED);
   });
 
   it('idempotência: rodar o mesmo dia 2× → 2ª é idempotent, ainda 4 linhas', async () => {

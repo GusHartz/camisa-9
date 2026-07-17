@@ -5,6 +5,7 @@ import type { WorldClub, WorldState } from '../types.js';
 import { seedWorld } from '../data/world-seed.js';
 import { simulateWorldSeason } from './world-season.js';
 import { advanceWorld } from './world-turnover.js';
+import { ageAndRetire } from './lifecycle.js';
 import { clubStrength, positionCounts } from './roster.js';
 import { worldHash } from './world-hash.js';
 
@@ -139,5 +140,47 @@ describe('advanceWorld — 10 viragens encadeadas (critério de aceite)', () => 
       world = advanceWorld(world, simulateWorldSeason(world, SEED), SEED);
     }
     expect(world.seasonId).toBe('2036');
+  });
+});
+
+describe('advanceWorld — imunidade por immuneIds (SPEC-021)', () => {
+  it('immuneIds vazio (default) é IDÊNTICO a passar um Set vazio (o caso do golden)', () => {
+    const w = seedWorld('imune');
+    const r = simulateWorldSeason(w, 'imune');
+    expect(advanceWorld(w, r, 'imune')).toEqual(advanceWorld(w, r, 'imune', new Set()));
+  });
+
+  it('é determinístico com immuneIds NÃO-vazio (mesmo set → mesmo resultado)', () => {
+    const w = seedWorld('imune');
+    const r = simulateWorldSeason(w, 'imune');
+    const immune = new Set(
+      w.tiers[w.tiers.length - 1]!.leagues[0]!.clubs[0]!.roster.map((a) => a.id),
+    );
+    expect(advanceWorld(w, r, 'imune', immune)).toEqual(advanceWorld(w, r, 'imune', immune));
+  });
+
+  it('ageAndRetire: um atleta que aposentaria SOBREVIVE se imune (envelhece mas não é cortado)', () => {
+    const velho = {
+      id: 'humano-1',
+      name: 'Zé',
+      age: WORLD.retirementAge - 1, // envelheceria para retirementAge → cortado
+      ability: 40,
+      position: 'GK' as const,
+    };
+    expect(ageAndRetire([velho]).map((a) => a.id)).toEqual([]); // sem imunidade: aposenta
+    const survived = ageAndRetire([velho], new Set(['humano-1']));
+    expect(survived.map((a) => a.id)).toEqual(['humano-1']); // imune: permanece
+    expect(survived[0]!.age).toBe(WORLD.retirementAge); // e envelheceu de fato
+  });
+
+  it('advanceWorld: os ids imunes de um clube SOBREVIVEM (nem aposentam, nem saem do clube)', () => {
+    const w = seedWorld('imune');
+    const r = simulateWorldSeason(w, 'imune');
+    const club = w.tiers[w.tiers.length - 1]!.leagues[0]!.clubs[0]!; // clube da entrada
+    const immune = new Set(club.roster.map((a) => a.id));
+    const after = advanceWorld(w, r, 'imune', immune);
+    const clubAfter = allClubs(after).find((c) => c.id === club.id)!; // id do clube é estável
+    const idsAfter = new Set(clubAfter.roster.map((a) => a.id));
+    for (const id of immune) expect(idsAfter.has(id)).toBe(true); // todos, no MESMO clube
   });
 });

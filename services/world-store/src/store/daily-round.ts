@@ -3,20 +3,21 @@
 // do dia de TODAS as ligas do mundo numa transação atômica de nível-MUNDO, reusando o
 // engine puro INTOCADO (readWorld + simulateWorldSeason — zero simulação nova, OP-17) e
 // o publicador da Fatia 2. Protocolo de falha: adiar com transparência (deferido =
-// ausência da linha) > publicar errado. Para LIMPO no fim da temporada (season_complete,
-// SEM viragem — seam para a Fatia 3).
+// ausência da linha) > publicar errado. No fim da temporada (season_rolled) dispara a
+// VIRAGEM persistida (SPEC-021 — Fatia 3): o mundo vira e o humano sobrevive (imune).
 import { resolveSlot, simulateWorldSeason, type WorldSeasonResult } from '@camisa-9/world-engine';
 import type { Db } from '../client.js';
 import { readWorld } from './world-repo.js';
 import { readSeasonAnchor } from './season-repo.js';
 import { publishWorldRound, type WorldRoundInput } from './round-repo.js';
+import { persistWorldTurnover } from './turnover-repo.js';
 
 export type DailyRoundStatus =
   | 'published'
   | 'idempotent'
   | 'locked'
   | 'deferred'
-  | 'season_complete'
+  | 'season_rolled'
   | 'before_season'
   | 'fora_de_janela'
   | 'sem_mundo'
@@ -44,11 +45,12 @@ export async function runDailyRound(
   const startDayIndex = await readSeasonAnchor(db, seed, world.seasonId);
   if (startDayIndex === null) return report(slot.dayIndex, world.seasonId, null, 'sem_ancora');
   const targetRound = slot.dayIndex - startDayIndex + 1;
-  return publishTarget(db, slot.dayIndex, simulateWorldSeason(world, seed), targetRound);
+  return publishTarget(db, seed, slot.dayIndex, simulateWorldSeason(world, seed), targetRound);
 }
 
 async function publishTarget(
   db: Db,
+  seed: string,
   dayIndex: number,
   results: WorldSeasonResult,
   targetRound: number,
@@ -56,7 +58,7 @@ async function publishTarget(
   const seasonId = results.seasonId;
   const roundsLength = results.leagues[0]?.result.rounds.length ?? 0;
   if (targetRound < 1) return report(dayIndex, seasonId, targetRound, 'before_season');
-  if (targetRound > roundsLength) return report(dayIndex, seasonId, targetRound, 'season_complete');
+  if (targetRound > roundsLength) return rollover(db, seed, dayIndex, results);
   const input = toWorldRoundInput(results, targetRound);
   try {
     const outcome = await publishWorldRound(db, input);
@@ -65,6 +67,25 @@ async function publishTarget(
     // OP-11: log genérico, sem SQL/DSN/stack. Deferido é derivado da ausência da linha.
     console.error(`rodada adiada (season=${seasonId}, round=${targetRound}) — publish_failed`);
     return report(dayIndex, seasonId, targetRound, 'deferred', input.leagues.length);
+  }
+}
+
+/** Fim da temporada: dispara a viragem PERSISTIDA (SPEC-021). O dia da virada é de descanso
+ *  (sem partida). Falha/lock → deferido (protocolo de falha; a virada retenta no próximo tick). */
+async function rollover(
+  db: Db,
+  seed: string,
+  dayIndex: number,
+  results: WorldSeasonResult,
+): Promise<DailyRoundReport> {
+  const seasonId = results.seasonId;
+  try {
+    const outcome = await persistWorldTurnover(db, seed, results, dayIndex);
+    if (outcome.status === 'locked') return report(dayIndex, seasonId, null, 'deferred');
+    return report(dayIndex, seasonId, null, 'season_rolled');
+  } catch {
+    console.error(`viragem adiada (season=${seasonId}) — turnover_failed`);
+    return report(dayIndex, seasonId, null, 'deferred');
   }
 }
 
@@ -86,6 +107,6 @@ function report(
   status: DailyRoundStatus,
   leagueCount = 0,
 ): DailyRoundReport {
-  const complete = status === 'published' || status === 'idempotent';
+  const complete = status === 'published' || status === 'idempotent' || status === 'season_rolled';
   return { dayIndex, seasonId, targetRound, status, complete, leagueCount };
 }

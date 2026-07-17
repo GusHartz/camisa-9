@@ -16,26 +16,38 @@ import { ageAndRetire, refillYouth } from './lifecycle.js';
 import { runTransfers } from './transfers.js';
 import { applyPromotionRelegation } from './promotion.js';
 
-/** Avança o mundo uma temporada. Retorna um novo estado; não muta a entrada. */
+/**
+ * Avança o mundo uma temporada. Retorna um novo estado; não muta a entrada.
+ * `immuneIds` (SPEC-021): atletas a PULAR em aposentar/transferir (os humanos, derivados de
+ * `world_occupation` pela borda). O engine fala de IDS, não de "humano". Default vazio ⇒
+ * comportamento e stream do PRNG IDÊNTICOS ao original (o `world.golden.json` fica byte-idêntico).
+ */
 export function advanceWorld(
   world: WorldState,
   results: WorldSeasonResult,
   seed: Seed,
+  immuneIds: ReadonlySet<string> = new Set(),
 ): WorldState {
   const seasonId = world.seasonId;
   const promoted = applyPromotionRelegation(world.tiers, results);
   const tiers = promoted.map((tier) => ({
     tier: tier.tier,
-    leagues: tier.leagues.map((league) => turnLeague(league, tier.tier, seed, seasonId)),
+    leagues: tier.leagues.map((league) => turnLeague(league, tier.tier, seed, seasonId, immuneIds)),
   }));
   return { seasonId: nextSeasonId(seasonId), tiers };
 }
 
 /** Passos 2–6 para uma liga: envelhece/aposenta → transfere → repõe base → força. */
-function turnLeague(league: League, tier: number, seed: Seed, seasonId: string): League {
-  const survivors = league.clubs.map((c) => ({ ...c, roster: ageAndRetire(c.roster) }));
+function turnLeague(
+  league: League,
+  tier: number,
+  seed: Seed,
+  seasonId: string,
+  immuneIds: ReadonlySet<string>,
+): League {
+  const survivors = league.clubs.map((c) => ({ ...c, roster: ageAndRetire(c.roster, immuneIds) }));
   const transferRng = createRng(deriveSeed(seed, 'transfers', seasonId, league.leagueId));
-  const traded = runTransfers(survivors, transferRng);
+  const traded = runTransfers(survivors, transferRng, immuneIds);
   const refilled = traded.map((c) => refillClub(c, tier, seed, seasonId));
   const clubs = refilled.map((c) => ({ ...c, strength: clubStrength(c.roster) }));
   return { leagueId: league.leagueId, clubs };

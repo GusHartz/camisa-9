@@ -7,14 +7,22 @@ import type { Athlete, Position, WorldClub } from '../types.js';
 import { nextInt, type RngState } from './prng.js';
 import { pick } from './draw.js';
 
-/** Aplica as trocas de mercado da liga sobre cópias mutáveis dos elencos. */
-export function runTransfers(clubs: readonly WorldClub[], rng: RngState): WorldClub[] {
+/**
+ * Aplica as trocas de mercado da liga sobre cópias mutáveis dos elencos. `immuneIds` (SPEC-021):
+ * uma troca que MOVERIA um imune é suprimida (sem efeito) — mas os saques do PRNG já
+ * aconteceram, então o stream é preservado. Set vazio ⇒ nunca suprime ⇒ byte-idêntico.
+ */
+export function runTransfers(
+  clubs: readonly WorldClub[],
+  rng: RngState,
+  immuneIds: ReadonlySet<string> = new Set(),
+): WorldClub[] {
   if (clubs.length < 2) return clubs.map((c) => ({ ...c }));
   const rosters = new Map<string, Athlete[]>(clubs.map((c) => [c.id, [...c.roster]]));
   const ids = clubs.map((c) => c.id);
   for (let t = 0; t < WORLD.transfersPerLeague; t += 1) {
     const [idA, idB] = pickTwoDistinct(ids, rng);
-    swapSamePosition(rosters, idA, idB, pick(POSITIONS, rng), rng);
+    swapSamePosition(rosters, idA, idB, pick(POSITIONS, rng), rng, immuneIds);
   }
   return clubs.map((c) => ({ ...c, roster: rosters.get(c.id) ?? [...c.roster] }));
 }
@@ -39,6 +47,7 @@ function swapSamePosition(
   idB: string,
   position: Position,
   rng: RngState,
+  immuneIds: ReadonlySet<string>,
 ): void {
   const a = rosters.get(idA);
   const b = rosters.get(idB);
@@ -48,6 +57,9 @@ function swapSamePosition(
   const fromA = a[ai];
   const fromB = b[bi];
   if (fromA === undefined || fromB === undefined) return; // sem candidato na posição
+  // Imunidade (SPEC-021): os saques acima já rodaram (stream preservado); só o SWAP é
+  // suprimido se um imune seria movido. Set vazio ⇒ nunca suprime ⇒ byte-idêntico ao golden.
+  if (immuneIds.has(fromA.id) || immuneIds.has(fromB.id)) return;
   a[ai] = fromB;
   b[bi] = fromA;
 }

@@ -1,0 +1,595 @@
+{
+  "id": "8dbd9eac-6b3a-4711-a9ed-a6a7c5acccb1",
+  "prevId": "5334224b-8e89-4823-8e5c-c921e3519d47",
+  "version": "7",
+  "dialect": "postgresql",
+  "tables": {
+    "public.athlete": {
+      "name": "athlete",
+      "schema": "",
+      "columns": {
+        "world_seed": {
+          "name": "world_seed",
+          "type": "text",
+          "primaryKey": false,
+          "notNull": true
+        },
+        "club_id": {
+          "name": "club_id",
+          "type": "text",
+          "primaryKey": false,
+          "notNull": true
+        },
+        "id": {
+          "name": "id",
+          "type": "text",
+          "primaryKey": false,
+          "notNull": true
+        },
+        "ord": {
+          "name": "ord",
+          "type": "integer",
+          "primaryKey": false,
+          "notNull": true
+        },
+        "name": {
+          "name": "name",
+          "type": "text",
+          "primaryKey": false,
+          "notNull": true
+        },
+        "age": {
+          "name": "age",
+          "type": "integer",
+          "primaryKey": false,
+          "notNull": true
+        },
+        "ability": {
+          "name": "ability",
+          "type": "integer",
+          "primaryKey": false,
+          "notNull": true
+        },
+        "position": {
+          "name": "position",
+          "type": "text",
+          "primaryKey": false,
+          "notNull": true
+        },
+        "is_human": {
+          "name": "is_human",
+          "type": "boolean",
+          "primaryKey": false,
+          "notNull": true,
+          "default": false
+        }
+      },
+      "indexes": {},
+      "foreignKeys": {
+        "athlete_world_seed_club_id_club_world_seed_id_fk": {
+          "name": "athlete_world_seed_club_id_club_world_seed_id_fk",
+          "tableFrom": "athlete",
+          "tableTo": "club",
+          "columnsFrom": [
+            "world_seed",
+            "club_id"
+          ],
+          "columnsTo": [
+            "world_seed",
+            "id"
+          ],
+          "onDelete": "no action",
+          "onUpdate": "no action"
+        }
+      },
+      "compositePrimaryKeys": {
+        "athlete_world_seed_id_pk": {
+          "name": "athlete_world_seed_id_pk",
+          "columns": [
+            "world_seed",
+            "id"
+          ]
+        }
+      },
+      "uniqueConstraints": {},
+      "policies": {},
+      "checkConstraints": {},
+      "isRLSEnabled": false
+    },
+    "public.club": {
+      "name": "club",
+      "schema": "",
+      "columns": {
+        "world_seed": {
+          "name": "world_seed",
+          "type": "text",
+          "primaryKey": false,
+          "notNull": true
+        },
+        "league_id": {
+          "name": "league_id",
+          "type": "text",
+          "primaryKey": false,
+          "notNull": true
+        },
+        "id": {
+          "name": "id",
+          "type": "text",
+          "primaryKey": false,
+          "notNull": true
+        },
+        "ord": {
+          "name": "ord",
+          "type": "integer",
+          "primaryKey": false,
+          "notNull": true
+        },
+        "name": {
+          "name": "name",
+          "type": "text",
+          "primaryKey": false,
+          "notNull": true
+        },
+        "archetype": {
+          "name": "archetype",
+          "type": "text",
+          "primaryKey": false,
+          "notNull": true
+        },
+        "weights": {
+          "name": "weights",
+          "type": "jsonb",
+          "primaryKey": false,
+          "notNull": true
+        }
+      },
+      "indexes": {},
+      "foreignKeys": {
+        "club_world_seed_league_id_league_world_seed_league_id_fk": {
+          "name": "club_world_seed_league_id_league_world_seed_league_id_fk",
+          "tableFrom": "club",
+          "tableTo": "league",
+          "columnsFrom": [
+            "world_seed",
+            "league_id"
+          ],
+          "columnsTo": [
+            "world_seed",
+            "league_id"
+          ],
+          "onDelete": "no action",
+          "onUpdate": "no action"
+        }
+      },
+      "compositePrimaryKeys": {
+        "club_world_seed_id_pk": {
+          "name": "club_world_seed_id_pk",
+          "columns": [
+            "world_seed",
+            "id"
+          ]
+        }
+      },
+      "uniqueConstraints": {},
+      "policies": {},
+      "checkConstraints": {},
+      "isRLSEnabled": false
+    },
+    "public.league": {
+      "name": "league",
+      "schema": "",
+      "columns": {
+        "world_seed": {
+          "name": "world_seed",
+          "type": "text",
+          "primaryKey": false,
+          "notNull": true
+        },
+        "tier": {
+          "name": "tier",
+          "type": "integer",
+          "primaryKey": false,
+          "notNull": true
+        },
+        "league_id": {
+          "name": "league_id",
+          "type": "text",
+          "primaryKey": false,
+          "notNull": true
+        },
+        "ord": {
+          "name": "ord",
+          "type": "integer",
+          "primaryKey": false,
+          "notNull": true
+        }
+      },
+      "indexes": {},
+      "foreignKeys": {
+        "league_world_seed_tier_world_tier_world_seed_tier_fk": {
+          "name": "league_world_seed_tier_world_tier_world_seed_tier_fk",
+          "tableFrom": "league",
+          "tableTo": "world_tier",
+          "columnsFrom": [
+            "world_seed",
+            "tier"
+          ],
+          "columnsTo": [
+            "world_seed",
+            "tier"
+          ],
+          "onDelete": "no action",
+          "onUpdate": "no action"
+        }
+      },
+      "compositePrimaryKeys": {
+        "league_world_seed_league_id_pk": {
+          "name": "league_world_seed_league_id_pk",
+          "columns": [
+            "world_seed",
+            "league_id"
+          ]
+        }
+      },
+      "uniqueConstraints": {},
+      "policies": {},
+      "checkConstraints": {},
+      "isRLSEnabled": false
+    },
+    "public.world": {
+      "name": "world",
+      "schema": "",
+      "columns": {
+        "seed": {
+          "name": "seed",
+          "type": "text",
+          "primaryKey": true,
+          "notNull": true
+        },
+        "season_id": {
+          "name": "season_id",
+          "type": "text",
+          "primaryKey": false,
+          "notNull": true
+        }
+      },
+      "indexes": {},
+      "foreignKeys": {},
+      "compositePrimaryKeys": {},
+      "uniqueConstraints": {},
+      "policies": {},
+      "checkConstraints": {},
+      "isRLSEnabled": false
+    },
+    "public.world_occupation": {
+      "name": "world_occupation",
+      "schema": "",
+      "columns": {
+        "world_seed": {
+          "name": "world_seed",
+          "type": "text",
+          "primaryKey": false,
+          "notNull": true
+        },
+        "athlete_id": {
+          "name": "athlete_id",
+          "type": "text",
+          "primaryKey": false,
+          "notNull": true
+        },
+        "human_athlete_id": {
+          "name": "human_athlete_id",
+          "type": "uuid",
+          "primaryKey": false,
+          "notNull": true
+        },
+        "season_id": {
+          "name": "season_id",
+          "type": "text",
+          "primaryKey": false,
+          "notNull": true
+        },
+        "club_id": {
+          "name": "club_id",
+          "type": "text",
+          "primaryKey": false,
+          "notNull": true
+        },
+        "position": {
+          "name": "position",
+          "type": "text",
+          "primaryKey": false,
+          "notNull": true
+        },
+        "human_name": {
+          "name": "human_name",
+          "type": "text",
+          "primaryKey": false,
+          "notNull": true
+        },
+        "ability": {
+          "name": "ability",
+          "type": "integer",
+          "primaryKey": false,
+          "notNull": true
+        },
+        "occupied_at": {
+          "name": "occupied_at",
+          "type": "timestamp with time zone",
+          "primaryKey": false,
+          "notNull": true,
+          "default": "now()"
+        }
+      },
+      "indexes": {
+        "occupation_one_slot_per_human": {
+          "name": "occupation_one_slot_per_human",
+          "columns": [
+            {
+              "expression": "world_seed",
+              "isExpression": false,
+              "asc": true,
+              "nulls": "last"
+            },
+            {
+              "expression": "human_athlete_id",
+              "isExpression": false,
+              "asc": true,
+              "nulls": "last"
+            }
+          ],
+          "isUnique": true,
+          "concurrently": false,
+          "method": "btree",
+          "with": {}
+        }
+      },
+      "foreignKeys": {
+        "world_occupation_world_seed_athlete_id_athlete_world_seed_id_fk": {
+          "name": "world_occupation_world_seed_athlete_id_athlete_world_seed_id_fk",
+          "tableFrom": "world_occupation",
+          "tableTo": "athlete",
+          "columnsFrom": [
+            "world_seed",
+            "athlete_id"
+          ],
+          "columnsTo": [
+            "world_seed",
+            "id"
+          ],
+          "onDelete": "no action",
+          "onUpdate": "no action"
+        }
+      },
+      "compositePrimaryKeys": {
+        "world_occupation_world_seed_athlete_id_pk": {
+          "name": "world_occupation_world_seed_athlete_id_pk",
+          "columns": [
+            "world_seed",
+            "athlete_id"
+          ]
+        }
+      },
+      "uniqueConstraints": {},
+      "policies": {},
+      "checkConstraints": {},
+      "isRLSEnabled": false
+    },
+    "public.world_tier": {
+      "name": "world_tier",
+      "schema": "",
+      "columns": {
+        "world_seed": {
+          "name": "world_seed",
+          "type": "text",
+          "primaryKey": false,
+          "notNull": true
+        },
+        "tier": {
+          "name": "tier",
+          "type": "integer",
+          "primaryKey": false,
+          "notNull": true
+        }
+      },
+      "indexes": {},
+      "foreignKeys": {
+        "world_tier_world_seed_world_seed_fk": {
+          "name": "world_tier_world_seed_world_seed_fk",
+          "tableFrom": "world_tier",
+          "tableTo": "world",
+          "columnsFrom": [
+            "world_seed"
+          ],
+          "columnsTo": [
+            "seed"
+          ],
+          "onDelete": "no action",
+          "onUpdate": "no action"
+        }
+      },
+      "compositePrimaryKeys": {
+        "world_tier_world_seed_tier_pk": {
+          "name": "world_tier_world_seed_tier_pk",
+          "columns": [
+            "world_seed",
+            "tier"
+          ]
+        }
+      },
+      "uniqueConstraints": {},
+      "policies": {},
+      "checkConstraints": {},
+      "isRLSEnabled": false
+    },
+    "public.published_round": {
+      "name": "published_round",
+      "schema": "",
+      "columns": {
+        "league_id": {
+          "name": "league_id",
+          "type": "text",
+          "primaryKey": false,
+          "notNull": true
+        },
+        "season_id": {
+          "name": "season_id",
+          "type": "text",
+          "primaryKey": false,
+          "notNull": true
+        },
+        "round": {
+          "name": "round",
+          "type": "integer",
+          "primaryKey": false,
+          "notNull": true
+        },
+        "result": {
+          "name": "result",
+          "type": "jsonb",
+          "primaryKey": false,
+          "notNull": true
+        },
+        "published_at": {
+          "name": "published_at",
+          "type": "timestamp with time zone",
+          "primaryKey": false,
+          "notNull": true,
+          "default": "now()"
+        }
+      },
+      "indexes": {},
+      "foreignKeys": {},
+      "compositePrimaryKeys": {
+        "published_round_league_id_season_id_round_pk": {
+          "name": "published_round_league_id_season_id_round_pk",
+          "columns": [
+            "league_id",
+            "season_id",
+            "round"
+          ]
+        }
+      },
+      "uniqueConstraints": {},
+      "policies": {},
+      "checkConstraints": {},
+      "isRLSEnabled": false
+    },
+    "public.season": {
+      "name": "season",
+      "schema": "",
+      "columns": {
+        "world_seed": {
+          "name": "world_seed",
+          "type": "text",
+          "primaryKey": false,
+          "notNull": true
+        },
+        "season_id": {
+          "name": "season_id",
+          "type": "text",
+          "primaryKey": false,
+          "notNull": true
+        },
+        "start_day_index": {
+          "name": "start_day_index",
+          "type": "integer",
+          "primaryKey": false,
+          "notNull": true
+        }
+      },
+      "indexes": {},
+      "foreignKeys": {
+        "season_world_seed_world_seed_fk": {
+          "name": "season_world_seed_world_seed_fk",
+          "tableFrom": "season",
+          "tableTo": "world",
+          "columnsFrom": [
+            "world_seed"
+          ],
+          "columnsTo": [
+            "seed"
+          ],
+          "onDelete": "no action",
+          "onUpdate": "no action"
+        }
+      },
+      "compositePrimaryKeys": {
+        "season_world_seed_season_id_pk": {
+          "name": "season_world_seed_season_id_pk",
+          "columns": [
+            "world_seed",
+            "season_id"
+          ]
+        }
+      },
+      "uniqueConstraints": {},
+      "policies": {},
+      "checkConstraints": {},
+      "isRLSEnabled": false
+    },
+    "public.turnover_report": {
+      "name": "turnover_report",
+      "schema": "",
+      "columns": {
+        "world_seed": {
+          "name": "world_seed",
+          "type": "text",
+          "primaryKey": false,
+          "notNull": true
+        },
+        "from_season_id": {
+          "name": "from_season_id",
+          "type": "text",
+          "primaryKey": false,
+          "notNull": true
+        },
+        "to_season_id": {
+          "name": "to_season_id",
+          "type": "text",
+          "primaryKey": false,
+          "notNull": true
+        },
+        "report": {
+          "name": "report",
+          "type": "jsonb",
+          "primaryKey": false,
+          "notNull": true
+        },
+        "created_at": {
+          "name": "created_at",
+          "type": "timestamp with time zone",
+          "primaryKey": false,
+          "notNull": true,
+          "default": "now()"
+        }
+      },
+      "indexes": {},
+      "foreignKeys": {},
+      "compositePrimaryKeys": {
+        "turnover_report_world_seed_from_season_id_pk": {
+          "name": "turnover_report_world_seed_from_season_id_pk",
+          "columns": [
+            "world_seed",
+            "from_season_id"
+          ]
+        }
+      },
+      "uniqueConstraints": {},
+      "policies": {},
+      "checkConstraints": {},
+      "isRLSEnabled": false
+    }
+  },
+  "enums": {},
+  "schemas": {},
+  "sequences": {},
+  "roles": {},
+  "policies": {},
+  "views": {},
+  "_meta": {
+    "columns": {},
+    "schemas": {},
+    "tables": {}
+  }
+}

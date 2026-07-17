@@ -4,7 +4,12 @@
 import { defineConfig } from 'drizzle-kit';
 
 export default defineConfig({
-  schema: ['./src/schema/world.ts', './src/schema/round.ts', './src/schema/season.ts'],
+  schema: [
+    './src/schema/world.ts',
+    './src/schema/round.ts',
+    './src/schema/season.ts',
+    './src/schema/turnover.ts',
+  ],
   out: './src/migrations',
   dialect: 'postgresql',
   dbCredentials: {
