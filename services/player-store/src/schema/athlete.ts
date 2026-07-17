@@ -41,6 +41,9 @@ export const athlete = playerSchema.table(
     // `position`). Membros novos começam frescos.
     lastFocus: text('last_focus'),
     focusStreak: integer('focus_streak').notNull().default(0),
+    // Saldo em MOEDA DO JOGO (SPEC-024). Só cresce por `accrueRound` (salário/prêmio) — trava
+    // anti-dinheiro-real: NENHUM caminho credita com dinheiro real. `purchaseItem` deduz.
+    balance: integer('balance').notNull().default(0),
     // Time do quinteto (SPEC-018). NULL = solo; setado no create/join do time. A `position`
     // acima é a vaga reivindicada no elenco. Membros do time = atletas com este `team_id`.
     teamId: uuid('team_id').references(() => team.id),
@@ -57,5 +60,6 @@ export const athlete = playerSchema.table(
     mentalRange: check('athlete_mental_range', sql`${t.mental} between 0 and 99`),
     freePointsRange: check('athlete_free_points_range', sql`${t.freePoints} >= 0`),
     focusStreakRange: check('athlete_focus_streak_range', sql`${t.focusStreak} >= 0`),
+    balanceRange: check('athlete_balance_range', sql`${t.balance} >= 0`),
   }),
 );

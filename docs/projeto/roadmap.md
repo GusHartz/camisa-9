@@ -67,7 +67,7 @@ Objetivo: um humano assume uma vaga e vive uma carreira.
 | 2.5 | **Lesões narrativas com arco** | Raras, sempre recuperação → volta por cima. |
 | 2.6 | **Cadastro solo/team + código de time (R14)** 🟡 | Bifurcação solo/team; código coloca amigos direto no elenco; jogável desde o humano nº 1; NPC fixo por posição (goleiro default); fundação em massa só na divisão de entrada. O social mínimo do beta. *(Identidade do quinteto ✅ SPEC-018; falta a colocação no mundo = card 21.)* |
 | 2.7 | **Pontos de treino com banking** ✅ | Pontos acumulam sem expirar; FOCO do dia (Físico/Técnico/Tático/Mental; sem escolha = técnico decide); bônus de treino focado no dia, com rendimento decrescente ao repetir o mesmo foco. *(Entregue — SPEC-019.)* |
-| 2.8 | **Salário & estilo de vida (básico)** | 4-6 compras com trade-off; casa da mãe (marco+card); patrimônio na cena de casa da faixa; trava anti-dinheiro-real. |
+| 2.8 | **Salário & estilo de vida (básico)** ✅ **SPEC-024 (2026-07-17)** | Salário por rodada (`f(overall)`) + prêmios → saldo; catálogo ABERTO de compras com trade-off DECLARADO (efeitos = seam p/ a 2.3/F2 via `aggregateTradeoffs`); escada de moradia (patrimônio da faixa); casa da mãe (marco, card=seam); travas NUNCA (anti-dinheiro-real + nunca loja de stats, provadas por teste). Lib pura `economy.ts` + `economy-repo` (migration `0004`, compra atômica `FOR UPDATE`). Só-player-store, engine/goldens intocados. **Deferido:** aplicar os efeitos (2.3/F2); **ledger de idempotência de rodada (obrigatório no card do scheduler** — senão retry = pagamento em dobro); gatilho + costura resultado→prêmio; UI da faixa + card. |
 
 ### Fase 3 — Dia de jogo (o evento) e presença
 Objetivo: a dopamina ao vivo e a presença de 3 níveis.
