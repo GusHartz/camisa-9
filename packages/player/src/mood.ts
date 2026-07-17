@@ -20,6 +20,13 @@ export const MOOD = {
   /** Bump de Forma por sessão de treino (evento-na-fonte). > decayStep para o treino render NET
    *  positivo mesmo num dia em que o passe roda depois (o "treino sobe forma" do R4). */
   trainFormaBump: 6,
+  // Modulação da ability na PARTIDA (SPEC-029, fatia B): peso 60/40 (forma/moral) + oscilação ±%.
+  /** Peso da Forma no modificador de partida (a forma é o driver mais direto). */
+  formaWeight: 6,
+  /** Peso da Moral no modificador de partida. */
+  moralWeight: 4,
+  /** Oscilação máxima (±%) da ability nos extremos (100/100 = +12%; 0/0 = −12%). */
+  matchSwingPct: 12,
 } as const;
 
 /** Prende um valor de barra em [min,max]. */
@@ -58,4 +65,23 @@ export function nextMoral(current: number, lifestyleOffset: number): number {
 export function nextForma(current: number, injuredRecovering: boolean): number {
   const target = MOOD.baseline - (injuredRecovering ? MOOD.injuryFormaDrag : 0);
   return stepToward(current, target, MOOD.decayStep);
+}
+
+/** O multiplicador (%) da ability na PARTIDA pela forma/moral (SPEC-029) — centrado em 100 (neutro
+ *  em 50/50). Peso `formaWeight`/`moralWeight`; oscila ±`matchSwingPct` nos extremos (100/100 → 112,
+ *  0/0 → 88). **Simétrico** em torno de 100: trunca a magnitude rumo a ZERO (não `floor` do sinal —
+ *  senão o lado negativo teria viés pessimista). Inteiro (guardrail: `Math.floor`/`abs`). */
+export function moodAbilityPct(forma: number, moral: number): number {
+  const weighted =
+    MOOD.formaWeight * (forma - MOOD.baseline) + MOOD.moralWeight * (moral - MOOD.baseline);
+  const span = (MOOD.formaWeight + MOOD.moralWeight) * (MOOD.max - MOOD.baseline);
+  const magnitude = Math.floor((MOOD.matchSwingPct * Math.abs(weighted)) / span);
+  return 100 + (weighted < 0 ? -magnitude : magnitude);
+}
+
+/** A ability EFETIVA na partida = `base × modificador`, clampeada ao domínio da ability [0,100]. A
+ *  `base` é a ability CONGELADA (SPEC-020); a modulação é in-memory (nada é persistido de volta). */
+export function effectiveAbility(base: number, forma: number, moral: number): number {
+  const modulated = Math.floor((base * moodAbilityPct(forma, moral)) / 100);
+  return Math.max(0, Math.min(100, modulated));
 }

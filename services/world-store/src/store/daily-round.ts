@@ -5,7 +5,12 @@
 // o publicador da Fatia 2. Protocolo de falha: adiar com transparência (deferido =
 // ausência da linha) > publicar errado. No fim da temporada (season_rolled) dispara a
 // VIRAGEM persistida (SPEC-021 — Fatia 3): o mundo vira e o humano sobrevive (imune).
-import { resolveSlot, simulateWorldSeason, type WorldSeasonResult } from '@camisa-9/world-engine';
+import {
+  resolveSlot,
+  simulateWorldSeason,
+  type WorldSeasonResult,
+  type WorldState,
+} from '@camisa-9/world-engine';
 import type { Db } from '../client.js';
 import { readWorld } from './world-repo.js';
 import { readSeasonAnchor } from './season-repo.js';
@@ -32,11 +37,18 @@ export interface DailyRoundReport {
   readonly leagueCount: number;
 }
 
-/** Executa o tick do dia (15h Brasília). Não lê relógio: `epochMs` é injetado. */
+/** Modula o `WorldState` antes de simular (SPEC-029) — seam INJETADO. A costura de forma/moral é o
+ *  caso de uso; default (ausente) = sem modulação. Pode ser async (leitura cross-schema). */
+export type WorldModulator = (world: WorldState) => WorldState | Promise<WorldState>;
+
+/** Executa o tick do dia (15h Brasília). Não lê relógio: `epochMs` é injetado. O `modulate` opcional
+ *  (SPEC-029) ajusta a ability humana por forma/moral ANTES de simular — in-memory, base congelada
+ *  intacta; sem ele, comportamento idêntico ao original (os testes NPC não mudam). */
 export async function runDailyRound(
   db: Db,
   seed: string,
   epochMs: number,
+  modulate?: WorldModulator,
 ): Promise<DailyRoundReport> {
   const slot = resolveSlot(epochMs);
   if (!slot.isMatchWindow) return report(slot.dayIndex, null, null, 'fora_de_janela');
@@ -45,7 +57,8 @@ export async function runDailyRound(
   const startDayIndex = await readSeasonAnchor(db, seed, world.seasonId);
   if (startDayIndex === null) return report(slot.dayIndex, world.seasonId, null, 'sem_ancora');
   const targetRound = slot.dayIndex - startDayIndex + 1;
-  return publishTarget(db, seed, slot.dayIndex, simulateWorldSeason(world, seed), targetRound);
+  const simulated = modulate ? await modulate(world) : world; // in-memory; seasonId preservado
+  return publishTarget(db, seed, slot.dayIndex, simulateWorldSeason(simulated, seed), targetRound);
 }
 
 async function publishTarget(

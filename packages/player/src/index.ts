@@ -83,4 +83,6 @@ export {
   lifestyleMoralOffset,
   nextMoral,
   nextForma,
+  moodAbilityPct,
+  effectiveAbility,
 } from './mood.js';

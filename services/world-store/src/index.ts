@@ -55,6 +55,8 @@ export {
   runDailyRound,
   type DailyRoundReport,
   type DailyRoundStatus,
+  type WorldModulator,
 } from './store/daily-round.js';
+export { applyMoodToWorld } from './store/mood-modulation.js';
 export type { PublishInput, PublishOutcome, PublishStatus } from '@camisa-9/world-engine';
 export * as schema from './schema/index.js';

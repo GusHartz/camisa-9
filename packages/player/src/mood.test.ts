@@ -6,7 +6,9 @@ import {
   MOOD,
   bumpBar,
   clampBar,
+  effectiveAbility,
   lifestyleMoralOffset,
+  moodAbilityPct,
   nextForma,
   nextMoral,
   stepToward,
@@ -66,5 +68,46 @@ describe('mood — as barras (puro)', () => {
     let f = 90;
     for (let i = 0; i < 50; i++) f = nextForma(f, false);
     expect(f).toBe(MOOD.baseline);
+  });
+});
+
+describe('mood — o modificador de partida (SPEC-029, puro)', () => {
+  it('moodAbilityPct: 100 no neutro, +swing no topo, −swing no fundo', () => {
+    expect(moodAbilityPct(50, 50)).toBe(100);
+    expect(moodAbilityPct(100, 100)).toBe(100 + MOOD.matchSwingPct); // 112
+    expect(moodAbilityPct(0, 0)).toBe(100 - MOOD.matchSwingPct); // 88
+  });
+
+  it('moodAbilityPct: a Forma pesa mais que a Moral (60/40)', () => {
+    // forma alta + moral baixa rende MAIS que forma baixa + moral alta (mesmos desvios)
+    expect(moodAbilityPct(100, 0)).toBeGreaterThan(moodAbilityPct(0, 100));
+  });
+
+  it('moodAbilityPct: SIMÉTRICO em torno de 100 (sem viés pessimista do floor)', () => {
+    // desvios de mesma magnitude acima/abaixo do baseline → deltas de mesma magnitude
+    expect(moodAbilityPct(55, 55) - 100).toBe(100 - moodAbilityPct(45, 45));
+    expect(moodAbilityPct(100, 0) - 100).toBe(100 - moodAbilityPct(0, 100));
+  });
+
+  it('effectiveAbility: neutro = base; alto > base; baixo < base', () => {
+    expect(effectiveAbility(50, 50, 50)).toBe(50); // neutro
+    expect(effectiveAbility(50, 80, 80)).toBeGreaterThan(50); // boa fase
+    expect(effectiveAbility(50, 20, 20)).toBeLessThan(50); // má fase
+  });
+
+  it('effectiveAbility: monotônico (mais forma/moral ⇒ ability não-decrescente)', () => {
+    const base = 60;
+    let prev = -1;
+    for (let x = 0; x <= 100; x += 10) {
+      const a = effectiveAbility(base, x, x);
+      expect(a).toBeGreaterThanOrEqual(prev);
+      prev = a;
+    }
+  });
+
+  it('effectiveAbility: clampeada ao domínio [0,100]', () => {
+    expect(effectiveAbility(100, 100, 100)).toBeLessThanOrEqual(100); // não estoura o teto
+    expect(effectiveAbility(0, 0, 0)).toBeGreaterThanOrEqual(0); // não fura o piso
+    expect(effectiveAbility(95, 100, 100)).toBe(100); // 95×1.12=106 → teto 100
   });
 });

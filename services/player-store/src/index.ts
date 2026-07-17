@@ -45,5 +45,12 @@ export {
   type InjuryState,
   type InjuryLogEntry,
 } from './store/injury-repo.js';
-export { applyDailyMood, readMood, bumpMoral, bumpForma, type Mood } from './store/mood-repo.js';
+export {
+  applyDailyMood,
+  readMood,
+  readMoodByIds,
+  bumpMoral,
+  bumpForma,
+  type Mood,
+} from './store/mood-repo.js';
 export * as schema from './schema/index.js';
