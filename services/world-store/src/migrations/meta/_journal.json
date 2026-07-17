@@ -22,6 +22,13 @@
       "when": 1784224257106,
       "tag": "0002_season_anchor",
       "breakpoints": true
+    },
+    {
+      "idx": 3,
+      "version": "7",
+      "when": 1784254612507,
+      "tag": "0003_world_occupation",
+      "breakpoints": true
     }
   ]
 }

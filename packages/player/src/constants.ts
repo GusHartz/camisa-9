@@ -70,3 +70,19 @@ export const TEAM = {
   firstEleven: 11,
   fullSquad: 16,
 } as const;
+
+/**
+ * Projeção focos→`ability` para o mundo (SPEC-020, card 21). Quando o humano entra no mundo,
+ * o world-engine só entende 1 escalar `ability` (nunca os 4 focos). `positionWeights` = o peso
+ * de cada foco por posição na média ponderada. v1 é NEUTRO (todos 1) ⇒ ability = o `overall`
+ * plano (média inteira); trocar um peso (ex.: GK pesa mental) é a especialização futura, sem
+ * churn de callers — mesmo padrão de seam neutro de `TRAINING.focusMultPct`.
+ */
+export const ABILITY = {
+  positionWeights: {
+    GK: { fisico: 1, tecnico: 1, tatico: 1, mental: 1 },
+    DEF: { fisico: 1, tecnico: 1, tatico: 1, mental: 1 },
+    MID: { fisico: 1, tecnico: 1, tatico: 1, mental: 1 },
+    FWD: { fisico: 1, tecnico: 1, tatico: 1, mental: 1 },
+  },
+} as const;

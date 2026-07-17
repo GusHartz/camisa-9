@@ -1,0 +1,16 @@
+{
+  "name": "@camisa-9/world-entry",
+  "version": "0.0.0",
+  "private": true,
+  "type": "module",
+  "description": "Costura player↔world (SPEC-020 — card 21): coloca o atleta humano numa vaga NPC do mundo. Borda IMPURA (services/*), fora de packages/*. Sem migration própria (o snapshot vive no world-store). Rodada via tsx/vitest.",
+  "scripts": {
+    "test": "vitest run"
+  },
+  "dependencies": {
+    "@camisa-9/player": "*",
+    "@camisa-9/player-store": "*",
+    "@camisa-9/world-engine": "*",
+    "@camisa-9/world-store": "*"
+  }
+}

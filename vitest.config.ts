@@ -20,6 +20,18 @@ export default defineConfig({
         find: /^@camisa-9\/player$/,
         replacement: fileURLToPath(new URL('./packages/player/src/index.ts', import.meta.url)),
       },
+      // Stores consumidos pela costura world-entry (SPEC-020): resolve ao SRC (services/* não
+      // têm build/dist). A regex `$` evita capturar subpaths.
+      {
+        find: /^@camisa-9\/world-store$/,
+        replacement: fileURLToPath(new URL('./services/world-store/src/index.ts', import.meta.url)),
+      },
+      {
+        find: /^@camisa-9\/player-store$/,
+        replacement: fileURLToPath(
+          new URL('./services/player-store/src/index.ts', import.meta.url),
+        ),
+      },
     ],
   },
   test: {

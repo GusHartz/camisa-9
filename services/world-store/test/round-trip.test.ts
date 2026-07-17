@@ -11,7 +11,7 @@ import { migrate } from 'drizzle-orm/node-postgres/migrator';
 import { afterAll, beforeAll, beforeEach, describe, expect, it } from 'vitest';
 import { seedWorld, worldHash, type WorldState } from '@camisa-9/world-engine';
 import { createDb, type DbHandle } from '../src/client.js';
-import { athlete, club, league, world, worldTier } from '../src/schema/world.js';
+import { athlete, club, league, world, worldOccupation, worldTier } from '../src/schema/world.js';
 import { season } from '../src/schema/season.js';
 import { readWorld, writeWorld, writeWorldState } from '../src/store/world-repo.js';
 
@@ -43,6 +43,8 @@ describe.skipIf(!DB_URL)('world-store — round-trip determinístico do snapshot
 
   beforeEach(async () => {
     // Ordem inversa das FKs. `season` (SPEC-015) referencia `world.seed` → apagar antes.
+    // `world_occupation` (SPEC-020) referencia `athlete` → apagar antes do atleta.
+    await handle.db.delete(worldOccupation);
     await handle.db.delete(season);
     await handle.db.delete(athlete);
     await handle.db.delete(club);
