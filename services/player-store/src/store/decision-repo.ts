@@ -19,6 +19,7 @@ import type { Db } from '../client.js';
 import { athlete } from '../schema/athlete.js';
 import { purchase } from '../schema/purchase.js';
 import { decision } from '../schema/decision.js';
+import { bumpMoral } from './mood-repo.js';
 
 type Tx = Parameters<Parameters<Db['transaction']>[0]>[0];
 
@@ -85,6 +86,7 @@ async function buildContext(
       tatico: athlete.tatico,
       mental: athlete.mental,
       balance: athlete.balance,
+      moral: athlete.moral,
     })
     .from(athlete)
     .where(eq(athlete.id, athleteId))
@@ -103,6 +105,7 @@ async function buildContext(
     }),
     balance: row.balance,
     lifestyleTier: lifestyleTier(owned.map((o) => o.itemId)),
+    moral: row.moral, // a barra real (SPEC-027) → crise-moral e cia. deixam de ser inertes
     ...(extra.age !== undefined ? { age: extra.age } : {}), // exactOptionalPropertyTypes: só se definido
     ...(extra.injured !== undefined ? { injured: extra.injured } : {}),
   };
@@ -131,7 +134,14 @@ export async function answerDecision(
       .update(decision)
       .set({ status: 'answered', chosenOption: opt.id, outcome: opt.outcome, resolvedBy: 'player' })
       .where(eq(decision.id, decisionId));
+    await bumpMoral(tx, athleteId, moralOf(opt.outcome)); // a 2.3 APLICA o moral (SPEC-025), na mesma tx
   });
+}
+
+/** O delta de Moral declarado num outcome (0 se ausente/não-numérico). */
+function moralOf(outcome: DecisionOutcome): number {
+  const m = outcome['moral'];
+  return typeof m === 'number' ? m : 0;
 }
 
 /** O fallback das 18h: resolve as PENDING do dia com a opção conservadora (o agente). O UPDATE
@@ -148,12 +158,24 @@ export async function resolveDeadline(db: Db, athleteId: string, day: number): P
   for (const p of pending) {
     const opt = conservativeOption(p.templateId);
     if (!opt) continue;
-    const updated = await db
-      .update(decision)
-      .set({ status: 'resolved', chosenOption: opt.id, outcome: opt.outcome, resolvedBy: 'agent' })
-      .where(and(eq(decision.id, p.id), eq(decision.status, 'pending')))
-      .returning({ id: decision.id });
-    if (updated.length > 0) count += 1;
+    // O UPDATE condicional + o bump de moral numa transação por decisão (atômico; o bump só entra
+    // se a resolução venceu a corrida contra uma answered). A 2.3 aplica o moral da conservadora.
+    const resolved = await db.transaction(async (tx) => {
+      const updated = await tx
+        .update(decision)
+        .set({
+          status: 'resolved',
+          chosenOption: opt.id,
+          outcome: opt.outcome,
+          resolvedBy: 'agent',
+        })
+        .where(and(eq(decision.id, p.id), eq(decision.status, 'pending')))
+        .returning({ id: decision.id });
+      if (updated.length === 0) return false;
+      await bumpMoral(tx, athleteId, moralOf(opt.outcome));
+      return true;
+    });
+    if (resolved) count += 1;
   }
   return count;
 }

@@ -44,6 +44,11 @@ export const athlete = playerSchema.table(
     // Saldo em MOEDA DO JOGO (SPEC-024). Só cresce por `accrueRound` (salário/prêmio) — trava
     // anti-dinheiro-real: NENHUM caminho credita com dinheiro real. `purchaseItem` deduz.
     balance: integer('balance').notNull().default(0),
+    // As DUAS barras persistentes do R4 (SPEC-027, card 2.3): inteiras [0,100], baseline 50. Movem
+    // por evento-na-fonte (decisão → moral; comeback da lesão → moral; treino → forma) + decay
+    // diário rumo ao alvo (baseline + offset do estilo de vida). A aplicação na PARTIDA é a fatia B.
+    forma: integer('forma').notNull().default(50),
+    moral: integer('moral').notNull().default(50),
     // Time do quinteto (SPEC-018). NULL = solo; setado no create/join do time. A `position`
     // acima é a vaga reivindicada no elenco. Membros do time = atletas com este `team_id`.
     teamId: uuid('team_id').references(() => team.id),
@@ -61,5 +66,7 @@ export const athlete = playerSchema.table(
     freePointsRange: check('athlete_free_points_range', sql`${t.freePoints} >= 0`),
     focusStreakRange: check('athlete_focus_streak_range', sql`${t.focusStreak} >= 0`),
     balanceRange: check('athlete_balance_range', sql`${t.balance} >= 0`),
+    formaRange: check('athlete_forma_range', sql`${t.forma} between 0 and 100`),
+    moralRange: check('athlete_moral_range', sql`${t.moral} between 0 and 100`),
   }),
 );
