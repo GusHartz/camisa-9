@@ -60,7 +60,7 @@ Objetivo: um humano assume uma vaga e vive uma carreira.
 
 | # | Spec | Entrega |
 |---|------|---------|
-| 2.1 | **Substituição de NPC + waiting list** | Humano assume vaga (posição/camisa/clube); vaga congela 30 dias em abandono → reverte a NPC. *(Conta + atleta já existem — SPEC-016/017; falta a costura `player-store`↔`world-store` + mapa focos→`ability` p/ ocupar a vaga.)* |
+| 2.1 | **Substituição de NPC + waiting list** 🟡 | Humano assume vaga (posição/camisa/clube); vaga congela 30 dias em abandono → reverte a NPC. *(**Fatia gênese ✅ SPEC-020**: a costura `player-store`↔`world-store` + `abilityFromFocos` + o overlay `world_occupation` — o humano ocupa a vaga do NPC mais fraco na divisão de entrada e existe no mundo. Falta: imunidade na viragem [Fatia 3], mid-season, waiting-list/vaga-congela-30-dias.)* |
 | 2.2 | **Pirâmide Elástica (expansão do mundo)** | Ramificação 2× por nível; gatilho de ~70% de ocupação humana da base; novos grupos/andares só na virada de temporada; playoff de acesso entre campeões de grupo. |
 | 2.3 | **Simulação do atleta (MVP)** | DUAS barras persistentes (Forma e Moral) + 12 atributos evolutivos; stamina só dentro da partida (drena por físico, guia as substituições do técnico NPC, até 5/jogo). Fôlego diário cortado. *(Evolução por treino dos 4 focos entregue — SPEC-017; falta Forma/Moral/stamina + acoplar o FOCO diferenciado.)* |
 | 2.4 | **Decisões de carreira (3-5/dia)** | Cotidiano → dramático; sem resposta = agente decide conservador às 18h. |

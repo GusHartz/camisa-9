@@ -16,6 +16,14 @@ export {
 } from './store/round-repo.js';
 export { readSeasonAnchor, setSeasonAnchor } from './store/season-repo.js';
 export {
+  occupyNpcSlot,
+  readOccupation,
+  OccupyError,
+  type OccupyInput,
+  type OccupyResult,
+  type OccupationView,
+} from './store/occupation-repo.js';
+export {
   runDailyRound,
   type DailyRoundReport,
   type DailyRoundStatus,

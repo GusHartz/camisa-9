@@ -2,7 +2,12 @@
 // Recebe um AthleteDraft JÁ validado pela lib pura (@camisa-9/player); aqui só persiste +
 // hasheia. E-mail duplicado → erro GENÉRICO (OP-11), nunca vaza SQL/constraint.
 import { and, eq } from 'drizzle-orm';
-import { validatePassword, type AthleteDraft, type Position } from '@camisa-9/player';
+import {
+  validatePassword,
+  type Attributes,
+  type AthleteDraft,
+  type Position,
+} from '@camisa-9/player';
 import type { Db } from '../client.js';
 import { account } from '../schema/account.js';
 import { athlete } from '../schema/athlete.js';
@@ -82,6 +87,44 @@ export async function readAccountByEmail(db: Db, email: string): Promise<string 
     .where(eq(account.email, normalizeEmail(email)))
     .limit(1);
   return rows[0]?.id ?? null;
+}
+
+/** Identidade do atleta (nome/posição/focos/ativo) — o que a costura de entrada no mundo
+ *  (SPEC-020, card 21) precisa para projetar `ability` e ocupar a vaga. `position` volta como
+ *  `string` (a coluna é `text`); a borda valida com `isPosition`. Sem PII sensível. */
+export interface AthleteIdentity {
+  readonly name: string;
+  readonly position: string;
+  readonly attributes: Attributes;
+  readonly active: boolean;
+}
+
+/** Lê a identidade de um atleta por id (null se não existe). */
+export async function readAthleteIdentity(
+  db: Db,
+  athleteId: string,
+): Promise<AthleteIdentity | null> {
+  const rows = await db
+    .select({
+      name: athlete.name,
+      position: athlete.position,
+      fisico: athlete.fisico,
+      tecnico: athlete.tecnico,
+      tatico: athlete.tatico,
+      mental: athlete.mental,
+      active: athlete.active,
+    })
+    .from(athlete)
+    .where(eq(athlete.id, athleteId))
+    .limit(1);
+  const r = rows[0];
+  if (!r) return null;
+  return {
+    name: r.name,
+    position: r.position,
+    attributes: { fisico: r.fisico, tecnico: r.tecnico, tatico: r.tatico, mental: r.mental },
+    active: r.active,
+  };
 }
 
 /** Atleta ATIVO de uma conta (null se nenhum). */

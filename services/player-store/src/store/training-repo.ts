@@ -5,8 +5,8 @@ import { and, eq } from 'drizzle-orm';
 import {
   applyPoint,
   coachFocus,
-  FOCI,
   nextThreshold,
+  overall,
   pointsEarnedTotal,
   repeatPenaltyPct,
   resolveFocusStreak,
@@ -151,12 +151,11 @@ function toProgress(
   lastFocus: string | null,
   focusStreak: number,
 ): Progress {
-  const total = FOCI.reduce((s, f) => s + attributes[f], 0);
   return {
     attributes,
     trainingXp,
     freePoints,
-    overall: Math.floor(total / FOCI.length),
+    overall: overall(attributes),
     nextThreshold: nextThreshold(pointsEarnedTotal(attributes, freePoints)),
     lastFocus,
     focusStreak,

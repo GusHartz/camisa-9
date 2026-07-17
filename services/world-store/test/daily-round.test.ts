@@ -13,7 +13,7 @@ import { seedWorld, simulateWorldSeason, type WorldSeasonResult } from '@camisa-
 import { createDb, type DbHandle } from '../src/client.js';
 import { publishedRound } from '../src/schema/round.js';
 import { season } from '../src/schema/season.js';
-import { athlete, club, league, world, worldTier } from '../src/schema/world.js';
+import { athlete, club, league, world, worldOccupation, worldTier } from '../src/schema/world.js';
 import { writeWorld } from '../src/store/world-repo.js';
 import { setSeasonAnchor } from '../src/store/season-repo.js';
 import { publishWorldRound, readRound, type WorldRoundInput } from '../src/store/round-repo.js';
@@ -59,7 +59,8 @@ describe.skipIf(!DB_URL)('runDailyRound — orquestrador diário contra Postgres
   });
 
   async function wipeAll(): Promise<void> {
-    await handle.db.delete(publishedRound); // ordem inversa das FKs
+    await handle.db.delete(worldOccupation); // ordem inversa das FKs (SPEC-020: filho de athlete)
+    await handle.db.delete(publishedRound);
     await handle.db.delete(season);
     await handle.db.delete(athlete);
     await handle.db.delete(club);
