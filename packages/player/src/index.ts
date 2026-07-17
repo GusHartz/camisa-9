@@ -64,3 +64,14 @@ export {
   type DecisionTemplate,
   type DecisionContext,
 } from './decisions.js';
+export {
+  INJURY,
+  isSeverity,
+  recoveryDaysFor,
+  injuryEndDay,
+  injuryPhase,
+  isAvailable,
+  comebackOutcome,
+  type Severity,
+  type Injury,
+} from './injury.js';

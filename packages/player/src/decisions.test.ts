@@ -61,6 +61,12 @@ describe('decisions — geração (pura)', () => {
     }
   });
 
+  it('seam da LESÃO: lesao-volta gatilha com injured=true (inerte sem lesão)', () => {
+    const t = templateById('lesao-volta')!;
+    expect(t.trigger({ overall: 34, balance: 0, lifestyleTier: 0 })).toBe(false); // sem injured
+    expect(t.trigger({ overall: 34, balance: 0, lifestyleTier: 0, injured: true })).toBe(true);
+  });
+
   it('seam da IDADE: veterano gatilha com age ≥ 34 (inerte sem age)', () => {
     const t = templateById('veterano')!;
     expect(t.trigger({ overall: 34, balance: 0, lifestyleTier: 0 })).toBe(false); // sem age

@@ -5,3 +5,4 @@ export * from './team.js';
 export * from './athlete.js';
 export * from './purchase.js';
 export * from './decision.js';
+export * from './injury.js';

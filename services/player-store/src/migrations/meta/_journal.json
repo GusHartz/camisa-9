@@ -43,6 +43,13 @@
       "when": 1784301656854,
       "tag": "0005_decisions",
       "breakpoints": true
+    },
+    {
+      "idx": 6,
+      "version": "7",
+      "when": 1784313896412,
+      "tag": "0006_injuries",
+      "breakpoints": true
     }
   ]
 }

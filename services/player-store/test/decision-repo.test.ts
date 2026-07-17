@@ -43,6 +43,7 @@ describe.skipIf(!DB_URL)('decision-repo — motor de decisões contra Postgres r
   });
 
   beforeEach(async () => {
+    await handle.db.delete(schema.injury);
     await handle.db.delete(schema.decision);
     await handle.db.delete(schema.purchase);
     await handle.db.delete(schema.athlete);
