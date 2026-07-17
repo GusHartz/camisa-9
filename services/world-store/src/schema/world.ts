@@ -121,6 +121,12 @@ export const worldOccupation = pgTable(
     // Regen voluntário (SPEC-022): o jogador liga esta flag (idade ≥ 25) para renascer na próxima
     // virada. O regen forçado (idade ≥ 42) não depende dela. O `runRegenPass` a consome pós-virada.
     regenRequested: boolean('regen_requested').notNull().default(false),
+    // Congelamento de vaga (SPEC-023). `last_active_day` = day-index da última atividade do humano
+    // (null = ainda não rastreado → nunca congela). `frozen_since_day` = quando o congelamento
+    // começou (null = ativa/não-congelada) — marca a transição p/ o e-mail disparar 1×. Ambos
+    // sobrevivem à viragem (re-aplicados em `reapplyOccupations` — o gotcha da SPEC-021).
+    lastActiveDay: integer('last_active_day'),
+    frozenSinceDay: integer('frozen_since_day'),
     occupiedAt: timestamp('occupied_at', { withTimezone: true }).notNull().defaultNow(),
   },
   (t) => ({
