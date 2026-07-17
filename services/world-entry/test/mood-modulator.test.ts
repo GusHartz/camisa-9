@@ -62,7 +62,9 @@ describe.skipIf(!DB_URL)('mood-modulator — Forma/Moral na partida contra Postg
       migrationsFolder: fileURLToPath(new URL('../../world-store/src/migrations', import.meta.url)),
     });
     await migrate(playerHandle.db, {
-      migrationsFolder: fileURLToPath(new URL('../../player-store/src/migrations', import.meta.url)),
+      migrationsFolder: fileURLToPath(
+        new URL('../../player-store/src/migrations', import.meta.url),
+      ),
       migrationsSchema: 'drizzle_player',
     });
   });
@@ -146,7 +148,9 @@ describe.skipIf(!DB_URL)('mood-modulator — Forma/Moral na partida contra Postg
 
     await setMood(humanId, 100, 100); // ótima fase → efetiva > base, clube mais forte
     const boosted = await mod(world);
-    expect(findAthlete(boosted, res.worldAthleteId)!.ability).toBe(effectiveAbility(BASE, 100, 100));
+    expect(findAthlete(boosted, res.worldAthleteId)!.ability).toBe(
+      effectiveAbility(BASE, 100, 100),
+    );
     expect(findClub(boosted, clubId)!.strength).toBeGreaterThanOrEqual(
       findClub(neutral, clubId)!.strength,
     );
@@ -154,7 +158,9 @@ describe.skipIf(!DB_URL)('mood-modulator — Forma/Moral na partida contra Postg
     await setMood(humanId, 20, 20); // má fase → efetiva < base, clube não mais forte
     const low = await mod(world);
     expect(findAthlete(low, res.worldAthleteId)!.ability).toBe(effectiveAbility(BASE, 20, 20));
-    expect(findClub(low, clubId)!.strength).toBeLessThanOrEqual(findClub(neutral, clubId)!.strength);
+    expect(findClub(low, clubId)!.strength).toBeLessThanOrEqual(
+      findClub(neutral, clubId)!.strength,
+    );
 
     // a base CONGELADA (SPEC-020) não mudou — a modulação é só in-memory
     expect((await readOccupation(worldHandle.db, SEED, humanId))!.ability).toBe(BASE);

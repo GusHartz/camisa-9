@@ -2,7 +2,12 @@
 // ability + recomputa a força, é no-op no mapa vazio, e a modulação REALMENTE muda a simulação (a
 // força entra no resultado). Usa `seedWorld` (engine puro) — não precisa de `DATABASE_URL`.
 import { describe, expect, it } from 'vitest';
-import { clubStrength, seedWorld, simulateWorldSeason, type WorldState } from '@camisa-9/world-engine';
+import {
+  clubStrength,
+  seedWorld,
+  simulateWorldSeason,
+  type WorldState,
+} from '@camisa-9/world-engine';
 import { applyMoodToWorld } from '../src/index.js';
 
 const SEED = 'mod-spec-029';
