@@ -37,4 +37,12 @@ export {
   readDecisionLog,
   type DecisionLogEntry,
 } from './store/decision-repo.js';
+export {
+  injureFromMatch,
+  advanceRecovery,
+  readInjuryState,
+  readInjuryLog,
+  type InjuryState,
+  type InjuryLogEntry,
+} from './store/injury-repo.js';
 export * as schema from './schema/index.js';

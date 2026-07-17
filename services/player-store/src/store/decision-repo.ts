@@ -40,7 +40,7 @@ export async function generateForDay(
   athleteId: string,
   day: number,
   seed: string,
-  extra: { age?: number } = {},
+  extra: { age?: number; injured?: boolean } = {},
 ): Promise<Decision[]> {
   return db.transaction(async (tx) => {
     // Lock advisory (athlete+dia) — serializa gerações concorrentes: a 1ª sela o dia, a 2ª relê o
@@ -54,7 +54,7 @@ export async function generateForDay(
       .where(and(eq(decision.athleteId, athleteId), eq(decision.day, day)))
       .orderBy(decision.ord); // reproduz a ordem de geração
     if (existing.length > 0) return existing.map((r) => hydrate(r.templateId)).filter(isDecision);
-    const context = await buildContext(tx, athleteId, extra.age);
+    const context = await buildContext(tx, athleteId, extra);
     const generated = generateDailyDecisions(seed, day, athleteId, context);
     if (generated.length > 0) {
       await tx.insert(decision).values(
@@ -71,8 +71,13 @@ export async function generateForDay(
   });
 }
 
-/** O contexto de gatilho: overall (focos) + saldo + patrimônio (locais); `age` = seam do mundo. */
-async function buildContext(db: Tx, athleteId: string, age?: number): Promise<DecisionContext> {
+/** O contexto de gatilho: overall (focos) + saldo + patrimônio (locais); `age`/`injured` = seams
+ *  (param do mundo/lesão, molde estabelecido — o `decision-repo` não lê o `injury-repo`). */
+async function buildContext(
+  db: Tx,
+  athleteId: string,
+  extra: { age?: number; injured?: boolean },
+): Promise<DecisionContext> {
   const [row] = await db
     .select({
       fisico: athlete.fisico,
@@ -98,7 +103,8 @@ async function buildContext(db: Tx, athleteId: string, age?: number): Promise<De
     }),
     balance: row.balance,
     lifestyleTier: lifestyleTier(owned.map((o) => o.itemId)),
-    ...(age !== undefined ? { age } : {}), // exactOptionalPropertyTypes: `age` só se definido
+    ...(extra.age !== undefined ? { age: extra.age } : {}), // exactOptionalPropertyTypes: só se definido
+    ...(extra.injured !== undefined ? { injured: extra.injured } : {}),
   };
 }
 

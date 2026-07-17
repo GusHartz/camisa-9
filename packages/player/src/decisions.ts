@@ -26,6 +26,7 @@ export interface DecisionContext {
   readonly lifestyleTier: number;
   readonly age?: number;
   readonly moral?: number;
+  readonly injured?: boolean;
 }
 
 export interface DecisionTemplate {
@@ -132,6 +133,16 @@ export const DECISIONS: readonly DecisionTemplate[] = [
     options: [
       { id: 'aceitar', label: 'Aceitar a proposta (2× salário)', outcome: { transfer: 'rival' } },
       { id: 'ficar', label: 'Ficar com os amigos', outcome: { moral: 10 }, conservative: true },
+    ],
+  },
+  {
+    id: 'lesao-volta',
+    type: 'proposta',
+    prompt: 'A lesão está quase cicatrizada. Forçar a volta?',
+    trigger: (c) => c.injured === true, // seam da LESÃO (SPEC-026) — inerte sem lesão ativa
+    options: [
+      { id: 'forcar', label: 'Forçar a volta (arrisca recaída)', outcome: { forceReturn: 1 } },
+      { id: 'respeitar', label: 'Respeitar o prazo', outcome: {}, conservative: true },
     ],
   },
   {
