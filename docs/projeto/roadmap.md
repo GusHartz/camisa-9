@@ -30,7 +30,7 @@ Objetivo: o relógio de wishlist só começa com nome + capsule no ar.
 |---|------|---------|
 | G.1 | **Briefing de identidade visual** | DNA do personagem/mundo, anti-brief (erros já cometidos documentados), paleta anti-CBF, teste de capsule em 120×45. Veste a identidade **Next Goat** (bode coroado, camisa 10) — nome já decidido (ver bloco de identidade em vision-scope). |
 | G.2 | **Verificação jurídica do nome** | Nome **decidido: Next Goat** (P1 encerrado, 15/07). Resta a verificação jurídica: INPI 9/41 + TESS/EUIPO (risco nomeado: GOAT Games) + stores + domínios/handles. |
-| G.3 | **Página Coming Soon na Steam** | Capsule + descrição + tags; wishlist acumulando. **Gate: ≥2.000 wishlists em 90 dias + 1 festival.** |
+| G.3 | **Página Coming Soon na Steam** 🚧 | Capsule + descrição + tags; wishlist acumulando. **Gate: ≥2.000 wishlists em 90 dias + 1 festival.** *(**SPEC-028**: copy + runbook + gate prontos no repo — `docs/gtm/`. **Go-live bloqueado** em G.1 capsule + G.2 jurídico + build de cliente p/ screenshots reais; recomenda-se fatiar o go-live num card de continuação.)* |
 | G.4 | **Discord da comunidade** | Canal "monte seu quinteto" (bot simples). **Gate: ≥50 quintetos pré-beta.** |
 | G.5 | **Steam Playtest** | Distribuição do beta fechado (founder aprova coortes). |
 
