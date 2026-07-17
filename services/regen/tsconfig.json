@@ -1,0 +1,9 @@
+{
+  "//": "Type-check do regen (SPEC-022) — a costura do renascimento. Como o world-entry, NÃO é composite e NÃO entra no `tsc -b`; borda IMPURA rodada via tsx/vitest; consome os stores + a lib pura pelos `paths` (→ src). O gate de tipos autoritativo é `tsconfig.typecheck.json` (raiz), que inclui services/*.",
+  "extends": "../../tsconfig.base.json",
+  "compilerOptions": {
+    "noEmit": true,
+    "resolveJsonModule": true
+  },
+  "include": ["src/**/*.ts", "test/**/*.ts"]
+}

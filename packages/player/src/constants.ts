@@ -86,3 +86,12 @@ export const ABILITY = {
     FWD: { fisico: 1, tecnico: 1, tatico: 1, mental: 1 },
   },
 } as const;
+
+/**
+ * Regen (SPEC-022). Quando a carreira encerra, o atleta renasce JOVEM (atributos frescos, overall
+ * 34) mas com um BANCO DE PONTOS DE LEGADO = `legacyPct`% dos pontos ganhos na carreira anterior —
+ * o gancho de FOMO ("quanto mais você viveu, mais forte seu herdeiro começa"). Tunável.
+ */
+export const REGEN = {
+  legacyPct: 25,
+} as const;

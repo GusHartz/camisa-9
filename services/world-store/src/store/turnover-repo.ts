@@ -141,6 +141,7 @@ async function reapplyOccupations(
       position: o.position,
       humanName: o.humanName,
       ability: o.ability,
+      regenRequested: o.regenRequested, // o pedido de regen VOLUNTÁRIO sobrevive à virada (SPEC-022)
     });
   }
 }

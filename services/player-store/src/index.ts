@@ -6,7 +6,9 @@ export {
   readAccountByEmail,
   readActiveAthlete,
   readAthleteIdentity,
+  rebirthAthlete,
   type AthleteIdentity,
+  type RebirthResult,
   type SignupInput,
   type SignupResult,
 } from './store/player-repo.js';

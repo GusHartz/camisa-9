@@ -21,7 +21,7 @@ import { publishedRound } from '../src/schema/round.js';
 import { season } from '../src/schema/season.js';
 import { readWorld, writeWorld } from '../src/store/world-repo.js';
 import { readSeasonAnchor, setSeasonAnchor } from '../src/store/season-repo.js';
-import { occupyNpcSlot, readOccupation } from '../src/store/occupation-repo.js';
+import { occupyNpcSlot, readOccupation, requestRegen } from '../src/store/occupation-repo.js';
 import { persistWorldTurnover } from '../src/store/turnover-repo.js';
 
 const DB_URL = process.env.DATABASE_URL;
@@ -126,6 +126,28 @@ describe.skipIf(!DB_URL)('turnover-repo — viragem persistida contra Postgres r
     const view = await readOccupation(handle.db, SEED, H1);
     expect(view?.seasonId).toBe('2027'); // ocupação re-aplicada no season novo
     expect(view?.athleteId).toBe(occ.worldAthleteId);
+  });
+
+  it('regen VOLUNTÁRIO sobrevive à virada: a flag é re-aplicada no season novo (SPEC-022)', async () => {
+    const clubId = entryClubId((await readWorld(handle.db, SEED))!);
+    const occ = await occupyNpcSlot(handle.db, {
+      worldSeed: SEED,
+      clubId,
+      position: 'GK',
+      humanAthleteId: H1,
+      humanName: 'Voluntário',
+      ability: 40,
+    });
+    await handle.db.update(athlete).set({ age: 30 }).where(eq(athlete.id, occ.worldAthleteId));
+    await requestRegen(handle.db, SEED, H1); // liga a flag ANTES da virada
+    const { results } = await currentResults();
+    await persistWorldTurnover(handle.db, SEED, results, ROLL_DAY);
+    // se a virada zerasse a flag, o gatilho voluntário (25..41) nunca dispararia pós-virada
+    const rows = await handle.db
+      .select({ f: worldOccupation.regenRequested })
+      .from(worldOccupation)
+      .where(eq(worldOccupation.humanAthleteId, H1));
+    expect(rows[0]?.f).toBe(true);
   });
 
   it('idempotência: virar 2× com os mesmos results → a 2ª é already_rolled, mundo fica em 2027', async () => {
