@@ -29,4 +29,5 @@ export {
   type JoinTeamResult,
   type TeamView,
 } from './store/team-repo.js';
+export { accrueRound, purchaseItem, readWallet, type Wallet } from './store/economy-repo.js';
 export * as schema from './schema/index.js';
