@@ -9,6 +9,7 @@ export default defineConfig({
     './src/schema/team.ts',
     './src/schema/athlete.ts',
     './src/schema/purchase.ts',
+    './src/schema/decision.ts',
   ],
   out: './src/migrations',
   dialect: 'postgresql',

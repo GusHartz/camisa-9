@@ -15,7 +15,7 @@ import {
   type AthleteDraft,
 } from '@camisa-9/player';
 import { createDb, type DbHandle } from '../src/client.js';
-import { account, athlete, purchase } from '../src/schema/index.js';
+import { account, athlete, decision, purchase } from '../src/schema/index.js';
 import { createAccountWithAthlete } from '../src/store/player-repo.js';
 import { applyTraining, readAthleteProgress, spendFreePoint } from '../src/store/training-repo.js';
 
@@ -50,6 +50,7 @@ describe.skipIf(!DB_URL)('training-repo — progressão contra Postgres real', (
   });
 
   beforeEach(async () => {
+    await handle.db.delete(decision); // neto (FK → athlete, SPEC-025) antes do atleta
     await handle.db.delete(purchase); // neto (FK → athlete, SPEC-024) antes do atleta
     await handle.db.delete(athlete); // filho antes do pai (FK)
     await handle.db.delete(account);
