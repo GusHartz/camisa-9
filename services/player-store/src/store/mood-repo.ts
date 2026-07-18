@@ -3,7 +3,7 @@
 // recuperando); `readMood` lê o par; `bumpMoral`/`bumpForma` são as primitivas de EVENTO-NA-FONTE
 // (os repos irmãos as chamam DENTRO da própria transação: decisão → moral, comeback → moral, treino
 // → forma). A MATEMÁTICA é da lib pura (@camisa-9/player). SÓ player-store. Erros genéricos (OP-11).
-import { and, eq } from 'drizzle-orm';
+import { and, eq, inArray } from 'drizzle-orm';
 import {
   aggregateTradeoffs,
   bumpBar,
@@ -34,6 +34,20 @@ export async function readMood(db: Db, athleteId: string): Promise<Mood | null> 
     .where(eq(athlete.id, athleteId))
     .limit(1);
   return row ?? null;
+}
+
+/** Forma/Moral de VÁRIOS atletas de uma vez (batch) — a costura da partida (SPEC-029) usa para
+ *  modular a ability dos humanos ocupantes. Devolve um mapa por id (ausentes ficam de fora). */
+export async function readMoodByIds(
+  db: Db,
+  athleteIds: readonly string[],
+): Promise<Map<string, Mood>> {
+  if (athleteIds.length === 0) return new Map();
+  const rows = await db
+    .select({ id: athlete.id, forma: athlete.forma, moral: athlete.moral })
+    .from(athlete)
+    .where(inArray(athlete.id, [...athleteIds]));
+  return new Map(rows.map((r) => [r.id, { forma: r.forma, moral: r.moral }]));
 }
 
 /** O PASSE diário (`FOR UPDATE`): decai a Moral rumo a `baseline + offset do estilo de vida` (as

@@ -17,6 +17,7 @@ import {
   generateForDay,
   injureFromMatch,
   readMood,
+  readMoodByIds,
   resolveDeadline,
   schema,
   type DbHandle,
@@ -74,6 +75,17 @@ describe.skipIf(!DB_URL)('mood-repo — Forma & Moral contra Postgres real', () 
   it('as barras nascem em 50 (default) e readMood devolve o par', async () => {
     const id = await newAthlete();
     expect(await readMood(handle.db, id)).toEqual({ forma: 50, moral: 50 });
+  });
+
+  it('readMoodByIds: batch com ids presentes + ausentes (a costura da partida usa)', async () => {
+    const a = await newAthlete();
+    const b = await newAthlete();
+    await setMood(a, 80, 40);
+    const map = await readMoodByIds(handle.db, [a, b, '00000000-0000-0000-0000-0000000000ff']);
+    expect(map.get(a)).toEqual({ forma: 80, moral: 40 });
+    expect(map.get(b)).toEqual({ forma: 50, moral: 50 }); // default
+    expect(map.has('00000000-0000-0000-0000-0000000000ff')).toBe(false); // ausente → fora
+    expect(await readMoodByIds(handle.db, [])).toEqual(new Map()); // lista vazia → mapa vazio
   });
 
   it('passe diário sem compras: moral e forma decaem rumo ao baseline (50)', async () => {

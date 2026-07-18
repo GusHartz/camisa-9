@@ -9,8 +9,14 @@ import { fileURLToPath } from 'node:url';
 import { sql } from 'drizzle-orm';
 import { migrate } from 'drizzle-orm/node-postgres/migrator';
 import { afterAll, beforeAll, beforeEach, describe, expect, it } from 'vitest';
-import { seedWorld, simulateWorldSeason, type WorldSeasonResult } from '@camisa-9/world-engine';
+import {
+  seedWorld,
+  simulateWorldSeason,
+  type WorldSeasonResult,
+  type WorldState,
+} from '@camisa-9/world-engine';
 import { createDb, type DbHandle } from '../src/client.js';
+import { applyMoodToWorld } from '../src/store/mood-modulation.js';
 import { publishedRound } from '../src/schema/round.js';
 import { season } from '../src/schema/season.js';
 import { turnoverReport } from '../src/schema/turnover.js';
@@ -220,6 +226,27 @@ describe.skipIf(!DB_URL)('runDailyRound — orquestrador diário contra Postgres
     const retry = await runDailyRound(handle.db, SEED, epochAt(START)); // sem a trava, publica
     expect(retry.status).toBe('published');
     expect(await countRounds()).toBe(LEAGUES);
+  });
+
+  it('COM modulate (SPEC-029): a rodada PUBLICADA reflete a modulação (o seam chega ao money path)', async () => {
+    await setSeasonAnchor(handle.db, SEED, SEASON, START);
+    const world = (await readWorld(handle.db, SEED))!;
+    // clube da divisão de ENTRADA (força ~50) → boost a 100 é um salto grande → muda a rodada 1
+    const entry = world.tiers[world.tiers.length - 1]!;
+    const league = entry.leagues[0]!;
+    const boost = new Map(league.clubs[0]!.roster.map((a) => [a.id, 100] as const));
+    const rep = await runDailyRound(handle.db, SEED, epochAt(START), (w: WorldState) =>
+      applyMoodToWorld(w, boost),
+    );
+    expect(rep.status).toBe('published');
+    const roundOf = (res: WorldSeasonResult) =>
+      res.leagues.find((l) => l.result.leagueId === league.leagueId)!.result.rounds[0];
+    const modRound1 = roundOf(simulateWorldSeason(applyMoodToWorld(world, boost), SEED));
+    const plainRound1 = roundOf(simulateWorldSeason(world, SEED));
+    const back = await readRound(handle.db, league.leagueId, SEASON, 1);
+    expect(back).toEqual(modRound1); // o seam threadou o mundo MODULADO (não o puro)…
+    expect(modRound1).not.toEqual(plainRound1); // …e a modulação de fato mexeu na rodada 1
+    await handle.db.delete(publishedRound); // não suja o determinismo dos demais testes
   });
 
   it('determinismo ponta a ponta: 38 dias → 4×38 rodadas byte-idênticas ao engine', async () => {
