@@ -19,12 +19,26 @@ export interface Fixture {
   readonly awayId: string;
 }
 
+/** Um evento da PARTIDA RICA (SPEC-031). Fatia 1: a lesão (`kind:'injury'`); `kind` aberto p/
+ *  `goal`/`choice` futuros. Puro/serializável (vai no `jsonb` do `RoundResult`). */
+export interface MatchEvent {
+  readonly kind: 'injury';
+  readonly clubId: string;
+  readonly athleteId: string;
+  readonly severity: 'leve' | 'media' | 'grave';
+  readonly minute: number;
+}
+
 export interface MatchResult {
   readonly round: number;
   readonly homeId: string;
   readonly awayId: string;
   readonly homeGoals: number;
   readonly awayGoals: number;
+  /** Eventos da partida rica (SPEC-031) — preenchidos SÓ no `world-season` (que tem os elencos),
+   *  DEPOIS do placar, com RNG próprio. O `simulateSeason` puro NÃO os toca → `season.golden`
+   *  intocado. Opcional (ausente = sem eventos). */
+  readonly events?: readonly MatchEvent[];
 }
 
 export interface RoundResult {

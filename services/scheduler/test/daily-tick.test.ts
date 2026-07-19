@@ -3,12 +3,18 @@
 // 2× é NO-OP (nada paga/decai em dobro: a idempotência que o ledger garante). Dois handles sobre o
 // mesmo Postgres. Gated por DATABASE_URL. Serial (SPEC-015).
 import { fileURLToPath } from 'node:url';
-import { eq, sql } from 'drizzle-orm';
+import { and, eq, sql } from 'drizzle-orm';
 import { migrate } from 'drizzle-orm/node-postgres/migrator';
 import { afterAll, beforeAll, beforeEach, describe, expect, it } from 'vitest';
-import { createAthlete, matchPrize, salaryPerRound } from '@camisa-9/player';
+import {
+  createAthlete,
+  generateDailyDecisions,
+  matchPrize,
+  salaryPerRound,
+} from '@camisa-9/player';
 import {
   createDb as createWorldDb,
+  readOccupation,
   readRound,
   readWorld,
   setSeasonAnchor,
@@ -19,7 +25,9 @@ import {
 import {
   createAccountWithAthlete,
   createDb as createPlayerDb,
+  injureFromMatch,
   readDecisionLog,
+  readInjuryState,
   readMood,
   readWallet,
   schema as playerSchema,
@@ -69,6 +77,7 @@ describe.skipIf(!DB_URL)('daily-tick — o tick de produção contra Postgres re
   });
 
   async function wipeAll(): Promise<void> {
+    await worldHandle.db.delete(worldSchema.turnoverReport); // sem FK; a viragem (season_rolled) grava
     await worldHandle.db.delete(worldSchema.worldOccupation);
     await worldHandle.db.delete(worldSchema.publishedRound);
     await worldHandle.db.delete(worldSchema.season);
@@ -244,6 +253,217 @@ describe.skipIf(!DB_URL)('daily-tick — o tick de produção contra Postgres re
     await runDailyTick(worldHandle.db, playerHandle.db, SEED, epochAt(START + 1)); // resolve ONTEM (START)
     const after = (await readDecisionLog(playerHandle.db, humanId)).filter((d) => d.day === START);
     expect(after.every((d) => d.status === 'resolved')).toBe(true); // o agente fechou às 18h
+  });
+
+  it('ATIVA o seam de lesão (SPEC-031 → SPEC-026): evento na rodada → o humano fica LESIONADO', async () => {
+    const world = (await readWorld(worldHandle.db, SEED))!;
+    await setSeasonAnchor(worldHandle.db, SEED, world.seasonId, START);
+    const league = world.tiers[world.tiers.length - 1]!.leagues[0]!;
+    const clubId = league.clubs[0]!.id;
+    const humanId = await seatHuman(clubId);
+    const worldAthleteId = (await readOccupation(worldHandle.db, SEED, humanId))!.athleteId;
+
+    // tick 1 publica a rodada; limpa qualquer lesão que o engine tenha sorteado (o teste controla)
+    await runDailyTick(worldHandle.db, playerHandle.db, SEED, epochAt(START));
+    await playerHandle.db
+      .delete(playerSchema.injury)
+      .where(eq(playerSchema.injury.athleteId, humanId));
+    // injeta DETERMINISTICAMENTE um evento de lesão do humano na rodada publicada (testa o WIRING)
+    const rr = (await readRound(worldHandle.db, league.leagueId, world.seasonId, 1))!;
+    const modified = {
+      ...rr,
+      matches: rr.matches.map((m) =>
+        m.homeId === clubId || m.awayId === clubId
+          ? {
+              ...m,
+              events: [
+                {
+                  kind: 'injury' as const,
+                  clubId,
+                  athleteId: worldAthleteId,
+                  severity: 'media' as const,
+                  minute: 40,
+                },
+              ],
+            }
+          : m,
+      ),
+    };
+    await worldHandle.db
+      .update(worldSchema.publishedRound)
+      .set({ result: modified })
+      .where(
+        and(
+          eq(worldSchema.publishedRound.leagueId, league.leagueId),
+          eq(worldSchema.publishedRound.seasonId, world.seasonId),
+          eq(worldSchema.publishedRound.round, 1),
+        ),
+      );
+
+    // tick 2 (mesmo dia, rodada idempotente): lê o evento → injureFromMatch → o humano fica lesionado
+    const rep = await runDailyTick(worldHandle.db, playerHandle.db, SEED, epochAt(START));
+    expect(rep.injured).toBe(1);
+    const state = await readInjuryState(playerHandle.db, humanId, START);
+    expect(state.injury?.severity).toBe('media');
+    expect(state.available).toBe(false); // lesionado → indisponível (o seam que o mundo lê)
+  });
+
+  it('idempotência: o tick 2× no mesmo dia NÃO re-lesiona (injureFromMatch é idempotente)', async () => {
+    const world = (await readWorld(worldHandle.db, SEED))!;
+    await setSeasonAnchor(worldHandle.db, SEED, world.seasonId, START);
+    const league = world.tiers[world.tiers.length - 1]!.leagues[0]!;
+    const clubId = league.clubs[0]!.id;
+    const humanId = await seatHuman(clubId);
+    const worldAthleteId = (await readOccupation(worldHandle.db, SEED, humanId))!.athleteId;
+    await runDailyTick(worldHandle.db, playerHandle.db, SEED, epochAt(START));
+    await playerHandle.db
+      .delete(playerSchema.injury)
+      .where(eq(playerSchema.injury.athleteId, humanId));
+    const rr = (await readRound(worldHandle.db, league.leagueId, world.seasonId, 1))!;
+    const modified = {
+      ...rr,
+      matches: rr.matches.map((m) =>
+        m.homeId === clubId || m.awayId === clubId
+          ? {
+              ...m,
+              events: [
+                {
+                  kind: 'injury' as const,
+                  clubId,
+                  athleteId: worldAthleteId,
+                  severity: 'leve' as const,
+                  minute: 5,
+                },
+              ],
+            }
+          : m,
+      ),
+    };
+    await worldHandle.db
+      .update(worldSchema.publishedRound)
+      .set({ result: modified })
+      .where(
+        and(
+          eq(worldSchema.publishedRound.leagueId, league.leagueId),
+          eq(worldSchema.publishedRound.seasonId, world.seasonId),
+          eq(worldSchema.publishedRound.round, 1),
+        ),
+      );
+    const a = await runDailyTick(worldHandle.db, playerHandle.db, SEED, epochAt(START));
+    expect(a.injured).toBe(1); // lesionou 1×
+    const b = await runDailyTick(worldHandle.db, playerHandle.db, SEED, epochAt(START));
+    expect(b.injured).toBe(0); // o retry NÃO re-lesiona (1 ativa/atleta)
+    expect((await readInjuryState(playerHandle.db, humanId, START)).injury?.severity).toBe('leve');
+  });
+
+  it('NPC lesionado NÃO persiste: evento de um athleteId SEM ocupação → o humano intacto', async () => {
+    const world = (await readWorld(worldHandle.db, SEED))!;
+    await setSeasonAnchor(worldHandle.db, SEED, world.seasonId, START);
+    const league = world.tiers[world.tiers.length - 1]!.leagues[0]!;
+    const clubId = league.clubs[0]!.id;
+    const humanId = await seatHuman(clubId);
+    await runDailyTick(worldHandle.db, playerHandle.db, SEED, epochAt(START));
+    await playerHandle.db
+      .delete(playerSchema.injury)
+      .where(eq(playerSchema.injury.athleteId, humanId));
+    // evento de lesão de um NPC (athleteId inexistente como ocupação) no jogo do clube do humano
+    const rr = (await readRound(worldHandle.db, league.leagueId, world.seasonId, 1))!;
+    const modified = {
+      ...rr,
+      matches: rr.matches.map((m) =>
+        m.homeId === clubId || m.awayId === clubId
+          ? {
+              ...m,
+              events: [
+                {
+                  kind: 'injury' as const,
+                  clubId,
+                  athleteId: 'npc-sem-ocupacao',
+                  severity: 'grave' as const,
+                  minute: 20,
+                },
+              ],
+            }
+          : m,
+      ),
+    };
+    await worldHandle.db
+      .update(worldSchema.publishedRound)
+      .set({ result: modified })
+      .where(
+        and(
+          eq(worldSchema.publishedRound.leagueId, league.leagueId),
+          eq(worldSchema.publishedRound.seasonId, world.seasonId),
+          eq(worldSchema.publishedRound.round, 1),
+        ),
+      );
+    const rep = await runDailyTick(worldHandle.db, playerHandle.db, SEED, epochAt(START));
+    expect(rep.injured).toBe(0); // o evento é de um NPC → não roteia p/ nenhum humano
+    expect((await readInjuryState(playerHandle.db, humanId, START)).injury).toBeNull(); // intacto
+  });
+
+  it('robustez: gravidade INVÁLIDA no evento é isolada — não starva os demais passes do humano', async () => {
+    const world = (await readWorld(worldHandle.db, SEED))!;
+    await setSeasonAnchor(worldHandle.db, SEED, world.seasonId, START);
+    const league = world.tiers[world.tiers.length - 1]!.leagues[0]!;
+    const clubId = league.clubs[0]!.id;
+    const humanId = await seatHuman(clubId);
+    const worldAthleteId = (await readOccupation(worldHandle.db, SEED, humanId))!.athleteId;
+    await runDailyTick(worldHandle.db, playerHandle.db, SEED, epochAt(START));
+    await playerHandle.db
+      .delete(playerSchema.injury)
+      .where(eq(playerSchema.injury.athleteId, humanId));
+    const rr = (await readRound(worldHandle.db, league.leagueId, world.seasonId, 1))!;
+    // gravidade CORROMPIDA no jsonb (só via tampering; o engine nunca produz) → injureFromMatch lança
+    const events = [
+      { kind: 'injury', clubId, athleteId: worldAthleteId, severity: 'mortal', minute: 10 },
+    ];
+    const modified = {
+      ...rr,
+      matches: rr.matches.map((m) =>
+        m.homeId === clubId || m.awayId === clubId ? { ...m, events } : m,
+      ),
+    };
+    await worldHandle.db
+      .update(worldSchema.publishedRound)
+      .set({ result: modified as typeof rr })
+      .where(
+        and(
+          eq(worldSchema.publishedRound.leagueId, league.leagueId),
+          eq(worldSchema.publishedRound.seasonId, world.seasonId),
+          eq(worldSchema.publishedRound.round, 1),
+        ),
+      );
+    const rep = await runDailyTick(worldHandle.db, playerHandle.db, SEED, epochAt(START));
+    expect(rep.injured).toBe(0); // a lesão inválida foi IGNORADA (isolada)
+    expect((await readInjuryState(playerHandle.db, humanId, START)).injury).toBeNull();
+    // mas os demais passes RODARAM (o humano não foi starvado): decisões presentes
+    expect((await readDecisionLog(playerHandle.db, humanId)).length).toBeGreaterThan(0);
+  });
+
+  it('PAYOFF (SPEC-031 → SPEC-026): humano lesionado → o tick gera a decisão lesao-volta no dia', async () => {
+    const world = (await readWorld(worldHandle.db, SEED))!;
+    const league = world.tiers[world.tiers.length - 1]!.leagues[0]!;
+    const humanId = await seatHuman(league.clubs[0]!.id);
+    // oráculo determinístico: acha um dia onde o motor (SPEC-025) inclui lesao-volta com injured=true
+    // (o MESMO contexto que o `buildContext` do tick produz p/ um humano fresco lesionado).
+    const ctx = { overall: 34, balance: 0, lifestyleTier: 0, moral: 50, injured: true };
+    let injuryDay = START;
+    for (let d = START; d < START + 300; d++) {
+      if (
+        generateDailyDecisions(SEED, d, humanId, ctx).some((x) => x.templateId === 'lesao-volta')
+      ) {
+        injuryDay = d;
+        break;
+      }
+    }
+    await setSeasonAnchor(worldHandle.db, SEED, world.seasonId, injuryDay); // injuryDay = round 1
+    await injureFromMatch(playerHandle.db, humanId, injuryDay, 'grave'); // o humano está lesionado
+    await runDailyTick(worldHandle.db, playerHandle.db, SEED, epochAt(injuryDay));
+    const templates = (await readDecisionLog(playerHandle.db, humanId))
+      .filter((e) => e.day === injuryDay)
+      .map((e) => e.templateId);
+    expect(templates).toContain('lesao-volta'); // a lesão do dia gera a decisão (o injured chega à geração)
   });
 
   it('fora da janela (não 15h) → o tick não processa ninguém', async () => {
