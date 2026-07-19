@@ -1,0 +1,9 @@
+{
+  "//": "Type-check do scheduler (SPEC-030) — a borda de produção (o tick diário). Como os demais services/*, NÃO é composite e NÃO entra no `tsc -b`. Borda IMPURA rodada via tsx/vitest; consome os stores + a costura + a lib pura pelos `paths` (→ src). O gate de tipos autoritativo é `tsconfig.typecheck.json` (raiz), que inclui services/*.",
+  "extends": "../../tsconfig.base.json",
+  "compilerOptions": {
+    "noEmit": true,
+    "resolveJsonModule": true
+  },
+  "include": ["src/**/*.ts", "test/**/*.ts"]
+}

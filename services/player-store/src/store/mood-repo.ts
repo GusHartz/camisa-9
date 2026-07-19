@@ -18,6 +18,7 @@ import type { Db } from '../client.js';
 import { athlete } from '../schema/athlete.js';
 import { purchase } from '../schema/purchase.js';
 import { injury } from '../schema/injury.js';
+import { dailyLedger } from '../schema/daily-ledger.js';
 
 type Tx = Parameters<Parameters<Db['transaction']>[0]>[0];
 
@@ -52,7 +53,8 @@ export async function readMoodByIds(
 
 /** O PASSE diário (`FOR UPDATE`): decai a Moral rumo a `baseline + offset do estilo de vida` (as
  *  compras possuídas) e a Forma rumo ao `baseline` (rebaixado enquanto recuperando de lesão no `day`).
- *  Monotônico (converge ao alvo, não oscila). Os eventos já entraram como bumps na fonte. */
+ *  Monotônico (converge ao alvo, não oscila). Os eventos já entraram como bumps na fonte. IDEMPOTENTE
+ *  por `(athlete, day)` via o ledger (SPEC-030): o claim 'mood' já rodado hoje → no-op (sem re-decair). */
 export async function applyDailyMood(db: Db, athleteId: string, day: number): Promise<Mood> {
   return db.transaction(async (tx) => {
     const [row] = await tx
@@ -62,6 +64,12 @@ export async function applyDailyMood(db: Db, athleteId: string, day: number): Pr
       .limit(1)
       .for('update');
     if (!row) throw new Error('atleta não encontrado');
+    const claimed = await tx
+      .insert(dailyLedger)
+      .values({ athleteId, day, scope: 'mood' })
+      .onConflictDoNothing()
+      .returning({ athleteId: dailyLedger.athleteId });
+    if (claimed.length === 0) return { forma: row.forma, moral: row.moral }; // já decaiu hoje → no-op
     const owned = await tx
       .select({ itemId: purchase.itemId })
       .from(purchase)

@@ -39,6 +39,7 @@ describe.skipIf(!DB_URL)('economy-repo — salário e estilo de vida contra Post
     await handle.db.delete(schema.injury);
     await handle.db.delete(schema.decision);
     await handle.db.delete(schema.purchase);
+    await handle.db.delete(schema.dailyLedger);
     await handle.db.delete(schema.athlete);
     await handle.db.delete(schema.team);
     await handle.db.delete(schema.account);
@@ -68,12 +69,47 @@ describe.skipIf(!DB_URL)('economy-repo — salário e estilo de vida contra Post
 
   it('accrueRound credita o salário (e o prêmio com resultado)', async () => {
     const id = await newAthlete(); // overall 34
-    const r1 = await accrueRound(handle.db, id);
+    const r1 = await accrueRound(handle.db, id, 1); // dia 1
     expect(r1.credited).toBe(salaryPerRound(34));
     expect(r1.balance).toBe(salaryPerRound(34));
-    const r2 = await accrueRound(handle.db, id, 'win');
+    const r2 = await accrueRound(handle.db, id, 2, 'win'); // dia 2, com prêmio
     expect(r2.credited).toBe(salaryPerRound(34) + matchPrize('win'));
     expect(r2.balance).toBe(salaryPerRound(34) * 2 + matchPrize('win'));
+  });
+
+  it('accrueRound é IDEMPOTENTE por dia (SPEC-030): 2× no mesmo dia credita 1×', async () => {
+    const id = await newAthlete();
+    const r1 = await accrueRound(handle.db, id, 5, 'win');
+    expect(r1.idempotent).toBe(false);
+    expect(r1.credited).toBe(salaryPerRound(34) + matchPrize('win'));
+    const r2 = await accrueRound(handle.db, id, 5, 'win'); // MESMO dia → no-op
+    expect(r2.idempotent).toBe(true);
+    expect(r2.credited).toBe(0);
+    expect(r2.balance).toBe(r1.balance); // saldo NÃO dobra
+  });
+
+  it('accrueRound: o prêmio varia com o resultado (win > draw > loss=0)', async () => {
+    const id = await newAthlete();
+    const win = await accrueRound(handle.db, id, 10, 'win');
+    const draw = await accrueRound(handle.db, id, 11, 'draw');
+    const loss = await accrueRound(handle.db, id, 12, 'loss');
+    expect(win.credited).toBe(salaryPerRound(34) + matchPrize('win'));
+    expect(draw.credited).toBe(salaryPerRound(34) + matchPrize('draw'));
+    expect(loss.credited).toBe(salaryPerRound(34) + matchPrize('loss')); // loss=0 → só o salário
+    expect(matchPrize('win')).toBeGreaterThan(matchPrize('draw')); // win > draw
+    expect(matchPrize('draw')).toBeGreaterThan(matchPrize('loss')); // draw > loss
+  });
+
+  it('accrueRound concorrente no mesmo dia → exatamente 1 credita (ledger serializa)', async () => {
+    const id = await newAthlete();
+    const [a, b] = await Promise.all([
+      accrueRound(handle.db, id, 6, 'win'),
+      accrueRound(handle.db, id, 6, 'win'),
+    ]);
+    expect([a.idempotent, b.idempotent].filter((x) => x === false)).toHaveLength(1); // 1 pagou
+    expect(await readWallet(handle.db, id).then((w) => w!.balance)).toBe(
+      salaryPerRound(34) + matchPrize('win'),
+    );
   });
 
   it('compra atômica deduz o saldo, grava a posse — e NÃO toca os focos (nunca loja de stats)', async () => {
@@ -148,7 +184,7 @@ describe.skipIf(!DB_URL)('economy-repo — salário e estilo de vida contra Post
 
   it('accrueRound credita mas NÃO toca os focos (anti-loja-de-stats no caminho do crédito)', async () => {
     const id = await newAthlete();
-    await accrueRound(handle.db, id, 'win');
+    await accrueRound(handle.db, id, 1, 'win');
     const [a] = await handle.db
       .select({
         f: schema.athlete.fisico,

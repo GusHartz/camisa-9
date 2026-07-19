@@ -1,0 +1,17 @@
+{
+  "name": "@camisa-9/scheduler",
+  "version": "0.0.0",
+  "private": true,
+  "type": "module",
+  "description": "Scheduler de produção (SPEC-030): o tick diário. Borda IMPURA (services/*, fora do guardrail) — o único lugar que lê Date.now(). runDailyTick orquestra runDailyRound (+moodModulator) + os passes por-humano (accrue+mood idempotentes via ledger, decisões/recuperação) + regen/vacancy, iterando readWorldOccupations. Sem migration própria (o ledger vive no player-store). Rodada via tsx/vitest.",
+  "scripts": {
+    "test": "vitest run"
+  },
+  "dependencies": {
+    "@camisa-9/player": "*",
+    "@camisa-9/player-store": "*",
+    "@camisa-9/world-engine": "*",
+    "@camisa-9/world-entry": "*",
+    "@camisa-9/world-store": "*"
+  }
+}

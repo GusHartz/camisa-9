@@ -17,6 +17,7 @@ import {
 import type { Db } from '../client.js';
 import { athlete } from '../schema/athlete.js';
 import { purchase } from '../schema/purchase.js';
+import { dailyLedger } from '../schema/daily-ledger.js';
 
 type Tx = Parameters<Parameters<Db['transaction']>[0]>[0];
 
@@ -28,13 +29,17 @@ export interface Wallet {
   readonly tradeoffs: Record<string, number>;
 }
 
-/** Credita o ganho da rodada (salário do overall + prêmio opcional). O `result` é o SEAM do
- *  resultado da partida (o caller futuro lê o mundo). `FOR UPDATE` serializa créditos concorrentes. */
+/** Credita o ganho do DIA (salário do overall + prêmio opcional). IDEMPOTENTE por `(athlete, day)`
+ *  via o ledger (SPEC-030): o claim `insert(daily_ledger 'accrue').onConflictDoNothing().returning()`
+ *  é a reivindicação atômica — 0 linhas = já pago hoje → no-op (`idempotent:true`, saldo inalterado).
+ *  `FOR UPDATE` serializa créditos concorrentes; o claim + o crédito commitam juntos (crash → rollback
+ *  des-reivindica). O `result` é o resultado da partida (o caller lê o mundo). */
 export async function accrueRound(
   db: Db,
   athleteId: string,
+  day: number,
   result?: MatchResult,
-): Promise<{ credited: number; balance: number }> {
+): Promise<{ credited: number; balance: number; idempotent: boolean }> {
   try {
     return await db.transaction(async (tx) => {
       const [row] = await tx
@@ -50,6 +55,12 @@ export async function accrueRound(
         .limit(1)
         .for('update');
       if (!row) throw new Error('atleta não encontrado');
+      const claimed = await tx
+        .insert(dailyLedger)
+        .values({ athleteId, day, scope: 'accrue' })
+        .onConflictDoNothing()
+        .returning({ athleteId: dailyLedger.athleteId });
+      if (claimed.length === 0) return { credited: 0, balance: row.balance, idempotent: true };
       const credited = roundEarnings(
         overall({
           fisico: row.fisico,
@@ -61,7 +72,7 @@ export async function accrueRound(
       );
       const balance = row.balance + credited;
       await tx.update(athlete).set({ balance }).where(eq(athlete.id, athleteId));
-      return { credited, balance };
+      return { credited, balance, idempotent: false };
     });
   } catch (err) {
     // OP-11: um erro de constraint do pg (overflow etc.) vira genérico; o de domínio já é genérico.

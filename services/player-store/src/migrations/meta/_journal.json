@@ -57,6 +57,13 @@
       "when": 1784317712843,
       "tag": "0007_forma_moral",
       "breakpoints": true
+    },
+    {
+      "idx": 8,
+      "version": "7",
+      "when": 1784419672391,
+      "tag": "0008_daily_ledger",
+      "breakpoints": true
     }
   ]
 }

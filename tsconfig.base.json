@@ -26,7 +26,10 @@
       "@camisa-9/world-engine": ["./packages/world-engine/src/index.ts"],
       "@camisa-9/player": ["./packages/player/src/index.ts"],
       "@camisa-9/world-store": ["./services/world-store/src/index.ts"],
-      "@camisa-9/player-store": ["./services/player-store/src/index.ts"]
+      "@camisa-9/player-store": ["./services/player-store/src/index.ts"],
+      "@camisa-9/world-entry": ["./services/world-entry/src/index.ts"],
+      "@camisa-9/regen": ["./services/regen/src/index.ts"],
+      "@camisa-9/scheduler": ["./services/scheduler/src/index.ts"]
     }
   }
 }
