@@ -17,7 +17,7 @@ export async function main(): Promise<void> {
     const r = await runDailyTick(worldHandle.db, playerHandle.db, seed, Date.now());
     console.log(
       `tick: day=${r.dayIndex} status=${r.roundStatus} humanos=${r.humans} pagos=${r.accrued} ` +
-        `decisões=${r.decisions} recuperados=${r.recovered} regen=${r.regenerated} ` +
+        `decisões=${r.decisions} lesões=${r.injured} recuperados=${r.recovered} regen=${r.regenerated} ` +
         `vacancy=${r.vacancy.frozen}/${r.vacancy.reverted}`,
     );
   } finally {
