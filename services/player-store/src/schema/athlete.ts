@@ -52,6 +52,11 @@ export const athlete = playerSchema.table(
     // Time do quinteto (SPEC-018). NULL = solo; setado no create/join do time. A `position`
     // acima é a vaga reivindicada no elenco. Membros do time = atletas com este `team_id`.
     teamId: uuid('team_id').references(() => team.id),
+    // Transferência (SPEC-033, card 1.4): `transfer_requested` = a proposta ACEITA, ainda não
+    // executada (o passe de viragem move o humano de clube e limpa a flag). `market_open` = o
+    // jogador "testou o mercado" (o `explore`) → mais assediável (baixa o threshold da proposta).
+    transferRequested: boolean('transfer_requested').notNull().default(false),
+    marketOpen: boolean('market_open').notNull().default(false),
     active: boolean('active').notNull().default(true),
     createdAt: timestamp('created_at', { withTimezone: true }).notNull().defaultNow(),
   },

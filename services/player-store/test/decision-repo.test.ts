@@ -18,6 +18,7 @@ import {
   createDb,
   generateForDay,
   readDecisionLog,
+  readTransferRequested,
   resolveDeadline,
   schema,
   type DbHandle,
@@ -83,6 +84,26 @@ describe.skipIf(!DB_URL)('decision-repo — motor de decisões contra Postgres r
     const d2 = await generateForDay(handle.db, id, 100, 'seed');
     expect(d2.map((d) => d.templateId).sort()).toEqual(d1.map((d) => d.templateId).sort());
     expect(await readDecisionLog(handle.db, id)).toHaveLength(d1.length); // não duplicou
+  });
+
+  it('aceitar uma proposta seta transfer_requested (o seam do card 1.4 — SPEC-033)', async () => {
+    const id = await newAthlete();
+    await setOverall(id, 60); // forte para o tier
+    expect(await readTransferRequested(handle.db, id)).toBe(false); // começa sem pendência
+    let answered = false;
+    for (let day = 0; day < 60 && !answered; day++) {
+      const gen = await generateForDay(handle.db, id, day, 'seed', { tier: 4 });
+      if (!gen.some((d) => d.templateId === 'proposta-clube-maior')) continue;
+      const log = await readDecisionLog(handle.db, id);
+      const dec = log.find(
+        (e) => e.templateId === 'proposta-clube-maior' && e.status === 'pending',
+      );
+      if (!dec) continue;
+      await answerDecision(handle.db, id, dec.id, 'aceitar'); // outcome.transfer = 'accept'
+      answered = true;
+    }
+    expect(answered).toBe(true); // a proposta apareceu (o seam de tier gatilha)
+    expect(await readTransferRequested(handle.db, id)).toBe(true); // a pendência foi marcada
   });
 
   it('responder grava a escolha + o outcome declarado (status=answered, resolved_by=player)', async () => {

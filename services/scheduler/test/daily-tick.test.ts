@@ -621,6 +621,40 @@ describe.skipIf(!DB_URL)('daily-tick — o tick de produção contra Postgres re
     expect(legends.some((l) => l.humanAthleteId === humanId)).toBe(true); // virou lenda
   });
 
+  it('transferência ACEITA é EXECUTADA na viragem (o tick wira runTransferPass — SPEC-033)', async () => {
+    const world = (await readWorld(worldHandle.db, SEED))!;
+    await setSeasonAnchor(worldHandle.db, SEED, world.seasonId, START);
+    const league = world.tiers[world.tiers.length - 1]!.leagues[0]!;
+    const clubId = league.clubs[0]!.id;
+    const humanId = await seatHuman(clubId);
+    const occ = (await readOccupation(worldHandle.db, SEED, humanId))!;
+    // forte de verdade: os FOCOS vivos = 70 (o que a proposta E o destino usam) + aceitou (flag pendente)
+    await worldHandle.db
+      .update(worldSchema.worldOccupation)
+      .set({ ability: 70 })
+      .where(
+        and(
+          eq(worldSchema.worldOccupation.worldSeed, SEED),
+          eq(worldSchema.worldOccupation.humanAthleteId, humanId),
+        ),
+      );
+    await worldHandle.db
+      .update(worldSchema.athlete)
+      .set({ ability: 70 })
+      .where(
+        and(eq(worldSchema.athlete.worldSeed, SEED), eq(worldSchema.athlete.id, occ.athleteId)),
+      );
+    await playerHandle.db
+      .update(playerSchema.athlete)
+      .set({ fisico: 70, tecnico: 70, tatico: 70, mental: 70, transferRequested: true })
+      .where(eq(playerSchema.athlete.id, humanId));
+    await advanceTickCursor(worldHandle.db, SEED, START + 37); // isola a viragem
+    const rep = await runDailyTick(worldHandle.db, playerHandle.db, SEED, epochAt(START + 38));
+    expect(rep.roundStatus).toBe('season_rolled');
+    expect(rep.transferred).toBe(1); // o tick executou a transferência na gênese
+    expect((await readOccupation(worldHandle.db, SEED, humanId))!.clubId).not.toBe(clubId); // mudou
+  });
+
   it('âncora no futuro (nada venceu ainda) → fora_de_janela, ninguém processado', async () => {
     const world = (await readWorld(worldHandle.db, SEED))!;
     await setSeasonAnchor(worldHandle.db, SEED, world.seasonId, START + 5); // temporada começa em 5 dias

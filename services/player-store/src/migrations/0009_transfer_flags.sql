@@ -1,0 +1,2 @@
+ALTER TABLE "player"."athlete" ADD COLUMN "transfer_requested" boolean DEFAULT false NOT NULL;--> statement-breakpoint
+ALTER TABLE "player"."athlete" ADD COLUMN "market_open" boolean DEFAULT false NOT NULL;

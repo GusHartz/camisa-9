@@ -64,6 +64,13 @@
       "when": 1784419672391,
       "tag": "0008_daily_ledger",
       "breakpoints": true
+    },
+    {
+      "idx": 9,
+      "version": "7",
+      "when": 1784478057639,
+      "tag": "0009_transfer_flags",
+      "breakpoints": true
     }
   ]
 }

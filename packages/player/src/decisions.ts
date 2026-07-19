@@ -3,6 +3,7 @@
 // catálogo ABERTO de forma reproduzível por `(seed, dia, atleta)`. O `outcome` de cada opção é DADO
 // declarado (seam) — a aplicação real (moral) é da 2.3; a transferência é registrada (card 1.4).
 // Inteiro em tudo (hash FNV via shifts, sem `Math.random`/transcendentais). Zero I/O.
+import { isTransferTarget } from './transfer.js';
 
 export type DecisionType = 'treino' | 'vida' | 'proposta';
 
@@ -27,6 +28,10 @@ export interface DecisionContext {
   readonly age?: number;
   readonly moral?: number;
   readonly injured?: boolean;
+  /** Seam do MUNDO (SPEC-033): a divisão (1..4) do clube do humano — gatilha "forte para o tier". */
+  readonly tier?: number;
+  /** O jogador "testou o mercado" (o `explore`) → mais assediável (baixa o threshold). */
+  readonly marketOpen?: boolean;
 }
 
 export interface DecisionTemplate {
@@ -123,6 +128,22 @@ export const DECISIONS: readonly DecisionTemplate[] = [
     options: [
       { id: 'renovar', label: 'Renovar com o clube', outcome: { moral: 4 }, conservative: true },
       { id: 'testar', label: 'Testar o mercado', outcome: { transfer: 'explore' } },
+    ],
+  },
+  {
+    id: 'proposta-clube-maior',
+    type: 'proposta',
+    prompt: 'Um clube de mais expressão está de olho em você.',
+    // seam do MUNDO (SPEC-033): forte para o tier (o `tier` vem do scheduler); `marketOpen` = explore.
+    trigger: (c) =>
+      c.tier !== undefined && isTransferTarget(c.overall, c.tier, c.marketOpen === true),
+    options: [
+      {
+        id: 'aceitar',
+        label: 'Aceitar o desafio (mudar de clube)',
+        outcome: { transfer: 'accept' },
+      },
+      { id: 'ficar', label: 'Ficar onde estou', outcome: { moral: 6 }, conservative: true },
     ],
   },
   {

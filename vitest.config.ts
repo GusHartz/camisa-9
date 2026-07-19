@@ -41,6 +41,10 @@ export default defineConfig({
         find: /^@camisa-9\/regen$/,
         replacement: fileURLToPath(new URL('./services/regen/src/index.ts', import.meta.url)),
       },
+      {
+        find: /^@camisa-9\/transfer$/,
+        replacement: fileURLToPath(new URL('./services/transfer/src/index.ts', import.meta.url)),
+      },
     ],
   },
   test: {

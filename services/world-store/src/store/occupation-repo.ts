@@ -11,7 +11,7 @@ import { athlete, club, league, world, worldOccupation, worldTier } from '../sch
 import { publishedRound } from '../schema/round.js';
 import { REGEN_AGE } from './regen-age.js';
 
-type Tx = Parameters<Parameters<Db['transaction']>[0]>[0];
+export type Tx = Parameters<Parameters<Db['transaction']>[0]>[0];
 
 /** Erro de domínio da ocupação — mensagem já é genérica/segura (OP-11). */
 export class OccupyError extends Error {}
@@ -199,7 +199,7 @@ export async function vacateSlot(db: Db, worldSeed: string, athleteId: string): 
 /** Lock advisory COMPARTILHADO na chave da rodada 1 da temporada — mesmo namespace que o
  *  publishWorldRound (exclusivo). shared×shared não bloqueia (ocupações concorrentes seguem);
  *  shared×exclusive serializa (ocupação vs. publicação da rodada que abre a temporada). */
-async function acquireSeasonStartLock(tx: Tx, seasonId: string): Promise<void> {
+export async function acquireSeasonStartLock(tx: Tx, seasonId: string): Promise<void> {
   const key = `world:${seasonId}:1`;
   await tx.execute(sql`select pg_advisory_xact_lock_shared(hashtextextended(${key}, 0))`);
 }
@@ -227,7 +227,7 @@ async function assertEntryClub(tx: Tx, worldSeed: string, clubId: string): Promi
 }
 
 /** seasonId atual do mundo (a temporada em que a ocupação é gravada). */
-async function worldSeasonId(tx: Tx, worldSeed: string): Promise<string> {
+export async function worldSeasonId(tx: Tx, worldSeed: string): Promise<string> {
   const rows = await tx
     .select({ seasonId: world.seasonId })
     .from(world)
@@ -240,7 +240,7 @@ async function worldSeasonId(tx: Tx, worldSeed: string): Promise<string> {
 
 /** Guarda da gênese: a temporada NÃO pode ter rodada publicada (senão a re-simulação a cada
  *  tick reescreveria rounds já publicados — a trava do MEMORY.md). Presença ⇒ rejeita. */
-async function assertGenesis(tx: Tx, seasonId: string): Promise<void> {
+export async function assertGenesis(tx: Tx, seasonId: string): Promise<void> {
   const rows = await tx
     .select({ round: publishedRound.round })
     .from(publishedRound)
@@ -252,14 +252,25 @@ async function assertGenesis(tx: Tx, seasonId: string): Promise<void> {
 /** Id da vaga do NPC mais fraco (menor ability, empate → menor ord) da posição no clube,
  *  travada com FOR UPDATE (serializa a corrida pela vaga). Sem NPC livre → erro. */
 async function weakestNpcSlotId(tx: Tx, input: OccupyInput): Promise<string> {
+  return weakestNpcSlotAt(tx, input.worldSeed, input.clubId, input.position);
+}
+
+/** A vaga do NPC mais fraco da posição num clube (FOR UPDATE). Reusada pela ocupação (SPEC-020) e
+ *  pela transferência (SPEC-033) — a mesma corrida serializada pela vaga. Sem NPC livre → erro. */
+export async function weakestNpcSlotAt(
+  tx: Tx,
+  worldSeed: string,
+  clubId: string,
+  position: Position,
+): Promise<string> {
   const rows = await tx
     .select({ id: athlete.id })
     .from(athlete)
     .where(
       and(
-        eq(athlete.worldSeed, input.worldSeed),
-        eq(athlete.clubId, input.clubId),
-        eq(athlete.position, input.position),
+        eq(athlete.worldSeed, worldSeed),
+        eq(athlete.clubId, clubId),
+        eq(athlete.position, position),
         eq(athlete.isHuman, false),
       ),
     )
@@ -272,7 +283,7 @@ async function weakestNpcSlotId(tx: Tx, input: OccupyInput): Promise<string> {
 }
 
 /** pg unique_violation = SQLSTATE 23505 (Drizzle envelopa → caminha a cadeia de causas). */
-function isUniqueViolation(err: unknown): boolean {
+export function isUniqueViolation(err: unknown): boolean {
   let cur: unknown = err;
   for (let i = 0; i < 5 && isRecord(cur); i++) {
     if (cur['code'] === '23505') return true;

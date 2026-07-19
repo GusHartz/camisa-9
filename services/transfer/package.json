@@ -1,0 +1,17 @@
+{
+  "name": "@camisa-9/transfer",
+  "version": "0.0.0",
+  "private": true,
+  "type": "module",
+  "exports": "./src/index.ts",
+  "description": "Costura de Transferência (SPEC-033 — card 1.4, Fatia 1): na janela de gênese, move o humano com proposta ACEITA para o clube-alvo (heurística de destino + move atômico), rachando o quinteto. Borda IMPURA (services/*), fora de packages/*. Sem migration própria (a flag vive no player-store). Rodada via tsx/vitest.",
+  "scripts": {
+    "test": "vitest run"
+  },
+  "dependencies": {
+    "@camisa-9/player": "*",
+    "@camisa-9/player-store": "*",
+    "@camisa-9/world-engine": "*",
+    "@camisa-9/world-store": "*"
+  }
+}
