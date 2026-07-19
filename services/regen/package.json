@@ -3,6 +3,7 @@
   "version": "0.0.0",
   "private": true,
   "type": "module",
+  "exports": "./src/index.ts",
   "description": "Costura do Regen (SPEC-022 — renascimento de carreira + Hall of Fame): encerra a carreira, arquiva a lenda no Hall of Fame, e renasce no mesmo clube. Borda IMPURA (services/*), fora de packages/*. Sem migration própria. Rodada via tsx/vitest.",
   "scripts": {
     "test": "vitest run"

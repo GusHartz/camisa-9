@@ -5,6 +5,7 @@
   "type": "module",
   "description": "Scheduler de produção (SPEC-030): o tick diário. Borda IMPURA (services/*, fora do guardrail) — o único lugar que lê Date.now(). runDailyTick orquestra runDailyRound (+moodModulator) + os passes por-humano (accrue+mood idempotentes via ledger, decisões/recuperação) + regen/vacancy, iterando readWorldOccupations. Sem migration própria (o ledger vive no player-store). Rodada via tsx/vitest.",
   "scripts": {
+    "start": "tsx src/main.ts",
     "test": "vitest run"
   },
   "dependencies": {

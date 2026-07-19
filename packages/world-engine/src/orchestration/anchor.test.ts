@@ -1,6 +1,6 @@
 import { readFileSync } from 'node:fs';
 import { afterEach, describe, expect, it } from 'vitest';
-import { resolveSlot, type RoundSlot } from './anchor.js';
+import { dueDayIndex, resolveSlot, type RoundSlot } from './anchor.js';
 
 const golden = JSON.parse(
   readFileSync(new URL('../__fixtures__/anchor.golden.json', import.meta.url), 'utf8'),
@@ -46,6 +46,39 @@ describe('resolveSlot — fuso Brasília (offset fixo UTC-3)', () => {
     // Ambos os ramos de janela cobertos também no passado.
     expect(negativos.some((v) => v.slot.isMatchWindow)).toBe(true);
     expect(negativos.some((v) => !v.slot.isMatchWindow)).toBe(true);
+  });
+
+  describe('dueDayIndex — teto do catch-up (SPEC-032)', () => {
+    it('coerente com os vetores golden: ≥15h → hoje, <15h → ontem', () => {
+      for (const v of golden.vectors) {
+        const expected = v.slot.hour >= 15 ? v.slot.dayIndex : v.slot.dayIndex - 1;
+        expect(dueDayIndex(v.epochMs)).toBe(expected);
+      }
+    });
+
+    it('14:59 (antes da janela) → o dia vencido é ONTEM', () => {
+      const almost = golden.vectors.find((v) => v.iso === '2026-07-11T14:59:00-03:00');
+      expect(almost).toBeDefined();
+      expect(dueDayIndex(almost!.epochMs)).toBe(almost!.slot.dayIndex - 1);
+    });
+
+    it('15:00 exato (abre a janela) → o dia vencido é HOJE', () => {
+      const at15 = golden.vectors.find((v) => v.slot.hour === 15);
+      expect(at15).toBeDefined();
+      expect(dueDayIndex(at15!.epochMs)).toBe(at15!.slot.dayIndex);
+    });
+
+    it('das 15h à meia-noite: qualquer hora ≥15 do MESMO dia → o mesmo dia vencido', () => {
+      const h = 3_600_000;
+      const day = resolveSlot(18 * h).dayIndex; // 18h UTC = 15h BRT → dia BRT de referência
+      // 15:00, 16:00, 20:00, 23:00 do dia BRT de referência — epoch = 18:00..02:00 UTC.
+      for (const localHour of [15, 16, 20, 23]) {
+        const epoch = (localHour + 3) * h; // +3 = desfaz o offset UTC-3 (BRT→UTC)
+        expect(dueDayIndex(epoch)).toBe(day);
+      }
+      // 00:30 BRT do dia SEGUINTE (03:30 UTC) → hora 0 <15 → o dia vencido volta ao dia de ref.
+      expect(dueDayIndex(3 * h + 30 * 60_000 + 24 * h)).toBe(day);
+    });
   });
 
   describe('independência do fuso do host', () => {

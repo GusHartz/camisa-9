@@ -3,6 +3,7 @@
   "version": "0.0.0",
   "private": true,
   "type": "module",
+  "exports": "./src/index.ts",
   "description": "Camada de dados (SPEC-013 — Fase 0.2, Fatia 1): persistência do WorldState em Postgres. Borda IMPURA — vive em services/*, fora de packages/* (world-engine fica puro, OP-17). Rodada via tsx/vitest (sem build para dist na Fatia 1).",
   "scripts": {
     "test": "vitest run",

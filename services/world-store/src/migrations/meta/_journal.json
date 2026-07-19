@@ -50,6 +50,13 @@
       "when": 1784293591542,
       "tag": "0006_vacancy_freeze",
       "breakpoints": true
+    },
+    {
+      "idx": 7,
+      "version": "7",
+      "when": 1784470588930,
+      "tag": "0007_tick_progress",
+      "breakpoints": true
     }
   ]
 }

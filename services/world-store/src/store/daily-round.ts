@@ -52,13 +52,25 @@ export async function runDailyRound(
 ): Promise<DailyRoundReport> {
   const slot = resolveSlot(epochMs);
   if (!slot.isMatchWindow) return report(slot.dayIndex, null, null, 'fora_de_janela');
+  return runRoundForDay(db, seed, slot.dayIndex, modulate);
+}
+
+/** Publica a rodada de um `dayIndex` ALVO (o núcleo reusável do tick e do CATCH-UP, SPEC-032).
+ *  Sem guarda de janela: quem chama já decidiu que o dia venceu (via `dueDayIndex`). Re-lê o
+ *  mundo/âncora a cada chamada → após uma viragem, o dia seguinte já vê o mundo NOVO. */
+export async function runRoundForDay(
+  db: Db,
+  seed: string,
+  dayIndex: number,
+  modulate?: WorldModulator,
+): Promise<DailyRoundReport> {
   const world = await readWorld(db, seed);
-  if (!world) return report(slot.dayIndex, null, null, 'sem_mundo');
+  if (!world) return report(dayIndex, null, null, 'sem_mundo');
   const startDayIndex = await readSeasonAnchor(db, seed, world.seasonId);
-  if (startDayIndex === null) return report(slot.dayIndex, world.seasonId, null, 'sem_ancora');
-  const targetRound = slot.dayIndex - startDayIndex + 1;
+  if (startDayIndex === null) return report(dayIndex, world.seasonId, null, 'sem_ancora');
+  const targetRound = dayIndex - startDayIndex + 1;
   const simulated = modulate ? await modulate(world) : world; // in-memory; seasonId preservado
-  return publishTarget(db, seed, slot.dayIndex, simulateWorldSeason(simulated, seed), targetRound);
+  return publishTarget(db, seed, dayIndex, simulateWorldSeason(simulated, seed), targetRound);
 }
 
 async function publishTarget(

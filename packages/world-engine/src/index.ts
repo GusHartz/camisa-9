@@ -29,7 +29,7 @@ export { runTransfers } from './engine/transfers.js';
 export { turnoverReport } from './engine/turnover-report.js';
 export { worldHash } from './engine/world-hash.js';
 export { RoundStore, type PublishedRound } from './orchestration/store.js';
-export { resolveSlot, type RoundSlot } from './orchestration/anchor.js';
+export { dueDayIndex, resolveSlot, type RoundSlot } from './orchestration/anchor.js';
 export {
   RoundPublisher,
   type PublishInput,
