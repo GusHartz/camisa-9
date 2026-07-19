@@ -1,0 +1,696 @@
+{
+  "id": "4cdca097-37a9-4750-b2f3-9b17f74b5b85",
+  "prevId": "20957cd5-c715-4c21-8916-2697f8717e8c",
+  "version": "7",
+  "dialect": "postgresql",
+  "tables": {
+    "player.account": {
+      "name": "account",
+      "schema": "player",
+      "columns": {
+        "id": {
+          "name": "id",
+          "type": "uuid",
+          "primaryKey": true,
+          "notNull": true,
+          "default": "gen_random_uuid()"
+        },
+        "email": {
+          "name": "email",
+          "type": "text",
+          "primaryKey": false,
+          "notNull": true
+        },
+        "password_hash": {
+          "name": "password_hash",
+          "type": "text",
+          "primaryKey": false,
+          "notNull": true
+        },
+        "created_at": {
+          "name": "created_at",
+          "type": "timestamp with time zone",
+          "primaryKey": false,
+          "notNull": true,
+          "default": "now()"
+        }
+      },
+      "indexes": {},
+      "foreignKeys": {},
+      "compositePrimaryKeys": {},
+      "uniqueConstraints": {
+        "account_email_unique": {
+          "name": "account_email_unique",
+          "nullsNotDistinct": false,
+          "columns": [
+            "email"
+          ]
+        }
+      },
+      "policies": {},
+      "checkConstraints": {},
+      "isRLSEnabled": false
+    },
+    "player.team": {
+      "name": "team",
+      "schema": "player",
+      "columns": {
+        "id": {
+          "name": "id",
+          "type": "uuid",
+          "primaryKey": true,
+          "notNull": true,
+          "default": "gen_random_uuid()"
+        },
+        "name": {
+          "name": "name",
+          "type": "text",
+          "primaryKey": false,
+          "notNull": true
+        },
+        "kit": {
+          "name": "kit",
+          "type": "jsonb",
+          "primaryKey": false,
+          "notNull": true
+        },
+        "code": {
+          "name": "code",
+          "type": "text",
+          "primaryKey": false,
+          "notNull": true
+        },
+        "captain_account_id": {
+          "name": "captain_account_id",
+          "type": "uuid",
+          "primaryKey": false,
+          "notNull": true
+        },
+        "locked": {
+          "name": "locked",
+          "type": "boolean",
+          "primaryKey": false,
+          "notNull": true,
+          "default": false
+        },
+        "created_at": {
+          "name": "created_at",
+          "type": "timestamp with time zone",
+          "primaryKey": false,
+          "notNull": true,
+          "default": "now()"
+        }
+      },
+      "indexes": {},
+      "foreignKeys": {
+        "team_captain_account_id_account_id_fk": {
+          "name": "team_captain_account_id_account_id_fk",
+          "tableFrom": "team",
+          "tableTo": "account",
+          "schemaTo": "player",
+          "columnsFrom": [
+            "captain_account_id"
+          ],
+          "columnsTo": [
+            "id"
+          ],
+          "onDelete": "no action",
+          "onUpdate": "no action"
+        }
+      },
+      "compositePrimaryKeys": {},
+      "uniqueConstraints": {
+        "team_code_unique": {
+          "name": "team_code_unique",
+          "nullsNotDistinct": false,
+          "columns": [
+            "code"
+          ]
+        }
+      },
+      "policies": {},
+      "checkConstraints": {},
+      "isRLSEnabled": false
+    },
+    "player.athlete": {
+      "name": "athlete",
+      "schema": "player",
+      "columns": {
+        "id": {
+          "name": "id",
+          "type": "uuid",
+          "primaryKey": true,
+          "notNull": true,
+          "default": "gen_random_uuid()"
+        },
+        "account_id": {
+          "name": "account_id",
+          "type": "uuid",
+          "primaryKey": false,
+          "notNull": true
+        },
+        "name": {
+          "name": "name",
+          "type": "text",
+          "primaryKey": false,
+          "notNull": true
+        },
+        "position": {
+          "name": "position",
+          "type": "text",
+          "primaryKey": false,
+          "notNull": true
+        },
+        "appearance": {
+          "name": "appearance",
+          "type": "jsonb",
+          "primaryKey": false,
+          "notNull": true
+        },
+        "fisico": {
+          "name": "fisico",
+          "type": "integer",
+          "primaryKey": false,
+          "notNull": true
+        },
+        "tecnico": {
+          "name": "tecnico",
+          "type": "integer",
+          "primaryKey": false,
+          "notNull": true
+        },
+        "tatico": {
+          "name": "tatico",
+          "type": "integer",
+          "primaryKey": false,
+          "notNull": true
+        },
+        "mental": {
+          "name": "mental",
+          "type": "integer",
+          "primaryKey": false,
+          "notNull": true
+        },
+        "training_xp": {
+          "name": "training_xp",
+          "type": "integer",
+          "primaryKey": false,
+          "notNull": true,
+          "default": 0
+        },
+        "free_points": {
+          "name": "free_points",
+          "type": "integer",
+          "primaryKey": false,
+          "notNull": true,
+          "default": 0
+        },
+        "last_focus": {
+          "name": "last_focus",
+          "type": "text",
+          "primaryKey": false,
+          "notNull": false
+        },
+        "focus_streak": {
+          "name": "focus_streak",
+          "type": "integer",
+          "primaryKey": false,
+          "notNull": true,
+          "default": 0
+        },
+        "balance": {
+          "name": "balance",
+          "type": "integer",
+          "primaryKey": false,
+          "notNull": true,
+          "default": 0
+        },
+        "forma": {
+          "name": "forma",
+          "type": "integer",
+          "primaryKey": false,
+          "notNull": true,
+          "default": 50
+        },
+        "moral": {
+          "name": "moral",
+          "type": "integer",
+          "primaryKey": false,
+          "notNull": true,
+          "default": 50
+        },
+        "team_id": {
+          "name": "team_id",
+          "type": "uuid",
+          "primaryKey": false,
+          "notNull": false
+        },
+        "transfer_requested": {
+          "name": "transfer_requested",
+          "type": "boolean",
+          "primaryKey": false,
+          "notNull": true,
+          "default": false
+        },
+        "market_open": {
+          "name": "market_open",
+          "type": "boolean",
+          "primaryKey": false,
+          "notNull": true,
+          "default": false
+        },
+        "active": {
+          "name": "active",
+          "type": "boolean",
+          "primaryKey": false,
+          "notNull": true,
+          "default": true
+        },
+        "created_at": {
+          "name": "created_at",
+          "type": "timestamp with time zone",
+          "primaryKey": false,
+          "notNull": true,
+          "default": "now()"
+        }
+      },
+      "indexes": {
+        "athlete_one_active_per_account": {
+          "name": "athlete_one_active_per_account",
+          "columns": [
+            {
+              "expression": "account_id",
+              "isExpression": false,
+              "asc": true,
+              "nulls": "last"
+            }
+          ],
+          "isUnique": true,
+          "where": "\"player\".\"athlete\".\"active\"",
+          "concurrently": false,
+          "method": "btree",
+          "with": {}
+        }
+      },
+      "foreignKeys": {
+        "athlete_account_id_account_id_fk": {
+          "name": "athlete_account_id_account_id_fk",
+          "tableFrom": "athlete",
+          "tableTo": "account",
+          "schemaTo": "player",
+          "columnsFrom": [
+            "account_id"
+          ],
+          "columnsTo": [
+            "id"
+          ],
+          "onDelete": "no action",
+          "onUpdate": "no action"
+        },
+        "athlete_team_id_team_id_fk": {
+          "name": "athlete_team_id_team_id_fk",
+          "tableFrom": "athlete",
+          "tableTo": "team",
+          "schemaTo": "player",
+          "columnsFrom": [
+            "team_id"
+          ],
+          "columnsTo": [
+            "id"
+          ],
+          "onDelete": "no action",
+          "onUpdate": "no action"
+        }
+      },
+      "compositePrimaryKeys": {},
+      "uniqueConstraints": {},
+      "policies": {},
+      "checkConstraints": {
+        "athlete_fisico_range": {
+          "name": "athlete_fisico_range",
+          "value": "\"player\".\"athlete\".\"fisico\" between 0 and 99"
+        },
+        "athlete_tecnico_range": {
+          "name": "athlete_tecnico_range",
+          "value": "\"player\".\"athlete\".\"tecnico\" between 0 and 99"
+        },
+        "athlete_tatico_range": {
+          "name": "athlete_tatico_range",
+          "value": "\"player\".\"athlete\".\"tatico\" between 0 and 99"
+        },
+        "athlete_mental_range": {
+          "name": "athlete_mental_range",
+          "value": "\"player\".\"athlete\".\"mental\" between 0 and 99"
+        },
+        "athlete_free_points_range": {
+          "name": "athlete_free_points_range",
+          "value": "\"player\".\"athlete\".\"free_points\" >= 0"
+        },
+        "athlete_focus_streak_range": {
+          "name": "athlete_focus_streak_range",
+          "value": "\"player\".\"athlete\".\"focus_streak\" >= 0"
+        },
+        "athlete_balance_range": {
+          "name": "athlete_balance_range",
+          "value": "\"player\".\"athlete\".\"balance\" >= 0"
+        },
+        "athlete_forma_range": {
+          "name": "athlete_forma_range",
+          "value": "\"player\".\"athlete\".\"forma\" between 0 and 100"
+        },
+        "athlete_moral_range": {
+          "name": "athlete_moral_range",
+          "value": "\"player\".\"athlete\".\"moral\" between 0 and 100"
+        }
+      },
+      "isRLSEnabled": false
+    },
+    "player.purchase": {
+      "name": "purchase",
+      "schema": "player",
+      "columns": {
+        "athlete_id": {
+          "name": "athlete_id",
+          "type": "uuid",
+          "primaryKey": false,
+          "notNull": true
+        },
+        "item_id": {
+          "name": "item_id",
+          "type": "text",
+          "primaryKey": false,
+          "notNull": true
+        },
+        "purchased_at": {
+          "name": "purchased_at",
+          "type": "timestamp with time zone",
+          "primaryKey": false,
+          "notNull": true,
+          "default": "now()"
+        }
+      },
+      "indexes": {},
+      "foreignKeys": {
+        "purchase_athlete_id_athlete_id_fk": {
+          "name": "purchase_athlete_id_athlete_id_fk",
+          "tableFrom": "purchase",
+          "tableTo": "athlete",
+          "schemaTo": "player",
+          "columnsFrom": [
+            "athlete_id"
+          ],
+          "columnsTo": [
+            "id"
+          ],
+          "onDelete": "no action",
+          "onUpdate": "no action"
+        }
+      },
+      "compositePrimaryKeys": {
+        "purchase_athlete_id_item_id_pk": {
+          "name": "purchase_athlete_id_item_id_pk",
+          "columns": [
+            "athlete_id",
+            "item_id"
+          ]
+        }
+      },
+      "uniqueConstraints": {},
+      "policies": {},
+      "checkConstraints": {},
+      "isRLSEnabled": false
+    },
+    "player.decision": {
+      "name": "decision",
+      "schema": "player",
+      "columns": {
+        "id": {
+          "name": "id",
+          "type": "uuid",
+          "primaryKey": true,
+          "notNull": true,
+          "default": "gen_random_uuid()"
+        },
+        "athlete_id": {
+          "name": "athlete_id",
+          "type": "uuid",
+          "primaryKey": false,
+          "notNull": true
+        },
+        "day": {
+          "name": "day",
+          "type": "integer",
+          "primaryKey": false,
+          "notNull": true
+        },
+        "ord": {
+          "name": "ord",
+          "type": "integer",
+          "primaryKey": false,
+          "notNull": true
+        },
+        "template_id": {
+          "name": "template_id",
+          "type": "text",
+          "primaryKey": false,
+          "notNull": true
+        },
+        "type": {
+          "name": "type",
+          "type": "text",
+          "primaryKey": false,
+          "notNull": true
+        },
+        "status": {
+          "name": "status",
+          "type": "text",
+          "primaryKey": false,
+          "notNull": true,
+          "default": "'pending'"
+        },
+        "chosen_option": {
+          "name": "chosen_option",
+          "type": "text",
+          "primaryKey": false,
+          "notNull": false
+        },
+        "outcome": {
+          "name": "outcome",
+          "type": "jsonb",
+          "primaryKey": false,
+          "notNull": false
+        },
+        "resolved_by": {
+          "name": "resolved_by",
+          "type": "text",
+          "primaryKey": false,
+          "notNull": false
+        },
+        "created_at": {
+          "name": "created_at",
+          "type": "timestamp with time zone",
+          "primaryKey": false,
+          "notNull": true,
+          "default": "now()"
+        }
+      },
+      "indexes": {},
+      "foreignKeys": {
+        "decision_athlete_id_athlete_id_fk": {
+          "name": "decision_athlete_id_athlete_id_fk",
+          "tableFrom": "decision",
+          "tableTo": "athlete",
+          "schemaTo": "player",
+          "columnsFrom": [
+            "athlete_id"
+          ],
+          "columnsTo": [
+            "id"
+          ],
+          "onDelete": "no action",
+          "onUpdate": "no action"
+        }
+      },
+      "compositePrimaryKeys": {},
+      "uniqueConstraints": {
+        "decision_one_per_day": {
+          "name": "decision_one_per_day",
+          "nullsNotDistinct": false,
+          "columns": [
+            "athlete_id",
+            "day",
+            "template_id"
+          ]
+        }
+      },
+      "policies": {},
+      "checkConstraints": {},
+      "isRLSEnabled": false
+    },
+    "player.injury": {
+      "name": "injury",
+      "schema": "player",
+      "columns": {
+        "id": {
+          "name": "id",
+          "type": "uuid",
+          "primaryKey": true,
+          "notNull": true,
+          "default": "gen_random_uuid()"
+        },
+        "athlete_id": {
+          "name": "athlete_id",
+          "type": "uuid",
+          "primaryKey": false,
+          "notNull": true
+        },
+        "severity": {
+          "name": "severity",
+          "type": "text",
+          "primaryKey": false,
+          "notNull": true
+        },
+        "started_day": {
+          "name": "started_day",
+          "type": "integer",
+          "primaryKey": false,
+          "notNull": true
+        },
+        "recovery_days": {
+          "name": "recovery_days",
+          "type": "integer",
+          "primaryKey": false,
+          "notNull": true
+        },
+        "status": {
+          "name": "status",
+          "type": "text",
+          "primaryKey": false,
+          "notNull": true,
+          "default": "'active'"
+        },
+        "created_at": {
+          "name": "created_at",
+          "type": "timestamp with time zone",
+          "primaryKey": false,
+          "notNull": true,
+          "default": "now()"
+        }
+      },
+      "indexes": {
+        "injury_one_active_per_athlete": {
+          "name": "injury_one_active_per_athlete",
+          "columns": [
+            {
+              "expression": "athlete_id",
+              "isExpression": false,
+              "asc": true,
+              "nulls": "last"
+            }
+          ],
+          "isUnique": true,
+          "where": "\"player\".\"injury\".\"status\" = 'active'",
+          "concurrently": false,
+          "method": "btree",
+          "with": {}
+        }
+      },
+      "foreignKeys": {
+        "injury_athlete_id_athlete_id_fk": {
+          "name": "injury_athlete_id_athlete_id_fk",
+          "tableFrom": "injury",
+          "tableTo": "athlete",
+          "schemaTo": "player",
+          "columnsFrom": [
+            "athlete_id"
+          ],
+          "columnsTo": [
+            "id"
+          ],
+          "onDelete": "no action",
+          "onUpdate": "no action"
+        }
+      },
+      "compositePrimaryKeys": {},
+      "uniqueConstraints": {},
+      "policies": {},
+      "checkConstraints": {},
+      "isRLSEnabled": false
+    },
+    "player.daily_ledger": {
+      "name": "daily_ledger",
+      "schema": "player",
+      "columns": {
+        "athlete_id": {
+          "name": "athlete_id",
+          "type": "uuid",
+          "primaryKey": false,
+          "notNull": true
+        },
+        "day": {
+          "name": "day",
+          "type": "integer",
+          "primaryKey": false,
+          "notNull": true
+        },
+        "scope": {
+          "name": "scope",
+          "type": "text",
+          "primaryKey": false,
+          "notNull": true
+        },
+        "created_at": {
+          "name": "created_at",
+          "type": "timestamp with time zone",
+          "primaryKey": false,
+          "notNull": true,
+          "default": "now()"
+        }
+      },
+      "indexes": {},
+      "foreignKeys": {
+        "daily_ledger_athlete_id_athlete_id_fk": {
+          "name": "daily_ledger_athlete_id_athlete_id_fk",
+          "tableFrom": "daily_ledger",
+          "tableTo": "athlete",
+          "schemaTo": "player",
+          "columnsFrom": [
+            "athlete_id"
+          ],
+          "columnsTo": [
+            "id"
+          ],
+          "onDelete": "no action",
+          "onUpdate": "no action"
+        }
+      },
+      "compositePrimaryKeys": {
+        "daily_ledger_athlete_id_day_scope_pk": {
+          "name": "daily_ledger_athlete_id_day_scope_pk",
+          "columns": [
+            "athlete_id",
+            "day",
+            "scope"
+          ]
+        }
+      },
+      "uniqueConstraints": {},
+      "policies": {},
+      "checkConstraints": {},
+      "isRLSEnabled": false
+    }
+  },
+  "enums": {},
+  "schemas": {
+    "player": "player"
+  },
+  "sequences": {},
+  "roles": {},
+  "policies": {},
+  "views": {},
+  "_meta": {
+    "columns": {},
+    "schemas": {},
+    "tables": {}
+  }
+}

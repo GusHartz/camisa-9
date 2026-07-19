@@ -253,6 +253,12 @@ function asPosition(p: string): Position {
   throw new DomainError('posição inválida');
 }
 
+/** Sai do quinteto (SPEC-033): o humano transferido RACHA o time (`team_id` → NULL). Idempotente
+ *  (solo = no-op). A contagem/marcos do time são derivados do `team_id` → se ajustam sozinhos. */
+export async function leaveTeam(db: Db, athleteId: string): Promise<void> {
+  await db.update(athlete).set({ teamId: null }).where(eq(athlete.id, athleteId));
+}
+
 function toDomainError(err: unknown, fallback: string): DomainError {
   if (isUniqueViolation(err)) return new DomainError('e-mail já em uso');
   if (err instanceof DomainError) return err;

@@ -35,6 +35,12 @@ export {
   type RegenCandidate,
 } from './store/legend-repo.js';
 export { reassignSlot, type ReassignInput } from './store/reassign-repo.js';
+export {
+  transferOccupation,
+  pickTransferDestination,
+  type TransferInput,
+  type TransferResult,
+} from './store/transfer-repo.js';
 export { REGEN_AGE } from './store/regen-age.js';
 export {
   markActive,

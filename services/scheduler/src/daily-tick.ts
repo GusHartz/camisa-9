@@ -33,6 +33,8 @@ import {
 import type { MatchResult } from '@camisa-9/player';
 import { moodModulator } from '@camisa-9/world-entry';
 import { runRegenPass } from '@camisa-9/regen';
+import { runTransferPass } from '@camisa-9/transfer';
+import type { WorldState } from '@camisa-9/world-engine';
 import { EMPTY_OUTCOMES, roundOutcomes } from './round-outcomes.js';
 
 export interface DailyTickReport {
@@ -52,6 +54,8 @@ export interface DailyTickReport {
   /** Humanos que se LESIONARAM nas partidas deste tick (SPEC-031; 0 num re-run). */
   readonly injured: number;
   readonly regenerated: number;
+  /** Humanos TRANSFERIDOS de clube nesta passada (SPEC-033; só na viragem). */
+  readonly transferred: number;
   readonly vacancy: VacancyReport;
 }
 
@@ -85,6 +89,7 @@ interface TickTotals {
   recovered: number;
   injured: number;
   regenerated: number;
+  transferred: number;
   frozen: number;
   reverted: number;
 }
@@ -121,6 +126,7 @@ async function runCatchUp(
     recovered: totals.recovered,
     injured: totals.injured,
     regenerated: totals.regenerated,
+    transferred: totals.transferred,
     vacancy: { frozen: totals.frozen, reverted: totals.reverted },
   };
 }
@@ -148,8 +154,13 @@ async function processDay(
   // o dia como before_season (gênese ainda aberta) → o regen re-roda. Só-`season_rolled` órfãva-o.
   const inGenesisWindow = round.status === 'season_rolled' || round.status === 'before_season';
   const regenerated = inGenesisWindow ? await runRegenPass(worldDb, playerDb, seed) : 0;
+  // Transferência ACEITA aplica na gênese (SPEC-033), APÓS o regen (um ≥42 regenera, não transfere —
+  // o regen troca o humano da vaga, então a flag não sobrevive). Molde do regen: só na gênese.
+  const transferred = inGenesisWindow ? await runTransferPass(worldDb, playerDb, seed) : 0;
   const vacancy = await runVacancyPass(worldDb, seed, day);
   const occupations = await readWorldOccupations(worldDb, seed);
+  const world = await readWorld(worldDb, seed); // p/ o `tier` do clube de cada humano (seam da proposta)
+  const clubTier = world ? buildClubTierMap(world) : new Map<string, number>();
   const paid = round.status === 'published' || round.status === 'idempotent';
   const outcomes =
     paid && round.seasonId !== null && round.targetRound !== null
@@ -158,6 +169,7 @@ async function processDay(
   const totals = zeroTotals();
   totals.humans = occupations.length;
   totals.regenerated = regenerated;
+  totals.transferred = transferred;
   totals.frozen = vacancy.frozen;
   totals.reverted = vacancy.reverted;
   for (const occ of occupations) {
@@ -169,6 +181,7 @@ async function processDay(
       outcomes.prizes.get(occ.athleteId),
       outcomes.injuries.get(occ.athleteId),
       paid,
+      clubTier.get(occ.clubId),
     );
     totals.accrued += d.accrued;
     totals.decisions += d.decisions;
@@ -176,6 +189,17 @@ async function processDay(
     totals.injured += d.injured;
   }
   return { ...totals, settled: true, status: round.status };
+}
+
+/** clubId → tier (a divisão do clube), de `readWorld` — o seam do MUNDO p/ a proposta (SPEC-033). */
+function buildClubTierMap(world: WorldState): Map<string, number> {
+  const map = new Map<string, number>();
+  for (const t of world.tiers) {
+    for (const l of t.leagues) {
+      for (const c of l.clubs) map.set(c.id, t.tier);
+    }
+  }
+  return map;
 }
 
 /** A rodada do mundo LIQUIDOU (o cursor pode avançar)? Deferido/locked/erro NÃO liquidam. */
@@ -204,9 +228,10 @@ async function safeHumanPasses(
   prize: MatchResult | undefined,
   injurySeverity: string | undefined,
   paid: boolean,
+  tier: number | undefined,
 ): Promise<HumanDelta> {
   try {
-    return await runHumanPasses(playerDb, seed, occ, day, prize, injurySeverity, paid);
+    return await runHumanPasses(playerDb, seed, occ, day, prize, injurySeverity, paid, tier);
   } catch {
     console.error(`tick: passe do humano adiado (day=${day}) — human_pass_failed`);
     return { accrued: 0, decisions: 0, recovered: 0, injured: 0 };
@@ -225,6 +250,7 @@ async function runHumanPasses(
   prize: MatchResult | undefined,
   injurySeverity: string | undefined,
   paid: boolean,
+  tier: number | undefined,
 ): Promise<HumanDelta> {
   const id = occ.humanAthleteId;
   const pay = paid ? await accrueRound(playerDb, id, day, prize) : undefined;
@@ -233,7 +259,10 @@ async function runHumanPasses(
   await applyDailyMood(playerDb, id, day);
   await resolveDeadline(playerDb, id, day - 1);
   const available = (await readInjuryState(playerDb, id, day)).available;
-  const decisions = await generateForDay(playerDb, id, day, seed, { injured: !available });
+  const decisions = await generateForDay(playerDb, id, day, seed, {
+    injured: !available,
+    ...(tier !== undefined ? { tier } : {}), // seam do MUNDO p/ a proposta-clube-maior (SPEC-033)
+  });
   const rec = await advanceRecovery(playerDb, id, day);
   return {
     accrued: pay && !pay.idempotent ? 1 : 0,
@@ -267,6 +296,7 @@ function zeroTotals(): TickTotals {
     recovered: 0,
     injured: 0,
     regenerated: 0,
+    transferred: 0,
     frozen: 0,
     reverted: 0,
   };
@@ -279,6 +309,7 @@ function addDay(totals: TickTotals, out: DayOutcome): void {
   totals.recovered += out.recovered;
   totals.injured += out.injured;
   totals.regenerated += out.regenerated;
+  totals.transferred += out.transferred;
   totals.frozen += out.frozen;
   totals.reverted += out.reverted;
 }
@@ -294,6 +325,7 @@ function emptyTick(dayIndex: number, status: DailyRoundStatus): DailyTickReport 
     recovered: 0,
     injured: 0,
     regenerated: 0,
+    transferred: 0,
     vacancy: { frozen: 0, reverted: 0 },
   };
 }

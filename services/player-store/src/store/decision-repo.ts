@@ -41,7 +41,7 @@ export async function generateForDay(
   athleteId: string,
   day: number,
   seed: string,
-  extra: { age?: number; injured?: boolean } = {},
+  extra: { age?: number; injured?: boolean; tier?: number } = {},
 ): Promise<Decision[]> {
   return db.transaction(async (tx) => {
     // Lock advisory (athlete+dia) — serializa gerações concorrentes: a 1ª sela o dia, a 2ª relê o
@@ -77,7 +77,7 @@ export async function generateForDay(
 async function buildContext(
   db: Tx,
   athleteId: string,
-  extra: { age?: number; injured?: boolean },
+  extra: { age?: number; injured?: boolean; tier?: number },
 ): Promise<DecisionContext> {
   const [row] = await db
     .select({
@@ -87,6 +87,7 @@ async function buildContext(
       mental: athlete.mental,
       balance: athlete.balance,
       moral: athlete.moral,
+      marketOpen: athlete.marketOpen,
     })
     .from(athlete)
     .where(eq(athlete.id, athleteId))
@@ -106,8 +107,10 @@ async function buildContext(
     balance: row.balance,
     lifestyleTier: lifestyleTier(owned.map((o) => o.itemId)),
     moral: row.moral, // a barra real (SPEC-027) → crise-moral e cia. deixam de ser inertes
+    marketOpen: row.marketOpen, // o explore (SPEC-033) → baixa o threshold da proposta-clube-maior
     ...(extra.age !== undefined ? { age: extra.age } : {}), // exactOptionalPropertyTypes: só se definido
     ...(extra.injured !== undefined ? { injured: extra.injured } : {}),
+    ...(extra.tier !== undefined ? { tier: extra.tier } : {}), // seam do MUNDO (a divisão do clube)
   };
 }
 
@@ -135,7 +138,43 @@ export async function answerDecision(
       .set({ status: 'answered', chosenOption: opt.id, outcome: opt.outcome, resolvedBy: 'player' })
       .where(eq(decision.id, decisionId));
     await bumpMoral(tx, athleteId, moralOf(opt.outcome)); // a 2.3 APLICA o moral (SPEC-025), na mesma tx
+    await applyTransferSeam(tx, athleteId, opt.outcome); // o card 1.4 EXECUTA na viragem (SPEC-033)
   });
+}
+
+/** O seam de TRANSFERÊNCIA (SPEC-033), na mesma tx da resposta: aceitar uma proposta (`accept`/
+ *  `rival`) marca a PENDÊNCIA (`transfer_requested`) — o passe de viragem move o humano; `explore`
+ *  (testar o mercado) abre a visibilidade (`market_open`). A conservadora do agente é sempre FICAR
+ *  → nunca aceita transferência sem o jogador. */
+async function applyTransferSeam(
+  tx: Tx,
+  athleteId: string,
+  outcome: DecisionOutcome,
+): Promise<void> {
+  const t = outcome['transfer'];
+  if (t === 'accept' || t === 'rival') {
+    await tx.update(athlete).set({ transferRequested: true }).where(eq(athlete.id, athleteId));
+  } else if (t === 'explore') {
+    await tx.update(athlete).set({ marketOpen: true }).where(eq(athlete.id, athleteId));
+  }
+}
+
+/** O humano aceitou uma transferência, pendente de execução na viragem (SPEC-033)? */
+export async function readTransferRequested(db: Db, athleteId: string): Promise<boolean> {
+  const [row] = await db
+    .select({ v: athlete.transferRequested })
+    .from(athlete)
+    .where(eq(athlete.id, athleteId))
+    .limit(1);
+  return row?.v ?? false;
+}
+
+/** Limpa a pendência (após a execução na viragem) + reseta o mercado. Idempotente. */
+export async function clearTransferRequested(db: Db, athleteId: string): Promise<void> {
+  await db
+    .update(athlete)
+    .set({ transferRequested: false, marketOpen: false })
+    .where(eq(athlete.id, athleteId));
 }
 
 /** O delta de Moral declarado num outcome (0 se ausente/não-numérico). */

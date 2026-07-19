@@ -64,6 +64,7 @@ export {
   type DecisionTemplate,
   type DecisionContext,
 } from './decisions.js';
+export { TRANSFER, isTransferTarget, transferValue } from './transfer.js';
 export {
   INJURY,
   isSeverity,

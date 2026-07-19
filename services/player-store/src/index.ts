@@ -22,6 +22,7 @@ export {
   createAccountWithTeam,
   joinTeamWithCode,
   lockTeam,
+  leaveTeam,
   readTeam,
   type CreateTeamInput,
   type CreateTeamResult,
@@ -35,6 +36,8 @@ export {
   answerDecision,
   resolveDeadline,
   readDecisionLog,
+  readTransferRequested,
+  clearTransferRequested,
   type DecisionLogEntry,
 } from './store/decision-repo.js';
 export {

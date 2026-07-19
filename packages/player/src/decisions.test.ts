@@ -80,6 +80,30 @@ describe('decisions — geração (pura)', () => {
     expect(found).toBe(true); // o seam de idade fica vivo na geração
   });
 
+  it('seam de TRANSFERÊNCIA (SPEC-033): proposta-clube-maior gatilha forte-para-o-tier (inerte sem tier)', () => {
+    const t = templateById('proposta-clube-maior')!;
+    // sem tier → nunca (o seam do mundo ausente)
+    expect(t.trigger({ overall: 60, balance: 0, lifestyleTier: 0 })).toBe(false);
+    // tier 4 (várzea): overall 60 é forte → alvo; 50 não
+    expect(t.trigger({ overall: 60, balance: 0, lifestyleTier: 0, tier: 4 })).toBe(true);
+    expect(t.trigger({ overall: 50, balance: 0, lifestyleTier: 0, tier: 4 })).toBe(false);
+    // marketOpen (testou o mercado) baixa o threshold → 52 vira alvo
+    expect(
+      t.trigger({ overall: 52, balance: 0, lifestyleTier: 0, tier: 4, marketOpen: true }),
+    ).toBe(true);
+    // o seam fica vivo na geração
+    let found = false;
+    for (let day = 0; day < 30 && !found; day++) {
+      found = generateDailyDecisions('s', day, 'a', {
+        overall: 60,
+        balance: 0,
+        lifestyleTier: 0,
+        tier: 4,
+      }).some((d) => d.templateId === 'proposta-clube-maior');
+    }
+    expect(found).toBe(true);
+  });
+
   it('variabilidade: dias diferentes NÃO dão sempre o mesmo conjunto (não é seleção constante)', () => {
     const sets = new Set<string>();
     for (let day = 0; day < 15; day++) {
