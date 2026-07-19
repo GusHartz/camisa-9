@@ -30,3 +30,14 @@ export function resolveSlot(epochMs: number): RoundSlot {
   const isMatchWindow = hour === MATCH_HOUR; // 7/7: qualquer dia às 15h Brasília
   return { dayOfWeek, hour, minute, dayIndex, isMatchWindow };
 }
+
+/**
+ * O maior `dayIndex` cuja rodada das 15h JÁ VENCEU no instante `epochMs` (SPEC-032). É o teto
+ * do catch-up: a rodada de HOJE só está "vencida" a partir das 15h Brasília; antes disso, o
+ * último dia vencido é ONTEM. Nunca publica a rodada do dia corrente antes da sua janela.
+ * Puro (só aritmética de epoch, offset fixo UTC-3) — não altera `resolveSlot`.
+ */
+export function dueDayIndex(epochMs: number): number {
+  const slot = resolveSlot(epochMs);
+  return slot.hour >= MATCH_HOUR ? slot.dayIndex : slot.dayIndex - 1;
+}

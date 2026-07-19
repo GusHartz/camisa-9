@@ -53,10 +53,12 @@ export {
 } from './store/turnover-repo.js';
 export {
   runDailyRound,
+  runRoundForDay,
   type DailyRoundReport,
   type DailyRoundStatus,
   type WorldModulator,
 } from './store/daily-round.js';
+export { advanceTickCursor, readTickCursor } from './store/tick-progress-repo.js';
 export { applyMoodToWorld } from './store/mood-modulation.js';
 export type { PublishInput, PublishOutcome, PublishStatus } from '@camisa-9/world-engine';
 export * as schema from './schema/index.js';

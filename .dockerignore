@@ -1,0 +1,23 @@
+# Contexto de build do Docker (SPEC-032). O build do scheduler usa **contexto = raiz do repo**
+# (docs/ops/scheduler-deploy-runbook.md), então o Docker honra ESTE arquivo (na raiz do contexto) —
+# um `.dockerignore` dentro de services/scheduler/ seria INERTE. Exclui o gerado, o VCS, cobertura,
+# os spikes de cliente e **QUALQUER segredo** (`.env*`) — que jamais pode entrar numa camada da
+# imagem distribuída (OP-02/OP-12). Só o template `.env.example` (sem valores) é mantido.
+node_modules
+**/node_modules
+dist
+**/dist
+**/*.tsbuildinfo
+.git
+.gitignore
+.github
+coverage
+**/coverage
+spikes
+scratchpad
+# Segredos: TODAS as variantes de .env (o `.env` puro NÃO casa `.env.production`/`.env.local`).
+.env
+.env.*
+**/.env
+**/.env.*
+!.env.example

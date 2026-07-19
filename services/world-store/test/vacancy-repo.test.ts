@@ -9,6 +9,7 @@ import { afterAll, beforeAll, beforeEach, describe, expect, it } from 'vitest';
 import type { WorldState } from '@camisa-9/world-engine';
 import { createDb, type DbHandle } from '../src/client.js';
 import { athlete, club, league, world, worldOccupation, worldTier } from '../src/schema/world.js';
+import { tickProgress } from '../src/schema/tick-progress.js';
 import { legend } from '../src/schema/legend.js';
 import { publishedRound } from '../src/schema/round.js';
 import { season } from '../src/schema/season.js';
@@ -51,6 +52,7 @@ describe.skipIf(!DB_URL)('vacancy-repo — congelamento de vaga contra Postgres 
     await handle.db.delete(club);
     await handle.db.delete(league);
     await handle.db.delete(worldTier);
+    await handle.db.delete(tickProgress);
     await handle.db.delete(world);
   }
 

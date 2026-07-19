@@ -21,10 +21,12 @@ import { publishedRound } from '../src/schema/round.js';
 import { season } from '../src/schema/season.js';
 import { turnoverReport } from '../src/schema/turnover.js';
 import { athlete, club, league, world, worldOccupation, worldTier } from '../src/schema/world.js';
+import { tickProgress } from '../src/schema/tick-progress.js';
 import { readWorld, writeWorld } from '../src/store/world-repo.js';
 import { setSeasonAnchor } from '../src/store/season-repo.js';
 import { publishWorldRound, readRound, type WorldRoundInput } from '../src/store/round-repo.js';
 import { runDailyRound } from '../src/store/daily-round.js';
+import { advanceTickCursor, readTickCursor } from '../src/store/tick-progress-repo.js';
 
 const DB_URL = process.env.DATABASE_URL;
 const SEED = 'decada';
@@ -74,6 +76,7 @@ describe.skipIf(!DB_URL)('runDailyRound — orquestrador diário contra Postgres
     await handle.db.delete(club);
     await handle.db.delete(league);
     await handle.db.delete(worldTier);
+    await handle.db.delete(tickProgress);
     await handle.db.delete(world);
   }
 
@@ -263,5 +266,17 @@ describe.skipIf(!DB_URL)('runDailyRound — orquestrador diário contra Postgres
       );
       expect(backs).toEqual(l.result.rounds); // toda rodada de toda liga = a temporada pura
     }
+  });
+
+  it('o cursor do tick (SPEC-032) é MONOTÔNICO — avança, mas nunca retrocede', async () => {
+    await handle.db.delete(tickProgress);
+    expect(await readTickCursor(handle.db, SEED)).toBeNull(); // nunca rodou
+    await advanceTickCursor(handle.db, SEED, 5);
+    expect(await readTickCursor(handle.db, SEED)).toBe(5);
+    await advanceTickCursor(handle.db, SEED, 3); // valor MENOR → não retrocede (greatest)
+    expect(await readTickCursor(handle.db, SEED)).toBe(5);
+    await advanceTickCursor(handle.db, SEED, 10); // maior → avança
+    expect(await readTickCursor(handle.db, SEED)).toBe(10);
+    await handle.db.delete(tickProgress); // não vaza p/ outras suítes
   });
 });

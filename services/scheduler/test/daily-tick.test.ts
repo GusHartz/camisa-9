@@ -13,9 +13,12 @@ import {
   salaryPerRound,
 } from '@camisa-9/player';
 import {
+  advanceTickCursor,
   createDb as createWorldDb,
+  readLegends,
   readOccupation,
   readRound,
+  readTickCursor,
   readWorld,
   setSeasonAnchor,
   writeWorld,
@@ -78,6 +81,7 @@ describe.skipIf(!DB_URL)('daily-tick — o tick de produção contra Postgres re
 
   async function wipeAll(): Promise<void> {
     await worldHandle.db.delete(worldSchema.turnoverReport); // sem FK; a viragem (season_rolled) grava
+    await worldHandle.db.delete(worldSchema.legend); // sem FK; o regen (SPEC-032) arquiva lendas
     await worldHandle.db.delete(worldSchema.worldOccupation);
     await worldHandle.db.delete(worldSchema.publishedRound);
     await worldHandle.db.delete(worldSchema.season);
@@ -85,6 +89,7 @@ describe.skipIf(!DB_URL)('daily-tick — o tick de produção contra Postgres re
     await worldHandle.db.delete(worldSchema.club);
     await worldHandle.db.delete(worldSchema.league);
     await worldHandle.db.delete(worldSchema.worldTier);
+    await worldHandle.db.delete(worldSchema.tickProgress);
     await worldHandle.db.delete(worldSchema.world);
     await playerHandle.db.delete(playerSchema.dailyLedger);
     await playerHandle.db.delete(playerSchema.injury);
@@ -172,6 +177,8 @@ describe.skipIf(!DB_URL)('daily-tick — o tick de produção contra Postgres re
     await setSeasonAnchor(worldHandle.db, SEED, world.seasonId, START);
     const clubId = world.tiers[world.tiers.length - 1]!.leagues[0]!.clubs[0]!.id;
     const humanId = await seatHuman(clubId);
+    // cursor em START+37 → o tick de START+38 processa SÓ a virada (isola o dia de descanso)
+    await advanceTickCursor(worldHandle.db, SEED, START + 37);
     // dia START+38 → targetRound 39 > 38 → season_rolled (a virada, sem rodada publicada)
     const rep = await runDailyTick(worldHandle.db, playerHandle.db, SEED, epochAt(START + 38));
     expect(rep.roundStatus).toBe('season_rolled');
@@ -473,5 +480,152 @@ describe.skipIf(!DB_URL)('daily-tick — o tick de produção contra Postgres re
     expect(rep.roundStatus).toBe('fora_de_janela');
     expect(rep.humans).toBe(0);
     expect(rep.accrued).toBe(0);
+  });
+
+  // ─────────────────── CATCH-UP (SPEC-032) ───────────────────
+
+  it('same-day: o tick roda às 20h (não 15h) e AINDA publica a rodada do dia (janela larga)', async () => {
+    const world = (await readWorld(worldHandle.db, SEED))!;
+    await setSeasonAnchor(worldHandle.db, SEED, world.seasonId, START);
+    const league = world.tiers[world.tiers.length - 1]!.leagues[0]!;
+    const clubId = league.clubs[0]!.id;
+    const humanId = await seatHuman(clubId);
+    const rep = await runDailyTick(worldHandle.db, playerHandle.db, SEED, epochAt(START, 20));
+    expect(rep.roundStatus).toBe('published'); // 20h ainda é dia vencido (antes: só 15h publicava)
+    expect(rep.daysProcessed).toBe(1);
+    expect(rep.accrued).toBe(1);
+    const paid =
+      salaryPerRound(34) + matchPrize(await prizeOf(league.leagueId, world.seasonId, clubId));
+    expect((await readWallet(playerHandle.db, humanId))!.balance).toBe(paid);
+  });
+
+  it('multi-day: cursor em START, o tick em START+3 recupera as rodadas 2,3,4 e paga cada uma', async () => {
+    const world = (await readWorld(worldHandle.db, SEED))!;
+    await setSeasonAnchor(worldHandle.db, SEED, world.seasonId, START);
+    const league = world.tiers[world.tiers.length - 1]!.leagues[0]!;
+    const clubId = league.clubs[0]!.id;
+    const humanId = await seatHuman(clubId);
+    await runDailyTick(worldHandle.db, playerHandle.db, SEED, epochAt(START)); // round 1 → cursor START
+    const rep = await runDailyTick(worldHandle.db, playerHandle.db, SEED, epochAt(START + 3));
+    expect(rep.daysProcessed).toBe(3); // dias START+1, +2, +3 (perdidos) recuperados
+    expect(rep.accrued).toBe(3); // 3 rodadas pagas
+    expect(rep.roundStatus).toBe('published');
+    for (const r of [2, 3, 4]) {
+      expect(await readRound(worldHandle.db, league.leagueId, world.seasonId, r)).not.toBeNull();
+    }
+    let expected = 0;
+    for (const r of [1, 2, 3, 4]) {
+      expected +=
+        salaryPerRound(34) + matchPrize(await prizeOf(league.leagueId, world.seasonId, clubId, r));
+    }
+    expect((await readWallet(playerHandle.db, humanId))!.balance).toBe(expected);
+    expect(await readTickCursor(worldHandle.db, SEED)).toBe(START + 3);
+  });
+
+  it('deferido no meio do catch-up PARA o cursor (retenta); o retry retoma e completa', async () => {
+    const world = (await readWorld(worldHandle.db, SEED))!;
+    await setSeasonAnchor(worldHandle.db, SEED, world.seasonId, START);
+    const league = world.tiers[world.tiers.length - 1]!.leagues[0]!;
+    const clubId = league.clubs[0]!.id;
+    await seatHuman(clubId);
+    await runDailyTick(worldHandle.db, playerHandle.db, SEED, epochAt(START)); // round 1 → cursor START
+    // a rodada 3 estoura → o catch-up publica a 2, DEFERE a 3 e para o cursor em START+1
+    await worldHandle.db.execute(
+      sql`ALTER TABLE published_round ADD CONSTRAINT tmp_boom3 CHECK (round <> 3)`,
+    );
+    try {
+      const partial = await runDailyTick(worldHandle.db, playerHandle.db, SEED, epochAt(START + 3));
+      expect(partial.daysProcessed).toBe(1); // só a rodada 2 liquidou
+      expect(partial.roundStatus).toBe('deferred'); // parou na 3
+      expect(await readTickCursor(worldHandle.db, SEED)).toBe(START + 1); // NÃO passou do buraco
+      expect(await readRound(worldHandle.db, league.leagueId, world.seasonId, 2)).not.toBeNull();
+      expect(await readRound(worldHandle.db, league.leagueId, world.seasonId, 3)).toBeNull();
+    } finally {
+      await worldHandle.db.execute(sql`ALTER TABLE published_round DROP CONSTRAINT tmp_boom3`);
+    }
+    // retry: retoma de START+2 → publica a 3 e a 4
+    const rest = await runDailyTick(worldHandle.db, playerHandle.db, SEED, epochAt(START + 3));
+    expect(rest.daysProcessed).toBe(2);
+    expect(await readTickCursor(worldHandle.db, SEED)).toBe(START + 3);
+    expect(await readRound(worldHandle.db, league.leagueId, world.seasonId, 3)).not.toBeNull();
+    expect(await readRound(worldHandle.db, league.leagueId, world.seasonId, 4)).not.toBeNull();
+  });
+
+  it('cross-season: o catch-up cruza o fim da temporada → publica a 38, VIRA, e o humano sobrevive', async () => {
+    const world = (await readWorld(worldHandle.db, SEED))!;
+    await setSeasonAnchor(worldHandle.db, SEED, world.seasonId, START);
+    const league = world.tiers[world.tiers.length - 1]!.leagues[0]!;
+    const clubId = league.clubs[0]!.id;
+    const humanId = await seatHuman(clubId);
+    await advanceTickCursor(worldHandle.db, SEED, START + 36); // cursor na véspera da rodada 38
+    const rep = await runDailyTick(worldHandle.db, playerHandle.db, SEED, epochAt(START + 38));
+    expect(rep.daysProcessed).toBe(2); // a rodada 38 (START+37) + a viragem (START+38)
+    expect(rep.roundStatus).toBe('season_rolled');
+    expect(await readRound(worldHandle.db, league.leagueId, world.seasonId, 38)).not.toBeNull();
+    // o humano SOBREVIVE à virada (imune) — a ocupação segue existindo no mundo virado
+    expect(await readOccupation(worldHandle.db, SEED, humanId)).not.toBeNull();
+  });
+
+  it('backfill do 1º tick: âncora no passado (cursor nulo) NÃO pula rodadas — publica 1..N (fix MINOR)', async () => {
+    const world = (await readWorld(worldHandle.db, SEED))!;
+    await setSeasonAnchor(worldHandle.db, SEED, world.seasonId, START); // rodada 1 = dia START
+    const league = world.tiers[world.tiers.length - 1]!.leagues[0]!;
+    const clubId = league.clubs[0]!.id;
+    const humanId = await seatHuman(clubId);
+    // 1º tick roda 3 dias DEPOIS do início da temporada (deploy que atrasou) — cursor nulo
+    const rep = await runDailyTick(worldHandle.db, playerHandle.db, SEED, epochAt(START + 3));
+    expect(rep.daysProcessed).toBe(4); // rodadas 1,2,3,4 — nenhuma pulada (antes: só a 4)
+    expect(rep.accrued).toBe(4);
+    for (const r of [1, 2, 3, 4]) {
+      expect(await readRound(worldHandle.db, league.leagueId, world.seasonId, r)).not.toBeNull();
+    }
+    let expected = 0;
+    for (const r of [1, 2, 3, 4]) {
+      expected +=
+        salaryPerRound(34) + matchPrize(await prizeOf(league.leagueId, world.seasonId, clubId, r));
+    }
+    expect((await readWallet(playerHandle.db, humanId))!.balance).toBe(expected);
+  });
+
+  it('idempotência: re-rodar o mesmo tick não avança o cursor nem re-paga', async () => {
+    const world = (await readWorld(worldHandle.db, SEED))!;
+    await setSeasonAnchor(worldHandle.db, SEED, world.seasonId, START);
+    const clubId = world.tiers[world.tiers.length - 1]!.leagues[0]!.clubs[0]!.id;
+    await seatHuman(clubId);
+    await runDailyTick(worldHandle.db, playerHandle.db, SEED, epochAt(START));
+    const cursor1 = await readTickCursor(worldHandle.db, SEED);
+    const r2 = await runDailyTick(worldHandle.db, playerHandle.db, SEED, epochAt(START));
+    expect(r2.accrued).toBe(0); // ninguém re-pago
+    expect(r2.roundStatus).toBe('idempotent'); // o dia é re-processado, mas a rodada não republica
+    expect(await readTickCursor(worldHandle.db, SEED)).toBe(cursor1); // cursor NÃO avança além de START
+  });
+
+  it('regen processa um candidato ≥42 na viragem (janela de gênese; before_season no gate auto-cura)', async () => {
+    const world = (await readWorld(worldHandle.db, SEED))!;
+    await setSeasonAnchor(worldHandle.db, SEED, world.seasonId, START);
+    const league = world.tiers[world.tiers.length - 1]!.leagues[0]!;
+    const humanId = await seatHuman(league.clubs[0]!.id);
+    const worldAthleteId = (await readOccupation(worldHandle.db, SEED, humanId))!.athleteId;
+    // idade 41 → a viragem (ageAndRetire) o leva a 42 = gatilho de regen FORÇADO. A viragem abre a
+    // gênese (nenhuma rodada da temporada nova publicada) → o regen consegue reassign (senão a guarda
+    // de gênese barra). É a MESMA janela que o gate `before_season` reabre no retry de uma viragem falha.
+    await worldHandle.db
+      .update(worldSchema.athlete)
+      .set({ age: 41 })
+      .where(eq(worldSchema.athlete.id, worldAthleteId));
+    await advanceTickCursor(worldHandle.db, SEED, START + 37); // isola a viragem (dia START+38)
+    const rep = await runDailyTick(worldHandle.db, playerHandle.db, SEED, epochAt(START + 38));
+    expect(rep.roundStatus).toBe('season_rolled');
+    expect(rep.regenerated).toBe(1); // o humano que chegou a 42 na virada renasceu
+    const legends = await readLegends(worldHandle.db, SEED);
+    expect(legends.some((l) => l.humanAthleteId === humanId)).toBe(true); // virou lenda
+  });
+
+  it('âncora no futuro (nada venceu ainda) → fora_de_janela, ninguém processado', async () => {
+    const world = (await readWorld(worldHandle.db, SEED))!;
+    await setSeasonAnchor(worldHandle.db, SEED, world.seasonId, START + 5); // temporada começa em 5 dias
+    const rep = await runDailyTick(worldHandle.db, playerHandle.db, SEED, epochAt(START));
+    expect(rep.roundStatus).toBe('fora_de_janela');
+    expect(rep.daysProcessed).toBe(0);
   });
 });
