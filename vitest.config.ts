@@ -32,6 +32,15 @@ export default defineConfig({
           new URL('./services/player-store/src/index.ts', import.meta.url),
         ),
       },
+      // Costura + passes consumidos pelo scheduler (SPEC-030): resolve ao SRC.
+      {
+        find: /^@camisa-9\/world-entry$/,
+        replacement: fileURLToPath(new URL('./services/world-entry/src/index.ts', import.meta.url)),
+      },
+      {
+        find: /^@camisa-9\/regen$/,
+        replacement: fileURLToPath(new URL('./services/regen/src/index.ts', import.meta.url)),
+      },
     ],
   },
   test: {

@@ -46,6 +46,7 @@ describe.skipIf(!DB_URL)('mood-repo — Forma & Moral contra Postgres real', () 
     await handle.db.delete(schema.injury);
     await handle.db.delete(schema.decision);
     await handle.db.delete(schema.purchase);
+    await handle.db.delete(schema.dailyLedger);
     await handle.db.delete(schema.athlete);
     await handle.db.delete(schema.team);
     await handle.db.delete(schema.account);
@@ -86,6 +87,15 @@ describe.skipIf(!DB_URL)('mood-repo — Forma & Moral contra Postgres real', () 
     expect(map.get(b)).toEqual({ forma: 50, moral: 50 }); // default
     expect(map.has('00000000-0000-0000-0000-0000000000ff')).toBe(false); // ausente → fora
     expect(await readMoodByIds(handle.db, [])).toEqual(new Map()); // lista vazia → mapa vazio
+  });
+
+  it('applyDailyMood é IDEMPOTENTE por dia (SPEC-030): 2× no mesmo dia decai 1×', async () => {
+    const id = await newAthlete();
+    await setMood(id, 70, 70);
+    const first = await applyDailyMood(handle.db, id, 0);
+    expect(first).toEqual({ forma: 70 - MOOD.decayStep, moral: 70 - MOOD.decayStep }); // 65
+    const second = await applyDailyMood(handle.db, id, 0); // MESMO dia → no-op (não 60)
+    expect(second).toEqual(first);
   });
 
   it('passe diário sem compras: moral e forma decaem rumo ao baseline (50)', async () => {
@@ -227,7 +237,7 @@ describe.skipIf(!DB_URL)('mood-repo — Forma & Moral contra Postgres real', () 
       { athleteId: id, itemId: 'casa-da-mae' },
     ]);
     let m = { forma: 50, moral: 50 };
-    for (let i = 0; i < 20; i++) m = await applyDailyMood(handle.db, id, 0);
+    for (let i = 0; i < 20; i++) m = await applyDailyMood(handle.db, id, i); // dias distintos (ledger)
     expect(m.moral).toBe(MOOD.baseline + MOOD.lifestyleClamp); // converge em 80 (saturado), não 100
   });
 

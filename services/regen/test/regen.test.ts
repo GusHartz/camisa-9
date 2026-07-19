@@ -77,6 +77,7 @@ describe.skipIf(!DB_URL)('regen — a costura do renascimento contra Postgres re
     await playerHandle.db.delete(playerSchema.injury); // neto (FK → athlete, SPEC-026)
     await playerHandle.db.delete(playerSchema.decision); // neto (FK → athlete, SPEC-025)
     await playerHandle.db.delete(playerSchema.purchase); // neto (FK → athlete, SPEC-024)
+    await playerHandle.db.delete(playerSchema.dailyLedger);
     await playerHandle.db.delete(playerSchema.athlete);
     await playerHandle.db.delete(playerSchema.team);
     await playerHandle.db.delete(playerSchema.account);

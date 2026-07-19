@@ -91,6 +91,7 @@ describe.skipIf(!DB_URL)('mood-modulator — Forma/Moral na partida contra Postg
     await playerHandle.db.delete(playerSchema.injury);
     await playerHandle.db.delete(playerSchema.decision);
     await playerHandle.db.delete(playerSchema.purchase);
+    await playerHandle.db.delete(playerSchema.dailyLedger);
     await playerHandle.db.delete(playerSchema.athlete);
     await playerHandle.db.delete(playerSchema.team);
     await playerHandle.db.delete(playerSchema.account);

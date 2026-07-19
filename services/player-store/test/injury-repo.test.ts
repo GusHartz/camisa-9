@@ -42,6 +42,7 @@ describe.skipIf(!DB_URL)('injury-repo — lesões narrativas contra Postgres rea
   beforeEach(async () => {
     await handle.db.delete(schema.injury);
     await handle.db.delete(schema.decision);
+    await handle.db.delete(schema.dailyLedger);
     await handle.db.delete(schema.athlete);
     await handle.db.delete(schema.team);
     await handle.db.delete(schema.account);

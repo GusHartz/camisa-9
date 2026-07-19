@@ -8,7 +8,15 @@ import { migrate } from 'drizzle-orm/node-postgres/migrator';
 import { afterAll, beforeAll, beforeEach, describe, expect, it } from 'vitest';
 import { createAthlete, TEAM, type AthleteDraft, type Kit, type Position } from '@camisa-9/player';
 import { createDb, type DbHandle } from '../src/client.js';
-import { account, athlete, decision, injury, purchase, team } from '../src/schema/index.js';
+import {
+  account,
+  athlete,
+  dailyLedger,
+  decision,
+  injury,
+  purchase,
+  team,
+} from '../src/schema/index.js';
 import { createAccountWithAthlete } from '../src/store/player-repo.js';
 import {
   createAccountWithTeam,
@@ -71,6 +79,7 @@ describe.skipIf(!DB_URL)('player-store — time do quinteto contra Postgres real
     await handle.db.delete(injury); // neto (FK → athlete, SPEC-026)
     await handle.db.delete(decision); // neto (FK → athlete, SPEC-025) antes do atleta
     await handle.db.delete(purchase); // neto (FK → athlete, SPEC-024) antes do atleta
+    await handle.db.delete(dailyLedger);
     await handle.db.delete(athlete); // filho (FK p/ account E team)
     await handle.db.delete(team); // depois o time (FK p/ account)
     await handle.db.delete(account); // por fim a conta
