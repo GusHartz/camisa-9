@@ -77,8 +77,8 @@
 **Baseline H1VE — ordem obrigatória em toda rota/handler: autenticação → autorização → validação de input.**
 
 ### Autenticação
-- E-mail + Steam auth. Sessões com tokens de curta duração + refresh; rotação no logout.
-- [SUPOSIÇÃO — revisar] Tokens assinados (JWT ou sessão server-side em Postgres); refresh armazenado httpOnly.
+- E-mail + Steam auth. Sessões de curta duração por inatividade (idle 7d) com renovação deslizante + teto absoluto (30d); rotação (destruição) no logout — o par access/refresh era artefato do ramo JWT, subsumido pela sessão server-side revogável (ADR-003).
+- **RATIFICADO (SPEC-037, 2026-07-20):** sessão server-side na tabela `player.session`; token **opaco** de 256 bits (CSPRNG), do qual só o **sha256** é persistido (um dump vazado não vira sessão viva); transporte `Authorization: Bearer` — nunca cookie, logo CSRF não existe por construção. Ver `docs/adr/ADR-003-camada-http-e-sessao.md`.
 
 ### Autorização
 - **Menor privilégio:** cada endpoint valida que o ator (conta) só age sobre seus próprios atletas/times.
@@ -152,7 +152,7 @@
 - Verificação manual de faixa em contexto real (gate de arte).
 
 ### Segurança
-- [SUPOSIÇÃO — revisar] Testes de autorização (conta A não acessa dados de conta B) e de validação de input em toda rota nova.
+- **EXERCIDO (SPEC-037, 2026-07-20):** o teste de autorização ("conta A não acessa dados de conta B") é gate real desde a SPEC-037, exercido sobre o middleware `requireSession` — que converte um handler autenticado em handler comum pelo **tipo**, tornando a rota protegida inalcançável sem sessão viva (o handler não roda) e derivando o `athleteId` **sempre** da sessão, nunca de path/query/body. Na SPEC-037 o gate roda contra um handler protegido de teste; o primeiro alvo de produção é o `GET /v1/band` da SPEC-038, que crava a mesma matriz. Validação de input em toda rota nova segue obrigatória, **depois** da autenticação e da autorização.
 
 ---
 

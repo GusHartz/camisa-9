@@ -15,6 +15,7 @@ import {
   decision,
   injury,
   purchase,
+  session,
   team,
 } from '../src/schema/index.js';
 import { createAccountWithAthlete } from '../src/store/player-repo.js';
@@ -82,6 +83,7 @@ describe.skipIf(!DB_URL)('player-store — time do quinteto contra Postgres real
     await handle.db.delete(dailyLedger);
     await handle.db.delete(athlete); // filho (FK p/ account E team)
     await handle.db.delete(team); // depois o time (FK p/ account)
+    await handle.db.delete(session); // SPEC-037: filha de account (FK)
     await handle.db.delete(account); // por fim a conta
   });
 

@@ -4,7 +4,7 @@
 import { hash, verify } from '@node-rs/argon2';
 
 // Baseline OWASP p/ argon2id: memory 19 MiB, 2 iterações, paralelismo 1. Default do lib = argon2id.
-const OPTS = { memoryCost: 19456, timeCost: 2, parallelism: 1 } as const;
+export const OPTS = { memoryCost: 19456, timeCost: 2, parallelism: 1 } as const;
 
 /** Deriva o hash argon2id (encoded, com salt embutido) a partir da senha em claro. */
 export function hashPassword(password: string): Promise<string> {

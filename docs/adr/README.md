@@ -26,3 +26,5 @@ O `docs/projeto/sdd.md` é o **doc de fundação técnica** — o retrato *atual
 | ADR | Título | Status | Data |
 |---|---|---|---|
 | [ADR-001](ADR-001-stack-do-cliente-windows.md) | Stack do cliente Windows — **C#/WPF (.NET LTS)** | ✅ Aceito | 2026-07-15 |
+| [ADR-002](ADR-002-neon-persistencia-prod.md) | Persistência de produção — **Neon (branch por ambiente)** | ✅ Aceito | 2026-07-19 |
+| [ADR-003](ADR-003-camada-http-e-sessao.md) | Camada HTTP e sessão — **`node:http` puro + sessão opaca server-side** | ✅ Aceito | 2026-07-20 |

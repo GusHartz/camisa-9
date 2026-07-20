@@ -2,6 +2,10 @@
 
 > SPEC-032. Como colocar o `services/scheduler` para rodar **1×/dia às 15h Brasília**, num relógio
 > real, com **catch-up** de dias perdidos. O código está pronto e idempotente; isto é a **operação**.
+>
+> **Também cobre a API** (SPEC-037) — ver a seção **"API (web service)"** no fim. Mesmo host, **naturezas
+> diferentes**: o scheduler é um **cron job** (roda um tick e SAI), a API é um **web service** (fica viva
+> escutando a porta).
 
 ## O que é
 
@@ -71,6 +75,85 @@ invocação por seed), e é o **mesmo host** do futuro servidor de API/auth.
 
 - Rode uma vez manualmente (`npm run start -w services/scheduler` com as env) e confira a linha de log.
 - Rodar 2× no mesmo dia deve dar `pagos=0` no 2º (idempotência).
+
+## API (web service)
+
+> SPEC-037. O `services/api` é a **primeira superfície do projeto que escuta numa porta** — a ponte
+> entre o cliente Windows e os dois bancos (a credencial de Postgres **nunca** sai do servidor).
+
+**A diferença fundamental para o resto deste runbook:** o scheduler é um **cron job** — a plataforma o
+invoca, ele roda um tick e **sai** (exit 0). A API é um **web service** — o processo fica **vivo**,
+escutando a porta, e a plataforma o mantém de pé (restart em crash, healthcheck periódico). **Mesmo
+host, dois tipos de serviço**: no Railway/Render são **duas entradas distintas** apontando para o mesmo
+repositório, com Dockerfiles diferentes. Nunca configure a API como cron (ela nunca termina) nem o
+scheduler como web service (ele sai e a plataforma o lê como crash em loop).
+
+1. **Build:** aponte o serviço para o `Dockerfile` em `services/api/Dockerfile` com **contexto = raiz do
+   repo** (`docker build -f services/api/Dockerfile .`) — igual ao do scheduler, e pela mesma razão: o
+   `.dockerignore` que vale é o **da raiz** (o Docker o lê da raiz do contexto), e é ele que exclui
+   `node_modules`/`.git` e **todo `.env*`** para nenhum segredo entrar na imagem (OP-12). Um
+   `.dockerignore` dentro de `services/api/` seria **inerte**. O entrypoint é
+   `npm run start -w services/api` → `tsx src/main.ts` (o processo que fica vivo).
+2. **Env** (Settings → Variables — server-only, OP-12, **nunca** no repo — ver `.env.example`):
+   - `DATABASE_URL` = a mesma connection string **pooled** do scheduler (Neon, `-pooler`). Seguro sob o
+     PgBouncer transaction-mode porque **todos** os locks de `services/**` são xact-scoped (ADR-002).
+   - `PORT` = **a plataforma injeta**; o `main.ts` a lê de `process.env.PORT` (default local `3000`).
+     Não a fixe à mão.
+   - `TRUST_PROXY_HOPS` = **`1` no Railway/Render** (há exatamente um proxy da plataforma à frente).
+3. **⚠️ `TRUST_PROXY_HOPS=1` não é cosmético.** A API deriva o IP do cliente com `clientIp(req, hops)`,
+   que toma o **n-ésimo valor a partir da DIREITA** do `X-Forwarded-For` (o mais à direita é o que o
+   proxy imediato escreveu — o único que o cliente não controla). Os dois erros têm consequência real:
+   - **Baixo demais (`0` atrás de um proxy):** o header é ignorado e o IP vira o do **socket**, que é
+     sempre o do proxy. **Todos** os clientes caem no **mesmo balde** de rate limit → um único usuário
+     esgota o teto de 10/min e derruba o login de todo mundo. **Auto-DoS.**
+   - **Alto demais (mais hops do que existem):** a derivação escorrega para uma posição **escrita pelo
+     próprio cliente** no header → o balde vira **forjável** (basta variar o valor a cada request) e o
+     limite por IP simplesmente **deixa de existir**. O balde por e-mail (5/min) ainda segura o
+     password-spraying contra uma conta, mas a defesa por origem some.
+
+   Regra prática: `TRUST_PROXY_HOPS` = **quantos proxies confiáveis** existem entre a internet e o
+   container. Trocou de plataforma ou pôs um CDN na frente? **Recontar.**
+4. **Healthcheck:** `GET /healthz` → **200 `{"ok":true}`**. Ele **NÃO toca o banco**, de propósito. Com o
+   **autosuspend da Neon**, um health que consultasse Postgres acordaria o banco a cada probe e, pior,
+   **falharia durante o cold-start** → a plataforma leria "unhealthy" e reiniciaria o container em
+   **loop**. É **liveness** ("o processo está de pé?"), não readiness ("as dependências respondem?").
+   É também a **única** rota sem `Cache-Control: no-store` (todas as outras o trazem por default —
+   `respond.ts` é o único serializador).
+5. **Migrations:** `npm run db:migrate -w services/player-store` aplica a **`0010_session`** (a tabela
+   `player.session`). Como qualquer migration do projeto, roda no endpoint **DIRECT/unpooled**
+   (`DATABASE_URL_UNPOOLED`, SPEC-035) — o DDL não deve depender do PgBouncer. Sem ela a API sobe, mas
+   todo login falha.
+6. **Criar contas — não existe signup público nesta fatia.** É **decisão deliberada** (SPEC-037,
+   Decisão 3), não omissão: uma rota não-autenticada que escreve consumiria **vagas NPC finitas** via
+   `admitOrEnqueue`, e cadastro em massa por bot seria dano **irreversível** ao pilar da escassez. O
+   cadastro público volta como card próprio, com invite-gating. Enquanto isso, as contas do beta nascem
+   por **script de operador**, rodado da raiz do repo:
+
+   ```
+   DATABASE_URL=... WORLD_SEED=... npx tsx harness/create-account.ts <email> <senha> <nome> <POS>
+   ```
+
+   `POS ∈ GK | DEF | MID | FWD`. Ele cria a conta + o atleta e o admite no mundo (entra imediato se há
+   vaga sob o teto, senão entra na waiting-list — SPEC-034).
+
+### Verificar (API)
+
+- `curl $URL/healthz` → `{"ok":true}`, **mesmo com o banco suspenso**.
+- Login de uma conta criada pelo script → `200 { token, expiresAt }`, com `cache-control: no-store` na
+  resposta; senha errada → `401` genérico; 11 tentativas do mesmo IP em 1 min → `429` com `Retry-After`.
+- Logout com o token → `204`. ⚠️ Repetir o logout com o **mesmo** token devolve `204` de novo, **de
+  propósito**: o endpoint nunca é oráculo de validade — token vivo, morto ou inventado são
+  indistinguíveis; só header ausente ou malformado dá `401`. A prova de que a linha foi **deletada**
+  é a suíte ao vivo (critério 2e da SPEC-037); em produção ela fica observável quando existir a
+  primeira rota protegida (`GET /v1/band`, SPEC-038).
+
+### ⚠️ Nota de escala (gatilho de revisão declarado)
+
+O rate limit é **in-process** (um `Map` na memória do processo). Isso é **correto hoje** — **uma**
+instância de API — e **deixa de valer** assim que houver **mais de uma**: cada instância passa a ter o
+próprio balde, e o teto efetivo vira `limite × nº de instâncias`. Ele também não sobrevive a restart.
+**Gatilho explícito:** ao escalar para **>1 instância**, mover os baldes para **tabela ou Redis** antes
+de subir a segunda réplica. Até lá, escale **verticalmente** (mais CPU/RAM no mesmo container).
 
 ## Deferido (cards futuros)
 

@@ -96,6 +96,7 @@ describe.skipIf(!DB_URL)('mood-modulator — Forma/Moral na partida contra Postg
     await playerHandle.db.delete(playerSchema.dailyLedger);
     await playerHandle.db.delete(playerSchema.athlete);
     await playerHandle.db.delete(playerSchema.team);
+    await playerHandle.db.delete(playerSchema.session); // SPEC-037: filha de account (FK)
     await playerHandle.db.delete(playerSchema.account);
   }
 
