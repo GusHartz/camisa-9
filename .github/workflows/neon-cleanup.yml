@@ -1,0 +1,23 @@
+# SPEC-035 (Fatia 4 — Neon) — deleta o branch Neon efêmero quando o PR fecha (merge OU close).
+# Espelha o `ci/pr-<n>` que o ci.yml cria. Gated no mesmo secret: sem NEON_API_KEY, é no-op
+# (o CI usa o container e não há branch a limpar). Ver docs/ops/neon-setup-runbook.md.
+name: Neon Cleanup
+
+on:
+  pull_request:
+    types: [closed]
+
+jobs:
+  delete-neon-branch:
+    runs-on: ubuntu-latest
+    env:
+      # Secrets podem ser referenciados em env de job (não em if: direto) — a presença liga o passo.
+      HAS_NEON: ${{ secrets.NEON_API_KEY != '' }}
+    steps:
+      - name: Deletar branch Neon do PR
+        if: env.HAS_NEON == 'true'
+        uses: neondatabase/delete-branch-action@v3
+        with:
+          project_id: ${{ secrets.NEON_PROJECT_ID }}
+          branch: ci/pr-${{ github.event.number }}
+          api_key: ${{ secrets.NEON_API_KEY }}

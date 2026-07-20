@@ -11,7 +11,10 @@ recupera lesões, vira a temporada e regenera — **idempotente**. O `main.ts` (
 invocar o container 1×/dia. O tick descobre o dia vencido (`dueDayIndex`) e faz **catch-up** de
 qualquer dia perdido (ver "Catch-up" abaixo).
 
-## Plataforma — decisão (ratificar em ADR-002)
+> **Banco:** o provisionamento da Neon (prod + branch por ambiente + os secrets do CI + a prova
+> local do money path) está em **`docs/ops/neon-setup-runbook.md`** e ratificado no **ADR-002**.
+
+## Plataforma — decisão (ratificar em ADR futuro)
 
 **Worker em container + scheduled job da plataforma** (a resposta de ESCALA). O tick é um **batch
 determinístico 1×/dia que É o money path** (publicação atômica, guardrail *uptime 100%*), não tráfego
@@ -32,7 +35,8 @@ invocação por seed), e é o **mesmo host** do futuro servidor de API/auth.
    do contexto) — ele exclui `node_modules`/`.git` e **todo `.env*`** para nenhum segredo entrar na
    imagem (OP-12). **Nunca** passe `--build-arg` com segredos; use env do runtime.
 2. **Segredos** (Settings → Variables — server-only, OP-12, **nunca** no repo — ver `.env.example`):
-   - `DATABASE_URL` = a connection string do Postgres (Neon, pooled/TCP).
+   - `DATABASE_URL` = a connection string **pooled** do Postgres (Neon, `-pooler`, runtime).
+   - `DATABASE_URL_UNPOOLED` = a string **direct** (sem `-pooler`) — as migrations usam esta (SPEC-035).
    - `WORLD_SEED` = a seed do mundo que este scheduler dirige.
 3. **Schedule (cron):** configure o job para disparar **`0,30 18-23 * * *` (UTC)**.
    - `18:00 UTC = 15:00 BRT` o ano todo (Brasil sem DST desde 2019 → offset fixo UTC-3).

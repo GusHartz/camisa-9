@@ -27,8 +27,11 @@ jobs:
           --health-timeout 5s
           --health-retries 10
     env:
-      # Server-only (OP-12). Aponta p/ o service container acima; sem segredo real.
-      DATABASE_URL: postgres://postgres:postgres@localhost:5432/camisa9_test
+      # SPEC-035: HAS_NEON liga o caminho Neon-branch-per-PR quando o secret existe. Sem ele
+      # (ou em PR de fork), fica 'false' → o CI usa o container postgres:16 (secret-free, verde).
+      # A DATABASE_URL NÃO fica aqui de propósito — é resolvida via $GITHUB_ENV (Neon OU container)
+      # para evitar o gotcha de precedência job-env × $GITHUB_ENV.
+      HAS_NEON: ${{ secrets.NEON_API_KEY != '' }}
     steps:
       - name: Checkout
         uses: actions/checkout@v4
@@ -89,6 +92,37 @@ jobs:
       - name: Instalar dependências
         if: steps.detect.outputs.node == 'true'
         run: npm ci || npm install
+
+      # SPEC-035: branch Neon efêmero por PR (só quando o secret existe E é um PR). A action
+      # oficial cria o branch e devolve as URLs pooled/direct. Sem o secret → passo PULADO
+      # (outputs vazios) → o resolver abaixo cai no container. Verifique a versão da action e os
+      # nomes dos outputs (db_url / db_url_with_pooler) na 1ª ativação — ver neon-setup-runbook.
+      - name: Criar branch Neon efêmero (PR + secret)
+        id: neon
+        if: steps.detect.outputs.node == 'true' && env.HAS_NEON == 'true' && github.event_name == 'pull_request'
+        uses: neondatabase/create-branch-action@v5
+        with:
+          project_id: ${{ secrets.NEON_PROJECT_ID }}
+          branch_name: ci/pr-${{ github.event.number }}
+          username: neondb_owner
+          api_key: ${{ secrets.NEON_API_KEY }}
+
+      # Resolve a DATABASE_URL: branch Neon (pooled p/ runtime, direct p/ migrations via
+      # DATABASE_URL_UNPOOLED) OU o container postgres:16 (fallback secret-free). Escrita só via
+      # $GITHUB_ENV (não no env do job) → evita o gotcha de precedência job-env × $GITHUB_ENV.
+      - name: Resolver DATABASE_URL (Neon ou container)
+        if: steps.detect.outputs.node == 'true'
+        run: |
+          POOLED="${{ steps.neon.outputs.db_url_with_pooler }}"
+          DIRECT="${{ steps.neon.outputs.db_url }}"
+          if [ -n "$POOLED" ]; then
+            echo "DATABASE_URL=$POOLED" >> "$GITHUB_ENV"
+            echo "DATABASE_URL_UNPOOLED=$DIRECT" >> "$GITHUB_ENV"
+            echo "→ branch Neon efêmero (pooled p/ testes, direct p/ migrations)."
+          else
+            echo "DATABASE_URL=postgres://postgres:postgres@localhost:5432/camisa9_test" >> "$GITHUB_ENV"
+            echo "→ container postgres:16 (fallback secret-free)."
+          fi
 
       - name: Aplicar migrations (camada de dados — SPEC-013)
         if: steps.detect.outputs.node == 'true'
