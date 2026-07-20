@@ -84,6 +84,7 @@ describe.skipIf(!DB_URL)('admission / waiting-list — SPEC-034 contra Postgres 
     await playerHandle.db.delete(playerSchema.purchase);
     await playerHandle.db.delete(playerSchema.athlete);
     await playerHandle.db.delete(playerSchema.team);
+    await playerHandle.db.delete(playerSchema.session); // SPEC-037: filha de account (FK)
     await playerHandle.db.delete(playerSchema.account);
   }
 

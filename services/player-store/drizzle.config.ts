@@ -6,6 +6,7 @@ import { defineConfig } from 'drizzle-kit';
 export default defineConfig({
   schema: [
     './src/schema/account.ts',
+    './src/schema/session.ts',
     './src/schema/team.ts',
     './src/schema/athlete.ts',
     './src/schema/purchase.ts',

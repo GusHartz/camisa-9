@@ -24,6 +24,7 @@ import {
   accrueRound,
   advanceRecovery,
   applyDailyMood,
+  deleteExpiredSessions,
   generateForDay,
   injureFromMatch,
   readInjuryState,
@@ -68,6 +69,7 @@ export async function runDailyTick(
   seed: string,
   epochMs: number,
 ): Promise<DailyTickReport> {
+  await purgeSessions(playerDb, epochMs);
   const to = dueDayIndex(epochMs);
   const world = await readWorld(worldDb, seed);
   if (!world) return emptyTick(to, 'sem_mundo');
@@ -82,6 +84,24 @@ export async function runDailyTick(
   const from = Math.min((cursor ?? seasonStart - 1) + 1, to);
   const modulate = moodModulator(worldDb, playerDb, seed);
   return runCatchUp(worldDb, playerDb, seed, from, to, modulate);
+}
+
+/**
+ * Purga as sessões vencidas (SPEC-037). Roda **UMA vez por tick**, e o POSICIONAMENTO é a decisão:
+ * **antes dos três early-returns** (`sem_mundo`/`sem_ancora`/`fora_de_janela`) — senão o dia 1 de
+ * produção, que retorna `sem_ancora`, nunca purgaria — e **fora do `runCatchUp`**, que é um LOOP e
+ * purgaria N vezes.
+ *
+ * ⚠️ ISOLADA (molde do `tryInjure`, SPEC-031): uma concern de AUTH não pode, em hipótese nenhuma,
+ * derrubar a rodada das 15h. Se o player-db falhar aqui, o mundo joga do mesmo jeito.
+ */
+export async function purgeSessions(playerDb: PlayerDb, epochMs: number): Promise<void> {
+  try {
+    await deleteExpiredSessions(playerDb, epochMs);
+  } catch (err) {
+    // OP-11: genérico, sem SQL/stack.
+    console.error('tick: purga de sessões falhou —', err instanceof Error ? err.message : 'erro');
+  }
 }
 
 interface TickTotals {

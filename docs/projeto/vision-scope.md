@@ -61,7 +61,7 @@ Quatro pilares sustentam a tese:
 
 **F2 (comprometida na visão, fora do beta):** técnico com personalidade; reputação ídolo vs. mercenário por torcida; fama como economia secundária; comissão pessoal (preparador/nutricionista/psicólogo).
 
-**Baseline técnico não-negociável (H1VE)** — arquitetura e qualidade já **ratificadas/provadas** (SPECs 001-006, ADR-001); a baseline de segurança segue **[SUPOSIÇÃO — revisar]** (roadmap 0.4, ainda não exercida):
+**Baseline técnico não-negociável (H1VE)** — arquitetura e qualidade já **ratificadas/provadas** (SPECs 001-006, ADR-001); a baseline de segurança foi **exercida na SPEC-037** (roadmap 0.4): autenticação → autorização → validação de input em toda rota, sessão opaca revogável, respostas de erro genéricas, segredos em variáveis de ambiente:
 - **Arquitetura:** toda regra de negócio e progressão em libs no servidor; rotas só orquestram; cliente **apenas renderiza** (posiciona F3/Mac). Motor do mundo isolado como serviço determinístico.
 - **Segurança, nesta ordem:** autenticação → autorização → validação de input em toda superfície. Nenhum segredo hardcoded (variáveis de ambiente); menor privilégio por serviço; respostas de erro genéricas (sem stack/SQL). Progressão 100% server-side.
 - **Qualidade:** gates de CI obrigatórios; testes onde há lógica crítica (motor de simulação, waiting list, money path); duplo sign-off **QA + Data** e merge pelo arquiteto.

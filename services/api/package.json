@@ -1,0 +1,16 @@
+{
+  "name": "@camisa-9/api",
+  "version": "0.0.0",
+  "private": true,
+  "type": "module",
+  "exports": "./src/index.ts",
+  "description": "Camada HTTP e sessão (SPEC-037): a primeira superfície do projeto que ESCUTA numa porta. node:http puro (zero dep nova) atrás do seam RouteCtx — o handler nunca vê req/res. Sessão opaca hasheada em player.session; OP-09 imposto pelo tipo (AuthedHandler); OP-11 num único serializador. Borda IMPURA (services/*, fora do guardrail): o único Date.now() vive em main.ts e desce injetado como epochMs. Rodada via tsx/vitest.",
+  "scripts": {
+    "start": "tsx src/main.ts",
+    "test": "vitest run"
+  },
+  "dependencies": {
+    "@camisa-9/player": "*",
+    "@camisa-9/player-store": "*"
+  }
+}

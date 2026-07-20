@@ -15,7 +15,15 @@ import {
   type AthleteDraft,
 } from '@camisa-9/player';
 import { createDb, type DbHandle } from '../src/client.js';
-import { account, athlete, dailyLedger, decision, injury, purchase } from '../src/schema/index.js';
+import {
+  account,
+  athlete,
+  dailyLedger,
+  decision,
+  injury,
+  purchase,
+  session,
+} from '../src/schema/index.js';
 import { createAccountWithAthlete } from '../src/store/player-repo.js';
 import { applyTraining, readAthleteProgress, spendFreePoint } from '../src/store/training-repo.js';
 
@@ -55,6 +63,7 @@ describe.skipIf(!DB_URL)('training-repo — progressão contra Postgres real', (
     await handle.db.delete(purchase); // neto (FK → athlete, SPEC-024) antes do atleta
     await handle.db.delete(dailyLedger);
     await handle.db.delete(athlete); // filho antes do pai (FK)
+    await handle.db.delete(session); // SPEC-037: filha de account (FK)
     await handle.db.delete(account);
   });
 

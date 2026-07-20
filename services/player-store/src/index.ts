@@ -6,6 +6,7 @@ export {
   readAccountByEmail,
   readActiveAthlete,
   readAthleteIdentity,
+  normalizeEmail,
   rebirthAthlete,
   type AthleteIdentity,
   type RebirthResult,
@@ -56,4 +57,16 @@ export {
   bumpForma,
   type Mood,
 } from './store/mood-repo.js';
+export {
+  authenticate,
+  createSession,
+  readSessionByHash,
+  touchSession,
+  deleteSession,
+  deleteExpiredSessions,
+  SESSION,
+  type AuthResult,
+  type SessionView,
+  type CreatedSession,
+} from './store/session-repo.js';
 export * as schema from './schema/index.js';

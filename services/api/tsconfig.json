@@ -1,0 +1,9 @@
+{
+  "//": "Type-check da API (SPEC-037) — a camada HTTP/sessão. Como os demais services/*, NÃO é composite e NÃO entra no `tsc -b` (referenciaria packages/services e o `tsc -b --noEmit` quebraria — TS6310). Borda IMPURA rodada via tsx/vitest; consome o player-store + a lib pura pelos `paths` (→ src). O gate de tipos autoritativo é `tsconfig.typecheck.json` (raiz), que inclui services/*.",
+  "extends": "../../tsconfig.base.json",
+  "compilerOptions": {
+    "noEmit": true,
+    "resolveJsonModule": true
+  },
+  "include": ["src/**/*.ts", "test/**/*.ts"]
+}

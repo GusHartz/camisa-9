@@ -28,6 +28,8 @@ import {
 import {
   createAccountWithAthlete,
   createDb as createPlayerDb,
+  createSession,
+  readSessionByHash,
   injureFromMatch,
   readDecisionLog,
   readInjuryState,
@@ -38,6 +40,7 @@ import {
 } from '@camisa-9/player-store';
 import { admitOrEnqueue, enterWorld } from '@camisa-9/world-entry';
 import { runDailyTick } from '../src/index.js';
+import { purgeSessions } from '../src/daily-tick.js';
 
 const DB_URL = process.env.DATABASE_URL;
 const SEED = 'tick-prod';
@@ -98,6 +101,7 @@ describe.skipIf(!DB_URL)('daily-tick — o tick de produção contra Postgres re
     await playerHandle.db.delete(playerSchema.purchase);
     await playerHandle.db.delete(playerSchema.athlete);
     await playerHandle.db.delete(playerSchema.team);
+    await playerHandle.db.delete(playerSchema.session); // SPEC-037: filha de account (FK)
     await playerHandle.db.delete(playerSchema.account);
   }
 
@@ -694,5 +698,41 @@ describe.skipIf(!DB_URL)('daily-tick — o tick de produção contra Postgres re
     const rep = await runDailyTick(worldHandle.db, playerHandle.db, SEED, epochAt(START));
     expect(rep.roundStatus).toBe('fora_de_janela');
     expect(rep.daysProcessed).toBe(0);
+  });
+
+  // SPEC-037 (critério 6): a purga de sessões roda no tick, e uma concern de AUTH não pode derrubar
+  // a rodada das 15h. Sem estes dois, o posicionamento e o isolamento não eram provados por nada.
+  describe('purga de sessões (SPEC-037)', () => {
+    it('é ISOLADA: um erro na purga não propaga — a rodada não pode cair por causa de auth', async () => {
+      const quebrado = {
+        delete: () => {
+          throw new Error('player-db fora do ar');
+        },
+      } as unknown as Parameters<typeof purgeSessions>[0];
+      await expect(purgeSessions(quebrado, epochAt(START))).resolves.toBeUndefined();
+    });
+
+    it('roda ANTES dos early-returns: purga mesmo num tick que retorna sem_ancora', async () => {
+      // Este é o cenário do DIA 1 DE PRODUÇÃO (mundo semeado, âncora ainda não): se a purga
+      // estivesse depois dos early-returns, ela nunca rodaria aqui.
+      const draft = createAthlete({
+        name: 'Zé da Purga',
+        position: 'FWD',
+        appearance: { skinTone: 1, hairStyle: 1, hairColor: 1 },
+        attributes: { fisico: 34, tecnico: 34, tatico: 34, mental: 34 },
+      });
+      if (!draft.ok) throw new Error('draft inválido');
+      const conta = await createAccountWithAthlete(playerHandle.db, {
+        email: 'purga@varzea.test',
+        password: PASSWORD,
+        draft: draft.value,
+      });
+      const vencida = 'a'.repeat(64);
+      await createSession(playerHandle.db, conta.accountId, vencida, epochAt(START) - 31 * 86_400_000);
+      await worldHandle.db.delete(worldSchema.season); // força `sem_ancora`
+      const rep = await runDailyTick(worldHandle.db, playerHandle.db, SEED, epochAt(START));
+      expect(rep.roundStatus).toBe('sem_ancora');
+      expect(await readSessionByHash(playerHandle.db, vencida, epochAt(START))).toBeNull();
+    });
   });
 });

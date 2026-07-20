@@ -71,6 +71,13 @@
       "when": 1784478057639,
       "tag": "0009_transfer_flags",
       "breakpoints": true
+    },
+    {
+      "idx": 10,
+      "version": "7",
+      "when": 1784570101856,
+      "tag": "0010_session",
+      "breakpoints": true
     }
   ]
 }

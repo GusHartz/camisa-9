@@ -30,7 +30,8 @@
       "@camisa-9/world-entry": ["./services/world-entry/src/index.ts"],
       "@camisa-9/regen": ["./services/regen/src/index.ts"],
       "@camisa-9/transfer": ["./services/transfer/src/index.ts"],
-      "@camisa-9/scheduler": ["./services/scheduler/src/index.ts"]
+      "@camisa-9/scheduler": ["./services/scheduler/src/index.ts"],
+      "@camisa-9/api": ["./services/api/src/index.ts"]
     }
   }
 }
