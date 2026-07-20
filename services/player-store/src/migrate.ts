@@ -3,10 +3,11 @@
 // colidir com o schema `player` das tabelas (que a própria migration 0000 cria).
 import { fileURLToPath } from 'node:url';
 import { migrate } from 'drizzle-orm/node-postgres/migrator';
-import { createDb } from './client.js';
+import { createDb, pickMigrationUrl } from './client.js';
 
 async function main(): Promise<void> {
-  const url = process.env.DATABASE_URL;
+  // SPEC-035: migrations no endpoint DIRECT (DATABASE_URL_UNPOOLED), fora do PgBouncer.
+  const url = pickMigrationUrl(process.env);
   if (!url) {
     console.error('DATABASE_URL não definida — configure o ambiente antes de migrar.');
     process.exitCode = 1;
