@@ -53,6 +53,7 @@ export {
 export { VACANCY } from './store/vacancy-policy.js';
 export {
   persistWorldTurnover,
+  entryOccupancyRate,
   TurnoverError,
   type TurnoverOutcome,
   type TurnoverStatus,

@@ -36,8 +36,9 @@ function assertSingleLeaguePerTier(tiers: readonly Tier[]): void {
 }
 
 /** Protege a conservação de fluxo se promoteRelegate (tunável por fronteira) for
- * reconfigurado a ponto de sobrepor top-k e bottom-k (clube subindo e descendo). */
-function assertConservation(tiers: readonly Tier[]): void {
+ * reconfigurado a ponto de sobrepor top-k e bottom-k (clube subindo e descendo).
+ * Exportado (SPEC-036): a promoção multi-grupo reusa o MESMO invariante (grupos de 20). */
+export function assertConservation(tiers: readonly Tier[]): void {
   for (const tier of tiers) {
     for (const league of tier.leagues) {
       if (league.clubs.length !== WORLD.clubsPerLeague) {
@@ -67,8 +68,12 @@ function rankClubs(tier: Tier, tableByLeague: Map<string, readonly StandingRow[]
   });
 }
 
-/** Nova composição do andar i: fica quem não cruzou fronteira + quem entrou de cima/baixo. */
-function newMembers(ranked: readonly WorldClub[][], i: number): WorldClub[] {
+/**
+ * Nova composição do andar i: fica quem não cruzou fronteira + quem entrou de cima/baixo.
+ * Exportado (SPEC-036): a promoção multi-grupo reusa esta MESMA lógica de fronteira, passando
+ * o rank ACHATADO do andar (interleave dos grupos) no lugar do rank de liga única.
+ */
+export function newMembers(ranked: readonly WorldClub[][], i: number): WorldClub[] {
   const own = at(ranked, i);
   const removeIds = new Set<string>();
   const incoming: WorldClub[] = [];
@@ -102,8 +107,11 @@ function at(ranked: readonly WorldClub[][], idx: number): WorldClub[] {
   return arr;
 }
 
-function boundaryK(idx: number): number {
-  const k = WORLD.promoteRelegate[idx];
+export function boundaryK(idx: number): number {
+  // Clamp (SPEC-036): fronteiras além do config (andares novos do R13) herdam o último valor.
+  // Golden-safe: com 4 andares (3 fronteiras, idx 0..2) o clamp é no-op.
+  const pr = WORLD.promoteRelegate;
+  const k = pr[Math.min(idx, pr.length - 1)];
   if (k === undefined) throw new RangeError(`promotion: fronteira ${idx} sem parâmetro.`);
   return k;
 }
