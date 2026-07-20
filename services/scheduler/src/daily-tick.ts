@@ -31,7 +31,7 @@ import {
   type Db as PlayerDb,
 } from '@camisa-9/player-store';
 import type { MatchResult } from '@camisa-9/player';
-import { moodModulator } from '@camisa-9/world-entry';
+import { moodModulator, runAdmissionPass } from '@camisa-9/world-entry';
 import { runRegenPass } from '@camisa-9/regen';
 import { runTransferPass } from '@camisa-9/transfer';
 import type { WorldState } from '@camisa-9/world-engine';
@@ -56,6 +56,8 @@ export interface DailyTickReport {
   readonly regenerated: number;
   /** Humanos TRANSFERIDOS de clube nesta passada (SPEC-033; só na viragem). */
   readonly transferred: number;
+  /** Humanos ADMITIDOS da waiting-list nesta passada (SPEC-034; diário). */
+  readonly admitted: number;
   readonly vacancy: VacancyReport;
 }
 
@@ -90,6 +92,7 @@ interface TickTotals {
   injured: number;
   regenerated: number;
   transferred: number;
+  admitted: number;
   frozen: number;
   reverted: number;
 }
@@ -127,6 +130,7 @@ async function runCatchUp(
     injured: totals.injured,
     regenerated: totals.regenerated,
     transferred: totals.transferred,
+    admitted: totals.admitted,
     vacancy: { frozen: totals.frozen, reverted: totals.reverted },
   };
 }
@@ -188,6 +192,11 @@ async function processDay(
     totals.recovered += d.recovered;
     totals.injured += d.injured;
   }
+  // Admissão da waiting-list (SPEC-034): DIÁRIA, no FIM do dia — DEPOIS dos passes (revisão MINOR).
+  // Se rodasse antes, o admitido HOJE herdaria o resultado/LESÃO da rodada já publicada do NPC que
+  // substituiu (uma partida que ele não jogou). No fim, ele entra e começa a ser processado AMANHÃ.
+  // O vacancy já rodou → as vagas revertidas HOJE já contam e são herdadas pelo próximo da fila.
+  totals.admitted = await runAdmissionPass(worldDb, playerDb, seed);
   return { ...totals, settled: true, status: round.status };
 }
 
@@ -297,6 +306,7 @@ function zeroTotals(): TickTotals {
     injured: 0,
     regenerated: 0,
     transferred: 0,
+    admitted: 0,
     frozen: 0,
     reverted: 0,
   };
@@ -310,6 +320,7 @@ function addDay(totals: TickTotals, out: DayOutcome): void {
   totals.injured += out.injured;
   totals.regenerated += out.regenerated;
   totals.transferred += out.transferred;
+  totals.admitted += out.admitted;
   totals.frozen += out.frozen;
   totals.reverted += out.reverted;
 }
@@ -326,6 +337,7 @@ function emptyTick(dayIndex: number, status: DailyRoundStatus): DailyTickReport 
     injured: 0,
     regenerated: 0,
     transferred: 0,
+    admitted: 0,
     vacancy: { frozen: 0, reverted: 0 },
   };
 }

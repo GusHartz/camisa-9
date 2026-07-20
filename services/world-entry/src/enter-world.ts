@@ -36,5 +36,6 @@ export async function enterWorld(
     humanAthleteId: input.humanAthleteId,
     humanName: identity.name,
     ability,
+    allowMidSeason: true, // SPEC-034: a entrada solo é IMEDIATA (mid-season, seguro)
   });
 }

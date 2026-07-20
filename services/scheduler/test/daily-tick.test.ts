@@ -36,7 +36,7 @@ import {
   schema as playerSchema,
   type DbHandle as PlayerHandle,
 } from '@camisa-9/player-store';
-import { enterWorld } from '@camisa-9/world-entry';
+import { admitOrEnqueue, enterWorld } from '@camisa-9/world-entry';
 import { runDailyTick } from '../src/index.js';
 
 const DB_URL = process.env.DATABASE_URL;
@@ -89,6 +89,7 @@ describe.skipIf(!DB_URL)('daily-tick — o tick de produção contra Postgres re
     await worldHandle.db.delete(worldSchema.club);
     await worldHandle.db.delete(worldSchema.league);
     await worldHandle.db.delete(worldSchema.worldTier);
+    await worldHandle.db.delete(worldSchema.waitingList);
     await worldHandle.db.delete(worldSchema.tickProgress);
     await worldHandle.db.delete(worldSchema.world);
     await playerHandle.db.delete(playerSchema.dailyLedger);
@@ -653,6 +654,38 @@ describe.skipIf(!DB_URL)('daily-tick — o tick de produção contra Postgres re
     expect(rep.roundStatus).toBe('season_rolled');
     expect(rep.transferred).toBe(1); // o tick executou a transferência na gênese
     expect((await readOccupation(worldHandle.db, SEED, humanId))!.clubId).not.toBe(clubId); // mudou
+  });
+
+  it('a waiting-list é drenada no TICK diário (o passe de admissão wired — SPEC-034)', async () => {
+    const world = (await readWorld(worldHandle.db, SEED))!;
+    await setSeasonAnchor(worldHandle.db, SEED, world.seasonId, START);
+    // um humano solo no player-store, enfileirado (teto 0 → não entra direto)
+    seq += 1;
+    const draft = createAthlete({
+      name: 'Novato',
+      position: 'FWD',
+      appearance: { skinTone: 1, hairStyle: 1, hairColor: 1 },
+      attributes: { fisico: 34, tecnico: 34, tatico: 34, mental: 34 },
+    });
+    if (!draft.ok) throw new Error('draft inválido');
+    const { athleteId } = await createAccountWithAthlete(playerHandle.db, {
+      email: `q${seq}@x.com`,
+      password: PASSWORD,
+      draft: draft.value,
+    });
+    await admitOrEnqueue(
+      worldHandle.db,
+      playerHandle.db,
+      { humanAthleteId: athleteId, worldSeed: SEED },
+      0,
+    );
+    // o tick roda o passe (teto default alto) → admite da fila
+    const rep = await runDailyTick(worldHandle.db, playerHandle.db, SEED, epochAt(START));
+    expect(rep.admitted).toBe(1);
+    expect(await readOccupation(worldHandle.db, SEED, athleteId)).not.toBeNull();
+    // a admissão roda no FIM do dia → o admitido NÃO é processado HOJE (não herda o resultado/lesão
+    // da rodada já publicada do NPC): sem decisões geradas no dia da entrada (revisão MINOR).
+    expect((await readDecisionLog(playerHandle.db, athleteId)).length).toBe(0);
   });
 
   it('âncora no futuro (nada venceu ainda) → fora_de_janela, ninguém processado', async () => {

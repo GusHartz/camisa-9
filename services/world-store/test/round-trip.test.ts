@@ -13,6 +13,7 @@ import { seedWorld, worldHash, type WorldState } from '@camisa-9/world-engine';
 import { createDb, type DbHandle } from '../src/client.js';
 import { athlete, club, league, world, worldOccupation, worldTier } from '../src/schema/world.js';
 import { tickProgress } from '../src/schema/tick-progress.js';
+import { waitingList } from '../src/schema/waiting-list.js';
 import { season } from '../src/schema/season.js';
 import { readWorld, writeWorld, writeWorldState } from '../src/store/world-repo.js';
 
@@ -51,6 +52,7 @@ describe.skipIf(!DB_URL)('world-store — round-trip determinístico do snapshot
     await handle.db.delete(club);
     await handle.db.delete(league);
     await handle.db.delete(worldTier);
+    await handle.db.delete(waitingList);
     await handle.db.delete(tickProgress);
     await handle.db.delete(world);
   });

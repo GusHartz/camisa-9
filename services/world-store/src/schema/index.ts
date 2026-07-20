@@ -6,3 +6,4 @@ export * from './season.js';
 export * from './turnover.js';
 export * from './legend.js';
 export * from './tick-progress.js';
+export * from './waiting-list.js';

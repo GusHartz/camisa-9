@@ -68,6 +68,7 @@ describe.skipIf(!DB_URL)('runTransferPass — a transferência do humano contra 
     await worldHandle.db.delete(worldSchema.club);
     await worldHandle.db.delete(worldSchema.league);
     await worldHandle.db.delete(worldSchema.worldTier);
+    await worldHandle.db.delete(worldSchema.waitingList);
     await worldHandle.db.delete(worldSchema.tickProgress);
     await worldHandle.db.delete(worldSchema.world);
     await playerHandle.db.delete(playerSchema.dailyLedger);

@@ -26,6 +26,10 @@ export interface OccupyInput {
   /** Regen (SPEC-022): o renascido re-ocupa o MESMO clube, que pode já ter subido de tier —
    *  pula a guarda de divisão de entrada (que vale só para ENTRADAS novas de gênese). */
   readonly allowAnyTier?: boolean;
+  /** Entrada SOLO (SPEC-034): permite ocupar MID-SEASON (pula a guarda de gênese). Seguro — a
+   *  investigação provou: o publish é idempotente (só a rodada-alvo), não reescreve as passadas;
+   *  só muta o input futuro. USADO SÓ pela entrada solo; regen/transfer NÃO passam (ficam gated). */
+  readonly allowMidSeason?: boolean;
 }
 
 export interface OccupyResult {
@@ -44,9 +48,11 @@ export async function occupyNpcSlot(db: Db, input: OccupyInput): Promise<OccupyR
       // Rendezvous com publishWorldRound (round-repo): lock advisory COMPARTILHADO na chave da
       // rodada 1 (a que "abre" a temporada). Ocupações são mútuas-compatíveis (shared×shared não
       // bloqueia); a publicação da rodada 1 toma o EXCLUSIVO → serializa contra a ocupação. Fecha
-      // o TOCTOU: nenhuma rodada 1 commita entre o assertGenesis e o commit da ocupação.
+      // o TOCTOU: nenhuma rodada 1 commita entre o assertGenesis e o commit da ocupação. ⚠️ No caminho
+      // MID-SEASON (allowMidSeason, SPEC-034) a gênese é pulada e a rodada 1 já passou → este lock é
+      // herdado/INOFENSIVO (sem contenção); a serialização real da vaga vem do FOR UPDATE + UNIQUE.
       await acquireSeasonStartLock(tx, seasonId);
-      await assertGenesis(tx, seasonId);
+      if (!input.allowMidSeason) await assertGenesis(tx, seasonId); // solo (SPEC-034) entra mid-season
       if (!input.allowAnyTier) await assertEntryClub(tx, input.worldSeed, input.clubId);
       const worldAthleteId = await weakestNpcSlotId(tx, input);
       // O humano ENTRA aos 17 (SPEC-022) — não herda a idade do NPC substituído; a idade é o
