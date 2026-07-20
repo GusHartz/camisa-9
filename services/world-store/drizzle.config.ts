@@ -11,6 +11,7 @@ export default defineConfig({
     './src/schema/turnover.ts',
     './src/schema/legend.ts',
     './src/schema/tick-progress.ts',
+    './src/schema/waiting-list.ts',
   ],
   out: './src/migrations',
   dialect: 'postgresql',

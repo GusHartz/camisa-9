@@ -22,6 +22,7 @@ import { season } from '../src/schema/season.js';
 import { turnoverReport } from '../src/schema/turnover.js';
 import { athlete, club, league, world, worldOccupation, worldTier } from '../src/schema/world.js';
 import { tickProgress } from '../src/schema/tick-progress.js';
+import { waitingList } from '../src/schema/waiting-list.js';
 import { readWorld, writeWorld } from '../src/store/world-repo.js';
 import { setSeasonAnchor } from '../src/store/season-repo.js';
 import { publishWorldRound, readRound, type WorldRoundInput } from '../src/store/round-repo.js';
@@ -76,6 +77,7 @@ describe.skipIf(!DB_URL)('runDailyRound — orquestrador diário contra Postgres
     await handle.db.delete(club);
     await handle.db.delete(league);
     await handle.db.delete(worldTier);
+    await handle.db.delete(waitingList);
     await handle.db.delete(tickProgress);
     await handle.db.delete(world);
   }
