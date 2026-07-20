@@ -126,7 +126,15 @@ O código passou typecheck e ESLint com os três presentes. Rodar de verdade (co
 
 ## AI Declaration
 
-Preenchida no card via `submit_ai_declaration`. Autoria: código gerado pela IA (Claude) sob direção do founder; as decisões de design (sessão opaca vs refresh, signup fora, ordem server-first, regra do `dayPhase`, número da camisa) co-desenhadas com o founder; toda a lógica + a revisão adversarial (4 lentes + verificador cético) + os 13 fixes revisados por humano.
+Preenchida no card via `submit_ai_declaration`.
+
+**Autoria:** **100% do código gerado pela IA** (Claude), sob direção do founder.
+
+**O que o founder decidiu** (co-desenho real, via perguntas explícitas): sessão opaca vs par access/refresh · `POST /signup` fora + script de operador · ordem server-first (escritas antes da faixa visual) · re-shape do card em 4 · a regra de faixas horárias do `dayPhase` · número da camisa escolhido na criação · pedir os cortes de 64/88px ao designer em paralelo. Mais a aprovação da SPEC no card.
+
+⚠️ **O que NÃO houve: revisão humana do código.** O founder não leu os arquivos implementados. A verificação que existe é: (a) **529 testes rodados ao vivo** contra Postgres real; (b) **typecheck / ESLint / prettier** verdes; (c) uma **revisão adversarial por agentes de IA** (4 lentes + verificador cético) que achou 20 e confirmou 13 defeitos, todos corrigidos. Isso é substancialmente mais do que "a IA escreveu e passou o teste que ela mesma escreveu" — a revisão reproduziu uma corrida ao vivo e derrubou dois testes meus por vacuidade —, **mas não substitui olho humano**, e o review do architect é o primeiro.
+
+**Ponto de atenção para quem revisar:** os três bugs mais sérios desta fatia (corrida na poda, lockout de conta, `logout` sem teto) **não seriam pegos por leitura casual** — todos passavam no typecheck e nos testes originais.
 
 ---
 
