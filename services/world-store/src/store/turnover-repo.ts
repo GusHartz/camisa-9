@@ -5,6 +5,7 @@
 // in-place + re-aplica as ocupações + grava a auditoria. Idempotente (lock + season_id). OP-11.
 import { and, eq, sql } from 'drizzle-orm';
 import {
+  WORLD,
   advanceWorld,
   turnoverReport as buildTurnoverReport,
   type WorldSeasonResult,
@@ -58,7 +59,10 @@ export async function persistWorldTurnover(
   // janela da tx poderia se perder; endurecer = ler sob o lock / cross-lock com occupyNpcSlot.
   const occupations = await readWorldOccupations(db, seed);
   const immuneIds = new Set(occupations.map((o) => o.athleteId));
-  const after = advanceWorld(before, results, seed, immuneIds);
+  // Pirâmide Elástica (R13, SPEC-036): a borda mede a ocupação humana do andar de ENTRADA e injeta
+  // a decisão de expandir; o engine cresce a topologia (determinístico). Padrão do `immuneIds`.
+  const expand = entryOccupancyRate(before, occupations) >= WORLD.expansionThreshold;
+  const after = advanceWorld(before, results, seed, immuneIds, expand);
   const report = buildTurnoverReport(before, after);
   // A nova temporada começa no DIA SEGUINTE ao dia REAL da virada — não no calendário ideal — para
   // NÃO pular a rodada 1 se a virada rodar atrasada (deferida → retry N dias depois). SPEC crit. 7.
@@ -82,6 +86,25 @@ export async function persistWorldTurnover(
     await upsertAnchor(tx, seed, after.seasonId, newStart);
     return { status: 'rolled', fromSeasonId: before.seasonId, toSeasonId: after.seasonId };
   });
+}
+
+/**
+ * Taxa de ocupação HUMANA do andar de entrada (R13, SPEC-036) — PURA (do snapshot + ocupações,
+ * sem query). = nº de humanos em clubes da entrada / nº de clubes da entrada (= grupos × 20).
+ * A regra `≥ WORLD.expansionThreshold` é a decisão; a topologia nova é 100% do engine (OP-17).
+ */
+export function entryOccupancyRate(
+  world: WorldState,
+  occupations: readonly Pick<OccupationView, 'clubId'>[],
+): number {
+  const entryTierNum = Math.max(...world.tiers.map((t) => t.tier));
+  const entry = world.tiers.find((t) => t.tier === entryTierNum);
+  if (!entry) return 0;
+  const entryClubIds = new Set(entry.leagues.flatMap((l) => l.clubs.map((c) => c.id)));
+  const slots = entryClubIds.size;
+  if (slots === 0) return 0;
+  const humans = occupations.filter((o) => entryClubIds.has(o.clubId)).length;
+  return humans / slots;
 }
 
 /** try-advisory-xact-lock de mundo-rollover: serializa dois ticks de virada no mesmo season. */

@@ -1,0 +1,14 @@
+{
+  "seed": "elastica",
+  "turns": 6,
+  "note": "SPEC-036 — âncora do CRESCIMENTO (R13, Pirâmide Elástica). expand=TRUE forçado a cada virada (bypassa a borda de ocupação) → exercita a topologia crescendo + a promoção multi-grupo. hashes[0] = mundo semeado; hashes[i] = após i viragens COM expansão. Regerar só com mudança INTENCIONAL do stream/topologia — via harness/regen-world-expansion-golden.ts.",
+  "hashes": [
+    "3e9598f35419329e23ff743d733523d8",
+    "f683c1d25bd0ad0552d256dfb15b49a3",
+    "fa73ee55acc4a5919b954350c02f4484",
+    "f4663c671f91cb24a12adc542e7c2400",
+    "1de69489677be345027cf9ac34adabc5",
+    "73ad507e24fbcc3e03c435f41770832b",
+    "c6ce87ff9b543a1a98274e52682019df"
+  ]
+}

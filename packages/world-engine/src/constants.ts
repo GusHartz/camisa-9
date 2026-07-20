@@ -78,4 +78,15 @@ export const WORLD = {
   ],
   /** Formação do elenco por posição. Soma = `rosterSize` (2+5+5+4 = 16). */
   squadShape: { GK: 2, DEF: 5, MID: 5, FWD: 4 },
+  // ── Pirâmide Elástica (R13, SPEC-036) ──
+  /**
+   * Gatilho de expansão: fração de OCUPAÇÃO HUMANA do andar de entrada a partir da
+   * qual a virada expande o mundo (a borda mede; o engine só recebe `expand: boolean`).
+   */
+  expansionThreshold: 0.7,
+  /**
+   * Fator de ramificação: a largura-TETO de um andar é `branchingFactor ×` a do andar
+   * acima. Quando a entrada satura o teto, nasce um andar novo embaixo (largura 1).
+   */
+  branchingFactor: 2,
 } as const;
