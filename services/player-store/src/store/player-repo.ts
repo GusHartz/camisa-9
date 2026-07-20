@@ -100,6 +100,9 @@ export interface AthleteIdentity {
   readonly position: string;
   readonly attributes: Attributes;
   readonly active: boolean;
+  /** A aparência escolhida na criação (SPEC-016) — a faixa monta o avatar em camadas a partir dela
+   *  (SPEC-038). Aditivo: a coluna sempre existiu; só o SELECT passou a puxá-la. */
+  readonly appearance: Appearance;
 }
 
 /** Lê a identidade de um atleta por id (null se não existe). */
@@ -116,6 +119,7 @@ export async function readAthleteIdentity(
       tatico: athlete.tatico,
       mental: athlete.mental,
       active: athlete.active,
+      appearance: athlete.appearance,
     })
     .from(athlete)
     .where(eq(athlete.id, athleteId))
@@ -127,6 +131,7 @@ export async function readAthleteIdentity(
     position: r.position,
     attributes: { fisico: r.fisico, tecnico: r.tecnico, tatico: r.tatico, mental: r.mental },
     active: r.active,
+    appearance: r.appearance,
   };
 }
 

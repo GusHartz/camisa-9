@@ -37,6 +37,7 @@ export {
   answerDecision,
   resolveDeadline,
   readDecisionLog,
+  countPendingDecisions,
   readTransferRequested,
   clearTransferRequested,
   type DecisionLogEntry,

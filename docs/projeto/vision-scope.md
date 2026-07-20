@@ -18,7 +18,7 @@ A dor é real e verificada, em três camadas:
 
 Quatro pilares sustentam a tese:
 
-- **Presença ambiente:** o jogo trabalha *junto* com o expediente, nunca contra. Três níveis — faixa (~110px) → modo mini — faixa compacta ancorada à taskbar (postura A/topmost, validada na SPEC-006; render dentro da shell é inviável no Win11) → fechado (só notificações nativas). Promessa pública: **<1% CPU, zero anti-cheat no cliente** (o anti-*TBH* como posicionamento).
+- **Presença ambiente:** o jogo trabalha *junto* com o expediente, nunca contra. Três níveis — faixa em 3 alturas (compacta 64px · normal 88px [padrão] · cena 110px) → modo mini — faixa compacta ancorada à taskbar (postura A/topmost, validada na SPEC-006; render dentro da shell é inviável no Win11) → fechado (só notificações nativas). Promessa pública: **<1% CPU, zero anti-cheat no cliente** (o anti-*TBH* como posicionamento).
 - **Cooperação, não gestão:** você **é** o atleta; seus amigos estão no **mesmo** time. "Meu passe, seu gol" — frase que nenhum manager produz. O clube é palco (NPC), não propriedade.
 - **Ritual coletivo sincronizado:** jogo diário (7/7) às 15h Brasília — liga de 20, temporada de 38 rodadas ≈ 6 semanas — o mesmo pull de "conferir o placar" que já existe em milhões de pessoas, redirecionado para um placar onde *você* joga, todo dia.
 - **Mundo vivo com história permanente:** o mundo nasce 100% NPC e jogando; cada humano substitui um NPC (escassez real via waiting list); carreiras terminam e viram lendas permanentes (hall, recordes, camisas aposentadas).

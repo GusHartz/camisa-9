@@ -7,6 +7,7 @@ import { migrate } from 'drizzle-orm/node-postgres/migrator';
 import { afterAll, afterEach, beforeAll, beforeEach, describe, expect, it, vi } from 'vitest';
 import { createAthlete, type AthleteDraft } from '@camisa-9/player';
 import { createAccountWithAthlete, createDb, schema, type DbHandle } from '@camisa-9/player-store';
+import { createDb as createWorldDb, type DbHandle as WorldHandle } from '@camisa-9/world-store';
 import { createApiServer } from '../src/server.js';
 import { requireSession } from '../src/auth/require.js';
 import { reset } from '../src/http/rate-limit.js';
@@ -42,6 +43,9 @@ const close = (server: Server): Promise<void> =>
 
 describe.skipIf(!DB_URL)('api — servidor real', () => {
   let handle: DbHandle;
+  // A SPEC-038 tornou `worldDb`/`worldSeed` obrigatórios no `ApiDeps`. O `/v1/band` NÃO é exercitado
+  // nesta suíte (é o alvo da suíte da 038), então basta um handle válido — sem migrar o schema do mundo.
+  let worldHandle: WorldHandle;
   let server: Server;
   let base: string;
   let clock = T0;
@@ -50,6 +54,7 @@ describe.skipIf(!DB_URL)('api — servidor real', () => {
 
   beforeAll(async () => {
     handle = createDb(DB_URL as string);
+    worldHandle = createWorldDb(DB_URL as string);
     await migrate(handle.db, {
       migrationsFolder: fileURLToPath(
         new URL('../../player-store/src/migrations', import.meta.url),
@@ -70,6 +75,8 @@ describe.skipIf(!DB_URL)('api — servidor real', () => {
 
     server = createApiServer({
       db: handle.db,
+      worldDb: worldHandle.db,
+      worldSeed: 'seed-de-teste',
       now: () => clock,
       extraRoutes: { 'GET /test/protected': spy, 'GET /test/boom': boom },
     });
@@ -79,6 +86,7 @@ describe.skipIf(!DB_URL)('api — servidor real', () => {
   afterAll(async () => {
     if (server) await close(server);
     if (handle) await handle.pool.end();
+    if (worldHandle) await worldHandle.pool.end();
   });
 
   beforeEach(async () => {
@@ -237,6 +245,8 @@ describe.skipIf(!DB_URL)('api — servidor real', () => {
     beforeAll(async () => {
       atrasDoProxy = createApiServer({
         db: handle.db,
+        worldDb: worldHandle.db,
+        worldSeed: 'seed-de-teste',
         now: () => clock,
         trustProxyHops: 1,
       });
@@ -333,7 +343,13 @@ describe.skipIf(!DB_URL)('api — servidor real', () => {
 
     it('/healthz responde 200 SEM tocar o banco (pool apontando p/ host morto)', async () => {
       const morto = createDb('postgres://ninguem:nada@127.0.0.1:1/naoexiste');
-      const s = createApiServer({ db: morto.db, now: () => clock });
+      const mortoWorld = createWorldDb('postgres://ninguem:nada@127.0.0.1:1/naoexiste');
+      const s = createApiServer({
+        db: morto.db,
+        worldDb: mortoWorld.db,
+        worldSeed: 'seed-de-teste',
+        now: () => clock,
+      });
       const porta = await listen(s);
       try {
         const r = await fetch(`http://127.0.0.1:${porta}/healthz`);
@@ -342,6 +358,7 @@ describe.skipIf(!DB_URL)('api — servidor real', () => {
       } finally {
         await close(s);
         await morto.pool.end();
+        await mortoWorld.pool.end();
       }
     });
 

@@ -55,6 +55,13 @@ export async function runDailyRound(
   return runRoundForDay(db, seed, slot.dayIndex, modulate);
 }
 
+/** O número da rodada de um `dayIndex`, dada a âncora da temporada (SPEC-015, extraído na SPEC-038).
+ *  Model B: `dayIndex − startDayIndex + 1`. A faixa (SPEC-038) reusa para `club.round` sem
+ *  reimplementar a conta — uma fonte só. Puro. */
+export function targetRoundFor(dayIndex: number, startDayIndex: number): number {
+  return dayIndex - startDayIndex + 1;
+}
+
 /** Publica a rodada de um `dayIndex` ALVO (o núcleo reusável do tick e do CATCH-UP, SPEC-032).
  *  Sem guarda de janela: quem chama já decidiu que o dia venceu (via `dueDayIndex`). Re-lê o
  *  mundo/âncora a cada chamada → após uma viragem, o dia seguinte já vê o mundo NOVO. */
@@ -68,7 +75,7 @@ export async function runRoundForDay(
   if (!world) return report(dayIndex, null, null, 'sem_mundo');
   const startDayIndex = await readSeasonAnchor(db, seed, world.seasonId);
   if (startDayIndex === null) return report(dayIndex, world.seasonId, null, 'sem_ancora');
-  const targetRound = dayIndex - startDayIndex + 1;
+  const targetRound = targetRoundFor(dayIndex, startDayIndex);
   const simulated = modulate ? await modulate(world) : world; // in-memory; seasonId preservado
   return publishTarget(db, seed, dayIndex, simulateWorldSeason(simulated, seed), targetRound);
 }

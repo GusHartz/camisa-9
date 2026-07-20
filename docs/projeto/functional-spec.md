@@ -17,7 +17,7 @@ O produto é um jogo de carreira de futebol de baixa atenção, onde um mundo si
 - **Pirâmide Elástica:** ramificação 2× por nível (topo único; Div 3 = 2 grupos, Div 4 = 4...); expansão a **~70% de ocupação humana** do andar de entrada (colchão NPC permanente), **somente na virada de temporada**; novatos entram **sempre no andar mais baixo**; conservação de fluxo por fronteira (rebaixados = promovidos; playoff de acesso entre campeões de grupo — números exatos por SPEC).
 - Vaga em abandono **congelada por 30 dias**, depois **reverte a NPC**.
 - **Entrada por quinteto fura a fila** da waiting list (unidade de aquisição é o grupo).
-- **[SUPOSIÇÃO — revisar]** Estado da vaga (`humano | congelada | npc`) e o relógio de abandono são propriedade do motor, não da camada de sessão — evita divergência entre "quem está logado" e "quem ocupa a vaga".
+- **RESOLVIDO (SPEC-038):** a camada de sessão apenas CARIMBA atividade (`markActive` em `GET /v1/band` — a faixa aberta é o sinal de presença); o estado da vaga (`humano | congelada | npc`) e o relógio de abandono continuam propriedade do motor, não da sessão. Sessão nunca é posse de vaga — uma sessão viva e ociosa congela normalmente.
 
 ### 3. Presença em 3 níveis
 - **Faixa** acima da taskbar (vida do atleta: CT, casa, pré-jogo).
@@ -74,7 +74,7 @@ O produto é um jogo de carreira de futebol de baixa atenção, onde um mundo si
 - Pontos **acumulam sem expirar** (ausência nunca perde); distribuir no dia dá **bônus de treino focado**, com **rendimento decrescente** ao repetir o mesmo foco.
 
 ### 15. Batida diária & o Dia do Jogador (o mundo vivo em volta do jogo)
-- **O Dia do Jogador (batida comprimida):** manhã = jornal do mundo + foco do treino + pontos de ontem · **12h escalação do dia** · 13–15h pré-jogo (ambiente) · **15h JOGO** · pós-jogo nota + card + entrevista ocasional · **18h deadline de decisões** · noite livre. **Domingo à noite:** resumo semanal do mundo.
+- **O Dia do Jogador (batida comprimida):** manhã = jornal do mundo + foco do treino + pontos de ontem · **12h escalação do dia** · 13–15h pré-jogo (ambiente) · **15h JOGO** · pós-jogo nota + card + entrevista ocasional · **18h deadline de decisões** · noite livre. **Domingo à noite:** resumo semanal do mundo. **⚠️ Cenas ≠ beats (SPEC-038):** as três cenas da faixa são faixas horárias — manhã (`ct`) · 12–21h (`casa`) · ≥21h (`vespera`) — e NÃO mapeiam 1:1 nos beats: o pré-jogo das 13–15h e o JOGO das 15h acontecem dentro da cena `casa`; `vespera` é a cena da noite. O momento do jogo é distinguido pelo payload (`roundSettled` + `todayMatch`), nunca por uma quarta cena.
 - **Jornal do mundo** (resultados, lesão do rival, artilharia, transferências NPC) — consumo passivo.
 - **Entrevista pós-jogo** (ocasional) com escolha de tom → moral/fama/torcida.
 - **Trash talk** do adversário do dia → modificador de moral do jogo.
@@ -156,7 +156,7 @@ Técnico com personalidade, reputação ídolo/mercenário por torcida, fama com
 - **Telemetria de presença POR DIA DA SEMANA** no beta é gate: fadiga do horário fixo diário / fim de semana fraco afundando a presença → **reavaliar a cadência (jogo diário) ANTES do público** — o beta é o único momento reversível.
 
 ### Gate de arte
-- Nenhum sprite/venue entra sem aprovação do founder **em contexto real**: screenshot da faixa em **110px sobre um desktop de verdade**.
+- Nenhum sprite/venue entra sem aprovação do founder **em contexto real**: screenshot da faixa **na altura cena (110px) — e um par compacta/normal — sobre um desktop de verdade**.
 - Beleza em mockup ≠ beleza na barra.
 
 ### Gate de economia

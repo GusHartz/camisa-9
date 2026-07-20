@@ -40,6 +40,12 @@ export function injuryPhase(injury: Injury, currentDay: number): 'recuperando' |
   return currentDay >= injuryEndDay(injury) ? 'recuperado' : 'recuperando';
 }
 
+/** Dias que faltam para a volta (SPEC-038) — o que a faixa mostra no arco da lesão. Nunca negativo:
+ *  já recuperado devolve 0. Aditivo; a API consome, não reimplementa. */
+export function daysLeftOf(startedDay: number, recoveryDays: number, currentDay: number): number {
+  return Math.max(0, startedDay + recoveryDays - currentDay);
+}
+
 /** Disponível para jogar? Sem lesão ativa OU já recuperado. Enquanto recuperando = indisponível
  *  (o SEAM que o mundo/partida lê para tirar o humano do jogo). */
 export function isAvailable(injury: Injury | null, currentDay: number): boolean {
