@@ -728,7 +728,12 @@ describe.skipIf(!DB_URL)('daily-tick — o tick de produção contra Postgres re
         draft: draft.value,
       });
       const vencida = 'a'.repeat(64);
-      await createSession(playerHandle.db, conta.accountId, vencida, epochAt(START) - 31 * 86_400_000);
+      await createSession(
+        playerHandle.db,
+        conta.accountId,
+        vencida,
+        epochAt(START) - 31 * 86_400_000,
+      );
       await worldHandle.db.delete(worldSchema.season); // força `sem_ancora`
       const rep = await runDailyTick(worldHandle.db, playerHandle.db, SEED, epochAt(START));
       expect(rep.roundStatus).toBe('sem_ancora');
