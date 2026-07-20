@@ -241,4 +241,47 @@ describe.skipIf(!DB_URL)('turnover-repo — viragem persistida contra Postgres r
     }
     expect((await readWorld(handle.db, SEED))?.seasonId).toBe('2027'); // virou 1×, não 2×
   });
+
+  // ── Pirâmide Elástica (R13, SPEC-036): o seam ocupação→expansão ──
+  const humanId = (i: number): string =>
+    `00000000-0000-0000-0000-${String(i + 1).padStart(12, '0')}`;
+  const groupCount = (w: WorldState): number => w.tiers.reduce((n, t) => n + t.leagues.length, 0);
+
+  async function occupyEntry(count: number): Promise<void> {
+    const w = (await readWorld(handle.db, SEED))!;
+    const clubs = w.tiers[w.tiers.length - 1]!.leagues[0]!.clubs;
+    for (let i = 0; i < count; i += 1) {
+      await occupyNpcSlot(handle.db, {
+        worldSeed: SEED,
+        clubId: clubs[i]!.id,
+        position: 'GK',
+        humanAthleteId: humanId(i),
+        humanName: `H${i}`,
+        ability: 40,
+      });
+    }
+  }
+
+  it('EXPANDE na virada quando a ocupação da entrada ≥ 70% (14/20)', async () => {
+    const before = (await readWorld(handle.db, SEED))!;
+    await occupyEntry(Math.ceil(WORLD.expansionThreshold * WORLD.clubsPerLeague)); // 14
+    const { results } = await currentResults();
+    const out = await persistWorldTurnover(handle.db, SEED, results, ROLL_DAY);
+    expect(out.status).toBe('rolled');
+    const after = (await readWorld(handle.db, SEED))!;
+    expect(groupCount(after)).toBeGreaterThan(groupCount(before)); // a pirâmide CRESCEU
+    // conservação: todo grupo com clubsPerLeague clubes
+    for (const t of after.tiers) {
+      for (const lg of t.leagues) expect(lg.clubs).toHaveLength(WORLD.clubsPerLeague);
+    }
+  });
+
+  it('NÃO expande quando a ocupação da entrada < 70% (5/20)', async () => {
+    await occupyEntry(5); // 0.25 < 0.70
+    const { results } = await currentResults();
+    await persistWorldTurnover(handle.db, SEED, results, ROLL_DAY);
+    const after = (await readWorld(handle.db, SEED))!;
+    expect(after.tiers).toHaveLength(WORLD.tiers); // 4 andares
+    expect(after.tiers.every((t) => t.leagues.length === 1)).toBe(true); // 1 grupo cada
+  });
 });

@@ -22,9 +22,18 @@ export function positionCounts(roster: readonly Athlete[]): Record<Position, num
   return counts;
 }
 
-/** Faixa de habilidade do andar (índice 0 = tier 1). Faixas sobrepostas entre tiers. */
+/**
+ * Faixa de habilidade do andar (índice 0 = tier 1). Faixas sobrepostas entre tiers.
+ * Pirâmide Elástica (R13, SPEC-036): andares NOVOS (tier > `abilityByTier.length`) herdam a
+ * banda de VÁRZEA (a última) — o gradiente estende-se p/ baixo sem re-ancorar os existentes.
+ * Golden-safe: tiers 1..`length` inalterados; o clamp só é atingido em mundo expandido.
+ */
 export function tierAbilityRange(tier: number): { readonly min: number; readonly max: number } {
-  const range = WORLD.abilityByTier[tier - 1];
+  if (tier < 1) {
+    throw new RangeError(`tierAbilityRange: tier ${tier} fora de faixa.`);
+  }
+  const idx = Math.min(tier - 1, WORLD.abilityByTier.length - 1);
+  const range = WORLD.abilityByTier[idx];
   if (range === undefined) {
     throw new RangeError(`tierAbilityRange: tier ${tier} fora de faixa.`);
   }

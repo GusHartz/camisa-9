@@ -51,7 +51,7 @@ function clubId(globalIndex: number): string {
  * (3) elenco. Sortear archetype/weights JÁ — mesmo sem uso na v1 — evita que a 1.4,
  * ao passar a lê-los, desloque o stream do PRNG e quebre golden/replay.
  */
-function createClub(seed: Seed, tier: number, globalIndex: number): WorldClub {
+export function createClub(seed: Seed, tier: number, globalIndex: number): WorldClub {
   const id = clubId(globalIndex);
   const rng = createRng(deriveSeed(seed, 'club', id));
   const archetype = pick(ARCHETYPES, rng);
