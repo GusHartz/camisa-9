@@ -11,7 +11,7 @@
 //   POS ∈ GK | DEF | MID | FWD
 import { createAthlete, isPosition } from '@camisa-9/player';
 import { createAccountWithAthlete, createDb as createPlayerDb } from '@camisa-9/player-store';
-import { createDb as createWorldDb } from '@camisa-9/world-store';
+import { createDb as createWorldDb, readWorld } from '@camisa-9/world-store';
 import { admitOrEnqueue } from '@camisa-9/world-entry';
 
 async function main(): Promise<void> {
@@ -37,6 +37,16 @@ async function main(): Promise<void> {
   const player = createPlayerDb(dbUrl);
   const world = createWorldDb(dbUrl);
   try {
+    // ⚠️ Pré-checagem (SPEC-039): sem mundo semeado, o `admitOrEnqueue` estoura no INSERT da
+    // waiting_list (FK `world_seed` → `world.seed`) e o operador recebia SQL cru, sem pista do que
+    // fazer — e com a CONTA JÁ CRIADA, porque a falha vinha depois. Checar aqui falha cedo, com o
+    // comando seguinte na mensagem, e não deixa conta órfã para trás.
+    if (!(await readWorld(world.db, worldSeed))) {
+      throw new Error(
+        `não existe mundo semeado para a seed "${worldSeed}" — nenhuma conta foi criada.\n` +
+          `  Rode primeiro: SEED="${worldSeed}" npx tsx harness/seed-world.ts`,
+      );
+    }
     const created = await createAccountWithAthlete(player.db, {
       email,
       password,

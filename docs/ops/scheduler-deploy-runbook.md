@@ -31,6 +31,42 @@ invocação por seed), e é o **mesmo host** do futuro servidor de API/auth.
   serverless functions (teto de execução + connection-storm contra o Postgres).
 - **Reversível:** o `main.ts` é a borda desacoplada → o gatilho é *swappable* sem tocar o código.
 
+## Primeira subida: semear o mundo (o PASSO ZERO)
+
+⚠️ **Faça isto ANTES de ligar o cron ou a API.** Um mundo precisa existir para o tick ter o que
+processar. Sem ele: `create-account.ts` falha (a `waiting_list` tem FK para `world.seed`) e o tick
+devolve **`sem_ancora` para sempre** — o container sobe, roda e não faz nada, sem erro aparente.
+
+Num banco novo, na ordem (SPEC-039):
+
+```bash
+# 1. Estrutura (nos DOIS stores; usa o endpoint DIRECT/unpooled — ver SPEC-035)
+npm run db:migrate -w services/world-store
+npm run db:migrate -w services/player-store
+
+# 2. O mundo — determinístico por seed: a MESMA seed gera SEMPRE a mesma pirâmide
+SEED=<sua-seed> DATABASE_URL=… npx tsx harness/seed-world.ts
+
+# 3. A âncora — o dia da RODADA 1. Você escreve a DATA; o script traduz para o dayIndex
+SEED=<sua-seed> START_DATE=2026-08-01 DATABASE_URL=… npx tsx harness/set-anchor.ts
+
+# 4. As contas do beta (uma por invocação; não há signup público — decisão da SPEC-037)
+WORLD_SEED=<sua-seed> DATABASE_URL=… \
+  npx tsx harness/create-account.ts <email> <senha> "<nome>" <GK|DEF|MID|FWD>
+```
+
+**⚠️ Semear é irreversível na prática.** `seed-world.ts` **recusa** rodar numa seed que já tem
+mundo, e isso é proposital: sobrescrever apagaria clubes, elencos, ocupações humanas e rodadas
+publicadas — a carreira de todos os jogadores daquela seed. Não existe `--force`. Se a intenção for
+mesmo recomeçar, apague o mundo explicitamente no banco antes.
+
+**⚠️ Confira o `dayIndex` que o `set-anchor` reporta.** Ancorar no dia errado desloca o calendário
+inteiro: a rodada 1 cai na data errada e o catch-up replaya o buraco. O script imprime a tradução
+(`data → dayIndex`) exatamente para essa conferência.
+
+**A `SEED` é a identidade do mundo** e precisa ser a MESMA em todo lugar: nos comandos acima, no
+`WORLD_SEED` do scheduler e no da API. Trocar a seed = outro mundo, vazio.
+
 ## Passo a passo (Railway / Render)
 
 1. **Build:** aponte o serviço para o `Dockerfile` em `services/scheduler/Dockerfile` com **contexto =

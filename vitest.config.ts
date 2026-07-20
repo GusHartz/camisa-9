@@ -55,7 +55,14 @@ export default defineConfig({
   test: {
     root: fileURLToPath(new URL('.', import.meta.url)),
     environment: 'node',
-    include: ['packages/*/src/**/*.test.ts', 'services/*/test/**/*.test.ts'],
+    // `harness/**` entra na SPEC-039: os scripts de operador ganharam lógica testável (a regra
+    // "semear NUNCA sobrescreve" e a conversão data→dayIndex). Sem esta entrada, o teste existiria
+    // e nunca rodaria — o risco que a própria SPEC nomeou como ALTO.
+    include: [
+      'packages/*/src/**/*.test.ts',
+      'services/*/test/**/*.test.ts',
+      'harness/**/*.test.ts',
+    ],
     // Os testes de services/* são de INTEGRAÇÃO contra UM Postgres compartilhado e
     // truncam tabelas comuns (world, published_round) sem filtro. Rodá-los em paralelo
     // faria um suite apagar as linhas do outro no meio do teste. Serial = determinístico.
