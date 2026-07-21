@@ -3,7 +3,7 @@
 // elenco), a gravidade (ponderada) e o minuto — tudo inteiro via `nextInt`. NÃO altera o placar (é
 // narrativa; o RNG vem de um stream SEPARADO do placar, derivado no world-season). Zero I/O.
 import { nextInt, type RngState } from './prng.js';
-import type { Athlete, MatchEvent } from '../types.js';
+import type { Athlete, GoalEvent, InjuryEvent } from '../types.js';
 
 /** Tunáveis dos eventos de partida — a calibração vive aqui (rebalanceia sem tocar lógica). */
 export const MATCH_EVENTS = {
@@ -24,8 +24,8 @@ export function matchInjuries(
   awayClubId: string,
   awayRoster: readonly Athlete[],
   rng: RngState,
-): MatchEvent[] {
-  const events: MatchEvent[] = [];
+): InjuryEvent[] {
+  const events: InjuryEvent[] = [];
   const home = rollInjury(homeClubId, homeRoster, rng);
   if (home) events.push(home);
   const away = rollInjury(awayClubId, awayRoster, rng);
@@ -35,7 +35,7 @@ export function matchInjuries(
 
 /** Sorteia UMA lesão para um lado (ou `null`). Ordem de consumo do RNG: roll → [atleta, gravidade,
  *  minuto] só se lesionou. */
-function rollInjury(clubId: string, roster: readonly Athlete[], rng: RngState): MatchEvent | null {
+function rollInjury(clubId: string, roster: readonly Athlete[], rng: RngState): InjuryEvent | null {
   if (roster.length === 0) return null;
   if (nextInt(rng, MATCH_EVENTS.injuryDenom) >= MATCH_EVENTS.injuryThreshold) return null;
   const athlete = roster[nextInt(rng, roster.length)]!;
@@ -50,4 +50,29 @@ function rollSeverity(rng: RngState): 'leve' | 'media' | 'grave' {
   if (r < MATCH_EVENTS.gravePct) return 'grave';
   if (r < MATCH_EVENTS.gravePct + MATCH_EVENTS.mediaPct) return 'media';
   return 'leve';
+}
+
+/**
+ * A timeline de GOLS de UMA partida (SPEC-043): sorteia EXATAMENTE `homeGoals` + `awayGoals` minutos
+ * ∈ [1, matchMinutes], rotulados por lado (`clubId`). Amostra QUAL minuto — NUNCA QUANTOS: a contagem
+ * é o placar já fixado pelo `simulateSeason`, então a timeline SOMA o placar por CONSTRUÇÃO. Colisão
+ * de minuto é permitida (sorteio com reposição); a ORDEM cronológica final é resolvida no world-season
+ * (fusão com as lesões). Ordem de consumo do RNG: casa (cada gol = 1 `nextInt`), depois fora.
+ * Determinístico no `rng` (um stream SEPARADO do placar e das lesões — o world-season deriva `'goals'`).
+ */
+export function matchGoals(
+  homeClubId: string,
+  homeGoals: number,
+  awayClubId: string,
+  awayGoals: number,
+  rng: RngState,
+): GoalEvent[] {
+  const goals: GoalEvent[] = [];
+  for (let i = 0; i < homeGoals; i++) goals.push(makeGoal(homeClubId, rng));
+  for (let i = 0; i < awayGoals; i++) goals.push(makeGoal(awayClubId, rng));
+  return goals;
+}
+
+function makeGoal(clubId: string, rng: RngState): GoalEvent {
+  return { kind: 'goal', clubId, minute: nextInt(rng, MATCH_EVENTS.matchMinutes) + 1 };
 }

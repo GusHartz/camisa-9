@@ -280,6 +280,12 @@ describe.skipIf(!DB_URL)('readBandState — o agregador da faixa (SPEC-038)', ()
     const isHome = raw.homeId === clubId;
     expect(match.goalsFor).toBe(isHome ? raw.homeGoals : raw.awayGoals);
     expect(match.goalsAgainst).toBe(isHome ? raw.awayGoals : raw.homeGoals);
+    // SPEC-043: a timeline de gols ROUND-TRIPPA (jsonb do published_round) e é orientada `isMine`.
+    expect(match.goals).toBeDefined();
+    const rawGoals = (raw.events ?? []).filter((e) => e.kind === 'goal');
+    expect(match.goals!.length).toBe(rawGoals.length); // sobreviveu ao publish → readRound
+    expect(match.goals!.length).toBe((match.goalsFor ?? 0) + (match.goalsAgainst ?? 0)); // soma o placar
+    expect(match.goals!.filter((g) => g.isMine).length).toBe(match.goalsFor); // meus gols == meu placar
   });
 
   it('manhã do dia SEGUINTE: o placar de ONTEM (rodada mostrada, já publicada) aparece jogado', async () => {

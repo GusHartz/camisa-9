@@ -83,6 +83,12 @@ export interface BandKit {
   readonly crest: number;
 }
 
+/** Um gol na timeline da partida do dia (SPEC-043) — orientado ao humano (`isMine`). Aditivo `/v1`. */
+export interface BandGoal {
+  readonly minute: number;
+  readonly isMine: boolean;
+}
+
 /** O jogo do dia. PRÉ-JOGO: só o adversário (do fixture). PÓS-JOGO: `played` + o placar. */
 export interface BandMatch {
   readonly opponentClubId: string;
@@ -91,6 +97,9 @@ export interface BandMatch {
   readonly played: boolean;
   readonly goalsFor: number | null;
   readonly goalsAgainst: number | null;
+  /** A timeline de gols (SPEC-043), cronológica. Presente (possivelmente `[]`) quando `played`
+   *  (rodada liquidada); OMITIDA pré-jogo (ausente = "não se aplica"). Aditivo — o cliente antigo ignora. */
+  readonly goals?: readonly BandGoal[];
 }
 
 export interface BandClub {

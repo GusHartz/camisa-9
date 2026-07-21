@@ -1,7 +1,12 @@
 // Colhe, da rodada PUBLICADA, o que cada humano ganhou nela: o resultado (win/draw/loss → prêmio)
 // E as lesões de partida (SPEC-031). Mapas por `athleteId` (id do mundo — a chave da ocupação).
 // Puro-ish: só LÊ (readWorld/readRound); o scheduler injeta o resultado nos passes por-humano.
-import type { MatchResult as MatchRecord, RoundResult, WorldState } from '@camisa-9/world-engine';
+import type {
+  InjuryEvent,
+  MatchResult as MatchRecord,
+  RoundResult,
+  WorldState,
+} from '@camisa-9/world-engine';
 import {
   readRound,
   readWorld,
@@ -74,5 +79,6 @@ function outcomeOf(m: MatchRecord, clubId: string): MatchResult {
 
 /** A gravidade do evento de LESÃO do atleta na partida (SPEC-031), ou undefined. */
 function injuryFor(m: MatchRecord, athleteId: string): string | undefined {
-  return m.events?.find((e) => e.kind === 'injury' && e.athleteId === athleteId)?.severity;
+  return m.events?.find((e): e is InjuryEvent => e.kind === 'injury' && e.athleteId === athleteId)
+    ?.severity;
 }

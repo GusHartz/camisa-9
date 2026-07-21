@@ -2,7 +2,7 @@
 // ponderada, minuto no range, roster vazio. Tudo via o PRNG (determinístico).
 import { describe, expect, it } from 'vitest';
 import { createRng } from './prng.js';
-import { MATCH_EVENTS, matchInjuries } from './match-events.js';
+import { MATCH_EVENTS, matchGoals, matchInjuries } from './match-events.js';
 import type { Athlete } from '../types.js';
 
 function roster(clubId: string, n: number): Athlete[] {
@@ -61,5 +61,37 @@ describe('match-events — a lesão de partida (SPEC-031, puro)', () => {
 
   it('roster vazio → sem lesão (sem crash)', () => {
     expect(matchInjuries('H', [], 'A', [], createRng('s'))).toEqual([]);
+  });
+});
+
+describe('match-events — a timeline de gols (SPEC-043, puro)', () => {
+  it('SOMA EXATA: produz exatamente homeGoals + awayGoals, rotulados por lado', () => {
+    const g = matchGoals('H', 3, 'A', 1, createRng('m1'));
+    expect(g).toHaveLength(4);
+    expect(g.filter((e) => e.clubId === 'H')).toHaveLength(3);
+    expect(g.filter((e) => e.clubId === 'A')).toHaveLength(1);
+    expect(g.every((e) => e.kind === 'goal')).toBe(true);
+  });
+
+  it('minutos ∈ [1, matchMinutes]', () => {
+    for (const e of matchGoals('H', 6, 'A', 5, createRng('m2'))) {
+      expect(e.minute).toBeGreaterThanOrEqual(1);
+      expect(e.minute).toBeLessThanOrEqual(MATCH_EVENTS.matchMinutes);
+    }
+  });
+
+  it('0-0 → timeline vazia', () => {
+    expect(matchGoals('H', 0, 'A', 0, createRng('m3'))).toEqual([]);
+  });
+
+  it('determinístico: mesmo seed → mesma timeline', () => {
+    const a = matchGoals('H', 4, 'A', 2, createRng('m4'));
+    const b = matchGoals('H', 4, 'A', 2, createRng('m4'));
+    expect(a).toEqual(b);
+  });
+
+  it('colisão de minuto PERMITIDA: um placar alto (11+11) não quebra (sorteio com reposição)', () => {
+    const g = matchGoals('H', 11, 'A', 11, createRng('m5'));
+    expect(g).toHaveLength(22); // exatamente o placar, mesmo com minutos repetidos
   });
 });

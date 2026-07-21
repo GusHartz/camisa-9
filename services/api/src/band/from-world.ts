@@ -1,10 +1,10 @@
 // O lado MUNDO do agregador (SPEC-038): transforma as leituras estreitas do world-store nas fatias
 // do contrato. Puro — recebe valores já lidos. O kit e o fixture são DERIVADOS (fns puras), sem
 // tocar o snapshot nem os goldens. `generateFixtures` é reuso puro do engine (só consome `c.id`).
-import { generateFixtures, type RoundResult } from '@camisa-9/world-engine';
+import { generateFixtures, type GoalEvent, type RoundResult } from '@camisa-9/world-engine';
 import { kitFromClubId } from '@camisa-9/player';
 import type { ClubBrief, OccupationView, QueueEntry } from '@camisa-9/world-store';
-import type { BandClub, BandMatch, BandMate, BandQueue } from './types.js';
+import type { BandClub, BandGoal, BandMatch, BandMate, BandQueue } from './types.js';
 
 /** O elenco de 16 (11+5). `isMe` bate o id do MUNDO da minha ocupação; `avatarSeed` = o id do mundo. */
 export function buildSquad(
@@ -66,6 +66,13 @@ export function buildTodayMatch(
   const played = match !== undefined;
   const goalsFor = match ? (fixture.isHome ? match.homeGoals : match.awayGoals) : null;
   const goalsAgainst = match ? (fixture.isHome ? match.awayGoals : match.homeGoals) : null;
+  // A timeline de gols (SPEC-043) ria o MESMO gate que o placar: presente quando o `match` existe
+  // (rodada MOSTRADA liquidada, SPEC-038), omitida pré-jogo. `isMine` = o gol foi do clube do humano.
+  const goals: readonly BandGoal[] | undefined = match
+    ? (match.events ?? [])
+        .filter((e): e is GoalEvent => e.kind === 'goal')
+        .map((e) => ({ minute: e.minute, isMine: e.clubId === clubId }))
+    : undefined;
   return {
     opponentClubId: fixture.opponentClubId,
     opponentName,
@@ -73,6 +80,7 @@ export function buildTodayMatch(
     played,
     goalsFor,
     goalsAgainst,
+    ...(goals !== undefined ? { goals } : {}),
   };
 }
 
