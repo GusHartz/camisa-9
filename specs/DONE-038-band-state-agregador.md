@@ -18,7 +18,7 @@
 
 ---
 
-## O que foi entregue
+## Resumo do que foi feito
 
 O projeto ganhou **de onde a faixa lê**. A SPEC-037 entregou o primeiro servidor que escuta numa porta, mas ele só sabia autenticar; o estado do dia do atleta continuava espalhado por ~7 leituras in-process. Esta fatia entrega o agregador **`readBandState`** (monta o dia inteiro numa chamada — fase, as 2 barras, treino, casa, lesão, clube, elenco, decisões, fila) e a rota **`GET /v1/band`** que o serve, com o contrato `BandState` **congelado em `/v1`** sob política **aditiva-only**. De quebra, **adota o seam órfão da SPEC-023**: `markActive` nunca era chamado em produção — agora **a faixa aberta É o sinal de presença** que o congelamento de vaga sempre esperou.
 
@@ -57,6 +57,32 @@ Um **mapa de seams** (workflow de 4 leitores paralelos) pegou vários **drifts d
 - **1 MINOR (rate-limit) CORRIGIDO** — o balde de IP pré-auth (10/min) era **compartilhado** entre `/v1/auth/*` e `/v1/band` sob a MESMA chave `ip:` → um flood de login consumiria o budget da faixa. **Fix:** baldes **separados por prefixo** (`ip:auth:` vs `ip:band:`), mesmo teto (10). ⚠️ Registrado: o balde de IP é por-IP (num NAT, contas no mesmo IP dividem os 10/min — teto coarse); o controle fino por-conta é o balde `accountId` (30/min) no handler.
 - **2 MINOR (rigor de teste) CORRIGIDOS** — cross-check de `isHuman` fortalecido para **igualdade de conjunto** (humanos do elenco == ocupações; os 15 restantes NPC); **`athlete.age` agora asserido** (== o membro `isMe` do elenco == 17, SPEC-022).
 - **1 REFUTADO** — sem detalhe acionável.
+
+---
+
+## Arquivos modificados
+
+**Novos:** `packages/player/src/{day-phase,kit,vacancy}.ts` (+`.test.ts`) · `services/world-store/src/store/occupation-by-club.ts` · `services/world-store/test/band-readers.test.ts` · `services/api/src/band/{types,band-state,from-player,from-world}.ts` · `services/api/src/routes/band.ts` · `services/api/test/{band-state,server-band}.test.ts` · `specs/DONE-038-band-state-agregador.md`.
+
+**Editados:** `packages/player/src/{index,injury,injury.test}.ts` · `services/player-store/src/{index,store/decision-repo,store/player-repo}.ts` · `services/world-store/src/{index,store/daily-round,store/occupation-repo,store/world-repo}.ts` · `services/api/src/{index,main,router,server}.ts` · `services/api/{package.json,test/server-auth.test.ts}` · `docs/projeto/{sdd,functional-spec,vision-scope,roadmap}.md` · `CLAUDE.md` · `package-lock.json`.
+
+**Intocado (o critério DURO):** `packages/world-engine` inteiro e os 4 goldens (`git diff` = 0, incl. `world-expansion.golden.json`). **SEM MIGRATION.**
+
+---
+
+## Critérios de aceitação
+
+Os 9 critérios da SPEC, com evidência — todos ✅ (cravados na suíte ao vivo):
+
+1. **Autorização cross-atleta inviolável** — token de A + `?athleteId=B` + `X-Athlete-Id:B` → sempre o estado de A; grep-gate prova que nenhuma rota lê `athleteId` de path/query/body; `/v1/band` sem header → 401.
+2. **Conta mid-regen → 409** — sessão viva sem atleta ativo → 409 `no_active_athlete`, e um espião prova que `readBandState` não rodou (0 query no world pool).
+3. **`readBandState` completo e degradado** — todo campo bate com a fonte (`squad.length===16`, exatamente 1 `isMe`, `isHuman` == ocupações, `club.kit` determinístico, `home.lifestyleTier` == `readWallet`); na fila → `club:null`/`squad:[]`/`queue`; seed sem mundo → tudo `null`. Nunca 500.
+4. **`dayPhase` e os 3 relógios** — `dayPhase(15)==='casa'`; tick de ontem + 12h → `roundSettled:false`; decisões/lesão às 09h de D+1 refletem D (tickDay). **+ regressão do MAJOR:** o placar de ontem aparece jogado de manhã.
+5. **`markActive` — throttle contado** — 3 chamadas/dia → `markActive` 1× (spy); grava `slot.dayIndex`; não congela quem abre a faixa de manhã; stubado p/ lançar → 200; vaga congelada → thaw.
+6. **Barras DUAS + contrato aditivo** — `Object.keys(bars)` == `['forma','moral']`; `V1_SHAPE` (presença+tipo, sem proibir chaves novas); zero string localizável.
+7. **`/v1/band` limita em 2 camadas** — accountId (31ª → 429, IPs rotacionados; discriminantes 2-contas/mesmo-IP e mesma-conta/2-IPs); IP pré-auth (11ª de token inválido → 429 sem tocar `readSessionByHash`).
+8. **Grep-gates + round-trips** — `src/band/**` sem `readWorld`/`readWorldOccupations`/`readClubRoster`/`node:http`; só xact-scoped; ≤28 round-trips (1ª e 2ª chamada do dia).
+9. **OPs & gates** — sem `any` (14) / ≤50 linhas por função (15) / ≤300 por arquivo (16) / erros genéricos (11) / **sem migration** / `WORLD_SEED` só-env (02/12); lint/typecheck/build/test/prettier verdes; **581 testes**; engine e os 4 goldens INTOCADOS.
 
 ---
 
