@@ -118,6 +118,74 @@ public sealed class BandApiClient
         }
     }
 
+    // --- Escritas de gameplay (SPEC-045): as 4 rotas POST da SPEC-041. Consumidor puro (não cria API).
+    //     Cada uma roteia pelo `code` estável (OP-11) e NUNCA lança (mesma promessa do GetBandAsync). ---
+
+    public Task<WriteOutcome> SpendTrainingAsync(string attribute, CancellationToken ct = default) =>
+        WriteAsync("/v1/training/spend", new { attribute }, ct);
+
+    public Task<WriteOutcome> AnswerDecisionAsync(string decisionId, string optionId, CancellationToken ct = default) =>
+        WriteAsync("/v1/decisions/answer", new { decisionId, optionId }, ct);
+
+    public Task<WriteOutcome> PurchaseAsync(string itemId, CancellationToken ct = default) =>
+        WriteAsync("/v1/purchases", new { itemId }, ct);
+
+    public Task<WriteOutcome> RegenAsync(CancellationToken ct = default) =>
+        WriteAsync("/v1/regen", new { }, ct); // sem body — a rota não lê nada; `{}` é ignorado
+
+    private async Task<WriteOutcome> WriteAsync(string path, object body, CancellationToken ct)
+    {
+        try
+        {
+            using var req = new HttpRequestMessage(HttpMethod.Post, path)
+            {
+                Content = JsonContent.Create(body),
+            };
+            if (_token is { Length: > 0 })
+                req.Headers.Authorization = new AuthenticationHeaderValue("Bearer", _token);
+            using var resp = await _http.SendAsync(req, ct);
+            switch (resp.StatusCode)
+            {
+                case HttpStatusCode.OK:
+                    return new WriteOutcome(WriteResult.Ok);
+                case HttpStatusCode.Unauthorized:
+                    return new WriteOutcome(WriteResult.Unauthorized);
+                case HttpStatusCode.TooManyRequests:
+                    return new WriteOutcome(WriteResult.RateLimited, RetryAfterSec: await RetryAfter(resp, ct));
+                // 400/404/409 = rejeição de DOMÍNIO — o `code` diz o quê (feedback amigável).
+                case HttpStatusCode.BadRequest:
+                case HttpStatusCode.NotFound:
+                case HttpStatusCode.Conflict:
+                    return new WriteOutcome(WriteResult.Conflict, await ReadCode(resp, ct));
+                default:
+                    return new WriteOutcome(WriteResult.ServerError);
+            }
+        }
+        catch (Exception ex) when (ex is HttpRequestException or TaskCanceledException)
+        {
+            return new WriteOutcome(WriteResult.Network);
+        }
+        catch
+        {
+            // corpo/resposta torto (200 não-JSON etc.) → genérico. Uma escrita NUNCA derruba a faixa.
+            return new WriteOutcome(WriteResult.ServerError);
+        }
+    }
+
+    // Lê o `code` estável do corpo de erro (OP-11); ausente/ilegível → null (o VM cai no feedback genérico).
+    private static async Task<string?> ReadCode(HttpResponseMessage resp, CancellationToken ct)
+    {
+        try
+        {
+            ErrorBody? body = await resp.Content.ReadFromJsonAsync<ErrorBody>(Json, ct);
+            return body?.Code;
+        }
+        catch
+        {
+            return null;
+        }
+    }
+
     // Retry-After no header (segundos) tem precedência; senão o `retryAfter` do corpo; senão 30s.
     private static async Task<int> RetryAfter(HttpResponseMessage resp, CancellationToken ct)
     {

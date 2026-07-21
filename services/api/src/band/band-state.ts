@@ -11,15 +11,16 @@
 import { dueDayIndex, resolveSlot, type RoundSlot } from '@camisa-9/world-engine';
 import { dayPhase, daysUntilRevert } from '@camisa-9/player';
 import {
-  countPendingDecisions,
   readAthleteIdentity,
   readAthleteProgress,
   readInjuryState,
   readMood,
+  readPendingDecisions,
   readWallet,
   type Db,
 } from '@camisa-9/player-store';
 import {
+  REGEN_AGE,
   VACANCY,
   markActive,
   readClubBrief,
@@ -34,7 +35,14 @@ import {
   type Db as WorldDb,
   type OccupationView,
 } from '@camisa-9/world-store';
-import { buildAthlete, buildBars, buildHome, buildInjury, buildTraining } from './from-player.js';
+import {
+  buildAthlete,
+  buildBars,
+  buildDecisions,
+  buildHome,
+  buildInjury,
+  buildTraining,
+} from './from-player.js';
 import {
   buildClub,
   buildQueue,
@@ -74,14 +82,14 @@ export async function readBandState(
 ): Promise<BandState> {
   const slot = resolveSlot(epochMs);
   const tickDay = dueDayIndex(epochMs);
-  const [identity, progress, wallet, mood, injuryState, pendingDecisions, occupation, tickCursor] =
+  const [identity, progress, wallet, mood, injuryState, pendingRows, occupation, tickCursor] =
     await Promise.all([
       readAthleteIdentity(deps.db, athleteId),
       readAthleteProgress(deps.db, athleteId),
       readWallet(deps.db, athleteId),
       readMood(deps.db, athleteId),
       readInjuryState(deps.db, athleteId, tickDay),
-      countPendingDecisions(deps.db, athleteId, tickDay),
+      readPendingDecisions(deps.db, athleteId, tickDay),
       readOccupation(deps.worldDb, deps.worldSeed, athleteId),
       readTickCursor(deps.worldDb, deps.worldSeed),
     ]);
@@ -100,26 +108,31 @@ export async function readBandState(
     calendarDay: slot.dayIndex,
     settled: cursor >= tickDay,
   });
+  const age = ageOfMe(world.squad);
+  const canRegen = canRegenOf(world.club, age);
+  const decisions = buildDecisions(pendingRows);
   return {
     contractVersion: 'v1',
     serverTime: buildTime(slot, epochMs, cursor >= slot.dayIndex),
     phase: dayPhase(slot.hour),
-    athlete: buildAthlete(
-      athleteId,
-      identity,
-      progress,
-      injuryState.available,
-      ageOfMe(world.squad),
-    ),
+    athlete: buildAthlete(athleteId, identity, progress, injuryState.available, age, canRegen),
     bars: buildBars(mood),
     training: buildTraining(progress),
     home: buildHome(wallet),
     injury: buildInjury(injuryState, tickDay),
     club: world.club,
     squad: world.squad,
-    pendingDecisions,
+    // A contagem = o tamanho da lista (mantida aditivo-only p/ o cliente antigo). Ambas do mesmo dia.
+    pendingDecisions: decisions.length,
+    decisions,
     queue: world.queue,
   };
+}
+
+/** A DICA de regen (SPEC-045): tem vaga no mundo E a idade (relógio de carreira) atingiu o mínimo
+ *  voluntário. É só render; a autoridade é o `requestRegen` (409 `regen_ineligible`). */
+function canRegenOf(club: BandClub | null, age: number | null): boolean {
+  return club !== null && age !== null && age >= REGEN_AGE.voluntary;
 }
 
 /** Resolve o lado MUNDO. Com ocupação: carimba presença (best-effort; markActive é UPDATE

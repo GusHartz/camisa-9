@@ -28,6 +28,7 @@ public partial class MainWindow : Window
     private readonly TaskbarWatcher _watcher = new();
     private readonly BandViewModel _vm;
     private readonly BandPoller _poller;
+    private readonly BandActions _actions;
     private IntPtr _hwnd;
     private bool _hidden;
     private bool _cleaned;
@@ -39,6 +40,7 @@ public partial class MainWindow : Window
     {
         _vm = vm;
         _poller = new BandPoller(api);
+        _actions = new BandActions(api, _poller); // escritas (SPEC-045): POST → reconcilia via o poller
         InitializeComponent();
         DataContext = _vm;
         Width = BandWidthDip;
@@ -48,6 +50,8 @@ public partial class MainWindow : Window
         _poller.Unauthorized += () => ReauthRequired?.Invoke();
         _poller.RateLimited += sec => _vm.SetStatus($"limite atingido; retoma em {sec}s");
         _poller.Failed += msg => _vm.SetStatus(msg);
+        _actions.Feedback += msg => _vm.SetActionFeedback(msg);
+        _actions.Unauthorized += () => ReauthRequired?.Invoke(); // 401 numa escrita → volta ao login
 
         SourceInitialized += OnSourceInitialized;
         Loaded += (_, _) => _poller.Start();
@@ -124,6 +128,7 @@ public partial class MainWindow : Window
         _watcher.Dispose(); // o unhook nativo PRIMEIRO — precisa rodar mesmo no ProcessExit
         try
         {
+            _actions.Stop(); // cancela escritas em voo → não coordenam após o teardown (SPEC-045)
             _vm.StopReplay(); // para o replay (senão o timer segue tocando no reauth — MAJOR da revisão)
             _poller.Stop(); // DispatcherTimer é thread-afim: no ProcessExit (outra thread) pode lançar
         }
@@ -157,5 +162,67 @@ public partial class MainWindow : Window
     {
         _vm.ReWatch();
         e.Handled = true;
+    }
+
+    // --- Escritas de gameplay (SPEC-045): cada gesto dispara uma POST via o BandActions, que reconcilia.
+    //     `e.Handled` impede o borbulhamento p/ o OnMouseDown (o duplo-clique que fecha a faixa). ---
+
+    // Distribui 1 ponto no atributo do chip (Tag = 'fisico'|'tecnico'|'tatico'|'mental').
+    private void OnSpendClick(object sender, MouseButtonEventArgs e)
+    {
+        e.Handled = true;
+        if ((sender as FrameworkElement)?.Tag is string attr)
+            _ = _actions.SpendTrainingAsync(attr);
+    }
+
+    private void OnDecisionsClick(object sender, MouseButtonEventArgs e)
+    {
+        e.Handled = true;
+        _vm.ToggleDecision();
+    }
+
+    private void OnShopClick(object sender, MouseButtonEventArgs e)
+    {
+        e.Handled = true;
+        _vm.ToggleShop();
+    }
+
+    // Regen é AÇÃO DESTRUTIVA (encerra a carreira na virada) → confirmação em 2 passos: armar → confirmar.
+    private void OnRegenArmClick(object sender, MouseButtonEventArgs e)
+    {
+        e.Handled = true;
+        _vm.ArmRegen(); // NÃO posta — só arma a confirmação
+    }
+
+    private void OnRegenConfirmClick(object sender, MouseButtonEventArgs e)
+    {
+        e.Handled = true;
+        _vm.DisarmRegen();
+        _ = _actions.RegenAsync();
+    }
+
+    private void OnRegenCancelClick(object sender, MouseButtonEventArgs e)
+    {
+        e.Handled = true;
+        _vm.DisarmRegen();
+    }
+
+    // Uma opção da decisão corrente (DataContext = a BandDecisionOption; o id da decisão vem do VM).
+    private void OnDecisionOptionClick(object sender, MouseButtonEventArgs e)
+    {
+        e.Handled = true;
+        if (
+            _vm.CurrentDecision is { } d
+            && (sender as FrameworkElement)?.DataContext is BandDecisionOption opt
+        )
+            _ = _actions.AnswerDecisionAsync(d.Id, opt.Id);
+    }
+
+    // Comprar um item da loja (só as linhas compráveis são hit-testáveis; o guard é defensivo).
+    private void OnBuyClick(object sender, MouseButtonEventArgs e)
+    {
+        e.Handled = true;
+        if ((sender as FrameworkElement)?.DataContext is ShopRow row && row.CanBuy)
+            _ = _actions.PurchaseAsync(row.Id);
     }
 }

@@ -20,6 +20,7 @@ public sealed class BandPoller
     private CancellationTokenSource _cts = new();
     private bool _busy;
     private bool _stopped;
+    private bool _refreshQueued; // um RefreshNow pedido enquanto um poll voava (SPEC-045)
 
     public event Action<BandState>? Updated;
     public event Action? Unauthorized;
@@ -39,6 +40,19 @@ public sealed class BandPoller
         _cts = new CancellationTokenSource();
         _timer.Start();
         _ = PollAsync(); // primeiro fetch imediato (não espera 60s)
+    }
+
+    // Reconciliação pós-escrita (SPEC-045): relê o /v1/band JÁ, fora da cadência de 60s. Se um poll
+    // está em voo, ENFILEIRA (o finally re-dispara) — senão a reconciliação se perderia por 60s. Roda
+    // na thread da UI (chamado dos handlers), então é seguro tocar os campos do timer.
+    public void RefreshNow()
+    {
+        if (_stopped)
+            return;
+        if (_busy)
+            _refreshQueued = true;
+        else
+            _ = PollAsync();
     }
 
     // Para o batimento E cancela um request em voo. Depois disto, NENHUM evento é disparado — um poll
@@ -90,6 +104,13 @@ public sealed class BandPoller
         finally
         {
             _busy = false;
+            // Um RefreshNow chegou enquanto este poll voava → dispara o poll de reconciliação agora
+            // (o estado pós-escrita ainda não foi lido). Fire-and-forget; cliques são user-paced.
+            if (_refreshQueued && !_stopped)
+            {
+                _refreshQueued = false;
+                _ = PollAsync();
+            }
         }
     }
 

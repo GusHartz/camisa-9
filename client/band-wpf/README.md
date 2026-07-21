@@ -1,14 +1,16 @@
-# NEXT GOAT — cliente da faixa (WPF) · fatia 1
+# NEXT GOAT — cliente da faixa (WPF) · leitura (fatia 1) + escritas (fatia 2)
 
-O **primeiro cliente do repo** (C#/WPF, .NET 8, Windows-only) — a fatia 1 da SPEC-042: o **pipe
-vertical fino**. Uma faixa que ancora acima da taskbar, faz login, faz poll do `GET /v1/band` real e
-desenha o dia do atleta com primitivas WPF (texto/formas/blocos de cor). **Zero arte** (os assets não
-estão no repo — deferidos); o objetivo é provar que o shell (SPEC-003/006) + o auth+read-model
-(SPEC-037/038) se sustentam **juntos, ao vivo, dentro do orçamento** (`<1% CPU` / `<150MB RAM`).
+O **primeiro cliente do repo** (C#/WPF, .NET 8, Windows-only). A **fatia 1** (SPEC-042) entregou o
+**pipe vertical fino** — a faixa ancora acima da taskbar, faz login, faz poll do `GET /v1/band` real e
+desenha o dia do atleta com primitivas WPF (texto/formas/blocos de cor). A **fatia 2** (SPEC-045)
+a deixa **interativa**: o jogador **distribui pontos de treino**, **responde decisões**, **compra** e
+**pede regen** direto na faixa, pelas 4 rotas POST da SPEC-041, reconciliando via re-leitura do
+`/v1/band`. **Zero arte** (os assets não estão no repo — deferidos); render estrutural.
 
-> **Thin renderer (OP-17):** o cliente só apresenta o estado que o servidor computou. Zero regra de
-> jogo, zero anti-fraude. Só-leitura nesta fatia (a presença é escrita de graça: abrir a faixa carimba
-> `markActive` no servidor). As escritas de gameplay são a fatia 2.
+> **Thin renderer (OP-17):** o cliente só apresenta affordances e dispara POSTs — **zero regra de
+> jogo, zero anti-fraude**. TODA validação (saldo, ordem de moradia, opção válida, elegibilidade do
+> regen, pontos livres) é do servidor; `canRegen`/`available` são **dicas de render** (o 409/400 é
+> sempre tratado). A presença segue escrita de graça (abrir a faixa carimba `markActive`).
 
 ## Pré-requisitos
 
@@ -78,9 +80,20 @@ Os critérios de aceite são verificados à mão (sem C# na CI — precedente do
    (default 240 = ~4 min, em `config.json`) o `MatchLine` vira `⏱ NN'  M–N`, o relógio corre 0'→90' e
    o placar **sobe** nos minutos dos gols, com o flash ⚽ (verde=seu, laranja=deles). Ao fim, o placar
    == o final. Clique **↻ re-assistir** → reinicia do 0'. Um novo poll (mesma rodada) NÃO re-dispara.
-7. **Erro por code** — pare a API → "sem conexão"; deixe o token expirar (ou apague-o server-side) →
-   **401 volta ao login**; force o rate limit → respeita o `Retry-After`.
-8. **Orçamento SOB REDE + DURANTE O REPLAY** — deixe ≥10 min ocioso-com-poll **e** meça também durante
+7. **Escritas de gameplay (SPEC-045)** — com o atleta no mundo:
+   - **Treino** — quando há ponto livre (`freePoints>0`), os chips `+Fís/+Téc/+Tát/+Men` aparecem na
+     linha 4; clique → o atributo sobe +1 e o `freePoints` cai (a faixa relê o `/v1/band`).
+   - **Decisões** — clique `Decisões: N ▸` → o painel abre com o enunciado + as opções; escolha uma →
+     a decisão sai da lista (reconcilia) e a próxima aparece; sem mais, o painel fecha.
+   - **Loja** — clique `🛒 Loja` → o catálogo; "comprar" só nas linhas disponíveis (moradia em ordem,
+     com saldo) → o item vira `adquirido` e o saldo cai; o próximo degrau de moradia destrava.
+   - **Regen** — quando `canRegen` (tem clube + idade ≥ 25), o `↻ regen` aparece; clique → "renascimento
+     solicitado" (a viragem executa). Sem elegibilidade a dica não aparece; se clicar via 409 → feedback.
+   - **Erro por code** — sem pontos/saldo, decisão já resolvida, 429 → feedback **genérico** roteado pelo
+     `code` (nunca a frase do servidor); a faixa **não** trava e reconcilia.
+8. **Erro por code (leitura)** — pare a API → "sem conexão"; deixe o token expirar (ou apague-o
+   server-side) → **401 volta ao login**; force o rate limit → respeita o `Retry-After`.
+9. **Orçamento SOB REDE + DURANTE O REPLAY** — deixe ≥10 min ocioso-com-poll **e** meça também durante
    uma janela de replay (~4 min); reusa o script do spike:
 
    ```powershell
@@ -89,10 +102,11 @@ Os critérios de aceite são verificados à mão (sem C# na CI — precedente do
 
    Alvo: **CPU média `<1%`** da máquina **E** RAM (working set) **`<150MB`**, sem drift ilimitado —
    inclusive com o replay rodando (o tick é coarse, a animação é leve).
-9. **Saída graciosa** — duplo-clique fecha; o `Mutex` impede uma 2ª faixa.
+10. **Saída graciosa** — duplo-clique fecha; o `Mutex` impede uma 2ª faixa.
 
 ## Escopo deferido (fatias futuras)
 
 Arte (avatar em camadas, 3 cenas ilustradas), as 3 alturas (64/88/110), toasts WinRT, autoupdate +
-code-signing, as 4 escritas de gameplay, o fix do Win+D (parenting à WorkerW — hoje a faixa **some** no
-Mostrar Desktop, ratificado aceitável), a Postura B (AppBar), e o build self-contained para distribuição.
+code-signing, o fix do Win+D (parenting à WorkerW — hoje a faixa **some** no Mostrar Desktop,
+ratificado aceitável), a Postura B (AppBar), e o build self-contained para distribuição. A escolha
+do FOCO do treino (hoje o acúmulo é idle no scheduler) e a otimista-UI (hoje reconcilia por re-leitura).

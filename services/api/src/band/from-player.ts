@@ -1,16 +1,41 @@
 // O lado PLAYER do agregador (SPEC-038): transforma as leituras do player-store nas fatias do
 // contrato. Puro — recebe valores já lidos (a orquestração das queries mora em `band-state.ts`).
-import { injuryPhase, daysLeftOf, shirtNumber } from '@camisa-9/player';
-import type { AthleteIdentity, InjuryState, Mood, Progress, Wallet } from '@camisa-9/player-store';
-import type { BandAthlete, BandBars, BandHome, BandInjury, BandTraining } from './types.js';
+import {
+  injuryPhase,
+  daysLeftOf,
+  shirtNumber,
+  templateById,
+  PURCHASES,
+  canAfford,
+  validatePurchase,
+} from '@camisa-9/player';
+import type {
+  AthleteIdentity,
+  InjuryState,
+  Mood,
+  PendingDecision,
+  Progress,
+  Wallet,
+} from '@camisa-9/player-store';
+import type {
+  BandAthlete,
+  BandBars,
+  BandDecision,
+  BandHome,
+  BandInjury,
+  BandPurchase,
+  BandTraining,
+} from './types.js';
 
-/** O núcleo do atleta. `age` vem do MUNDO (o overlay tem o relógio de carreira); `null` sem vaga. */
+/** O núcleo do atleta. `age` vem do MUNDO (o overlay tem o relógio de carreira); `null` sem vaga.
+ *  `canRegen` (SPEC-045) é DICA calculada no agregador (tem vaga + idade ≥ mínima). */
 export function buildAthlete(
   id: string,
   identity: AthleteIdentity,
   progress: Progress,
   available: boolean,
   age: number | null,
+  canRegen: boolean,
 ): BandAthlete {
   return {
     id,
@@ -26,7 +51,43 @@ export function buildAthlete(
     available,
     // Número da camisa DERIVADO da posição (SPEC-040) — sem escolha, sem coluna; fn pura.
     number: shirtNumber(identity.position, id),
+    canRegen,
   };
+}
+
+/** As decisões pendentes → o contrato (SPEC-045). Hidrata `prompt`/`options` do catálogo por
+ *  `templateId` (a fonte única); uma linha cujo template não existe mais (catálogo editado) é
+ *  descartada — nunca uma decisão sem texto/opções. Preserva a ordem (`ord`) do repo. */
+export function buildDecisions(rows: readonly PendingDecision[]): BandDecision[] {
+  const out: BandDecision[] = [];
+  for (const row of rows) {
+    const t = templateById(row.templateId);
+    if (!t) continue;
+    out.push({
+      id: row.id,
+      templateId: t.id,
+      type: t.type,
+      prompt: t.prompt,
+      options: t.options.map((o) => ({ id: o.id, label: o.label })),
+    });
+  }
+  return out;
+}
+
+/** O catálogo ABERTO orientado ao atleta (SPEC-045): todo `PURCHASES` com `owned`/`affordable`/
+ *  `available`. `available` = `validatePurchase.ok` (a autoridade da regra, reusada); é DICA — a
+ *  compra revalida sob `FOR UPDATE` no player-store. */
+export function buildCatalog(wallet: Wallet): BandPurchase[] {
+  return PURCHASES.map((p) => ({
+    id: p.id,
+    name: p.name,
+    cost: p.cost,
+    kind: p.kind,
+    housingTier: p.housingTier ?? null,
+    owned: wallet.ownedItemIds.includes(p.id),
+    affordable: canAfford(wallet.balance, p.id),
+    available: validatePurchase(wallet.balance, wallet.ownedItemIds, p.id).ok,
+  }));
 }
 
 export function buildBars(mood: Mood): BandBars {
@@ -56,6 +117,7 @@ export function buildHome(wallet: Wallet): BandHome {
     lifestyleTier: wallet.lifestyleTier,
     hasMothersHouse: wallet.hasMothersHouse,
     ownedItemIds: wallet.ownedItemIds,
+    catalog: buildCatalog(wallet),
   };
 }
 

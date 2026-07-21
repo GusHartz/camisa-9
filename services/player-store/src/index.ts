@@ -39,9 +39,11 @@ export {
   resolveDeadline,
   readDecisionLog,
   countPendingDecisions,
+  readPendingDecisions,
   readTransferRequested,
   clearTransferRequested,
   type DecisionLogEntry,
+  type PendingDecision,
 } from './store/decision-repo.js';
 export {
   injureFromMatch,
