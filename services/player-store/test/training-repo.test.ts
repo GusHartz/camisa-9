@@ -1,7 +1,8 @@
-// Progressão persistida (SPEC-017) contra Postgres REAL. Prova: treino deposita XP e persiste,
+// Progressão persistida (SPEC-017/041) contra Postgres REAL. Prova: treino deposita XP e persiste,
 // o ponto livre é gasto (+1 no foco) atomicamente, o teto 99 e "sem ponto" são rejeitados sem
-// mutação parcial, e o store reconcilia byte-a-byte com a lib pura. Gated por DATABASE_URL.
-// Serial + limpeza em ordem de FK (invariante SPEC-015).
+// mutação parcial, e o store reconcilia byte-a-byte com a lib pura. ⚠️ SPEC-041: o treino é 1×/dia
+// (claim `'train'` no ledger) — cada sessão de acúmulo usa um DIA distinto (`train(id, focus)` auto-
+// incrementa); repetir o mesmo dia é no-op. Gated por DATABASE_URL. Serial + limpeza em ordem de FK.
 import { fileURLToPath } from 'node:url';
 import { eq } from 'drizzle-orm';
 import { migrate } from 'drizzle-orm/node-postgres/migrator';
@@ -13,6 +14,8 @@ import {
   TRAINING,
   trainSession,
   type AthleteDraft,
+  type Focus,
+  type TrainOpts,
 } from '@camisa-9/player';
 import { createDb, type DbHandle } from '../src/client.js';
 import {
@@ -44,6 +47,7 @@ function draft(): AthleteDraft {
 
 describe.skipIf(!DB_URL)('training-repo — progressão contra Postgres real', () => {
   let handle: DbHandle;
+  let day = 0;
 
   beforeAll(async () => {
     handle = createDb(DB_URL as string);
@@ -58,6 +62,7 @@ describe.skipIf(!DB_URL)('training-repo — progressão contra Postgres real', (
   });
 
   beforeEach(async () => {
+    day = 0;
     await handle.db.delete(injury); // neto (FK → athlete, SPEC-026)
     await handle.db.delete(decision); // neto (FK → athlete, SPEC-025) antes do atleta
     await handle.db.delete(purchase); // neto (FK → athlete, SPEC-024) antes do atleta
@@ -78,9 +83,19 @@ describe.skipIf(!DB_URL)('training-repo — progressão contra Postgres real', (
     return athleteId;
   }
 
+  /** Uma sessão de treino num DIA NOVO (auto-incrementa) — o padrão do acúmulo (SPEC-041). */
+  function train(
+    id: string,
+    focus: Focus | null,
+    opts?: TrainOpts,
+  ): ReturnType<typeof applyTraining> {
+    day += 1;
+    return applyTraining(handle.db, id, focus, day, opts);
+  }
+
   it('treino neutro deposita sessionXp na barra e persiste (sem ponto ainda)', async () => {
     const id = await newAthlete();
-    const p = await applyTraining(handle.db, id, 'fisico');
+    const p = await train(id, 'fisico');
     expect(p.trainingXp).toBe(100);
     expect(p.freePoints).toBe(0);
     expect(p.overall).toBe(34); // atributos intactos
@@ -93,9 +108,9 @@ describe.skipIf(!DB_URL)('training-repo — progressão contra Postgres real', (
     let expected = { attributes: draft().attributes, trainingXp: 0, freePoints: 0 };
     let lastFocus: string | null = null;
     let focusStreak = 0;
-    // 5 sessões no MESMO foco → a penalidade de repetição cresce; o store deve espelhar a lib.
+    // 5 sessões (5 dias) no MESMO foco → a penalidade de repetição cresce; o store espelha a lib.
     for (let i = 0; i < 5; i++) {
-      await applyTraining(handle.db, id, 'tecnico');
+      await train(id, 'tecnico');
       const s = resolveFocusStreak(lastFocus, focusStreak, 'tecnico');
       const r = trainSession(expected, 'tecnico', { focusRepeatPct: repeatPenaltyPct(s.repeats) });
       expected = { ...expected, trainingXp: r.trainingXp, freePoints: r.freePoints };
@@ -111,20 +126,20 @@ describe.skipIf(!DB_URL)('training-repo — progressão contra Postgres real', (
 
   it('repetir o mesmo foco decai o depósito (rendimento decrescente persistido)', async () => {
     const id = await newAthlete();
-    const first = await applyTraining(handle.db, id, 'fisico'); // fresco = 100%
+    const first = await train(id, 'fisico'); // fresco = 100%
     expect(first.trainingXp).toBe(100);
     expect(first.focusStreak).toBe(1);
     expect(first.nextFocusPenaltyPct).toBe(100 - TRAINING.focusRepeatStepPct); // repetir → 80%
-    const second = await applyTraining(handle.db, id, 'fisico'); // repeats 1 → 80%
+    const second = await train(id, 'fisico'); // repeats 1 → 80%
     expect(second.trainingXp).toBe(100 + (100 - TRAINING.focusRepeatStepPct)); // 180
     expect(second.focusStreak).toBe(2);
   });
 
   it('trocar de foco reseta o streak (volta a 100%)', async () => {
     const id = await newAthlete();
-    await applyTraining(handle.db, id, 'fisico'); // 100
-    await applyTraining(handle.db, id, 'fisico'); // +80 → 180 (streak 2)
-    const switched = await applyTraining(handle.db, id, 'tecnico'); // fresco → +100
+    await train(id, 'fisico'); // 100
+    await train(id, 'fisico'); // +80 → 180 (streak 2)
+    const switched = await train(id, 'tecnico'); // fresco → +100
     expect(switched.lastFocus).toBe('tecnico');
     expect(switched.focusStreak).toBe(1);
     expect(switched.trainingXp).toBe(180 + 100); // 280 (sem cruzar o limiar de 300)
@@ -132,49 +147,61 @@ describe.skipIf(!DB_URL)('training-repo — progressão contra Postgres real', (
 
   it('sem escolha → o técnico treina o foco mais baixo (coach default)', async () => {
     const id = await newAthlete();
-    await applyTraining(handle.db, id, 'fisico', { speedMultiplierPct: 500 }); // ganha 1 ponto
+    await train(id, 'fisico', { speedMultiplierPct: 500 }); // ganha 1 ponto
     await spendFreePoint(handle.db, id, 'fisico'); // fisico 34→35 (não é mais o mais baixo)
-    const p = await applyTraining(handle.db, id, null); // técnico decide o mais baixo
+    const p = await train(id, null); // técnico decide o mais baixo
     expect(p.lastFocus).toBe('tecnico'); // empate 34 (tec/tat/men) → primeiro na ordem FOCI
   });
 
   it('a penalidade é AUTORIDADE do servidor: um focusRepeatPct do caller é ignorado', async () => {
     const id = await newAthlete();
-    await applyTraining(handle.db, id, 'fisico'); // 100
-    await applyTraining(handle.db, id, 'fisico'); // +80 → 180 (streak 2)
+    await train(id, 'fisico'); // 100
+    await train(id, 'fisico'); // +80 → 180 (streak 2)
     // caller tenta burlar com 100% num foco já repetido; o store computa 60% (repeats 2) e VENCE.
-    const p = await applyTraining(handle.db, id, 'fisico', { focusRepeatPct: 100 });
+    const p = await train(id, 'fisico', { focusRepeatPct: 100 });
     expect(p.trainingXp).toBe(180 + repeatPenaltyPct(2)); // 240 (60%), não 280 (100% do caller)
     expect(p.focusStreak).toBe(3);
   });
 
   it('o piso da penalidade é aplicado ao repetir muito (rendimento decrescente com piso)', async () => {
     const id = await newAthlete();
-    for (let i = 0; i < 3; i++) await applyTraining(handle.db, id, 'fisico'); // 100+80+60 = 240
+    for (let i = 0; i < 3; i++) await train(id, 'fisico'); // 100+80+60 = 240
     const p3 = await readAthleteProgress(handle.db, id);
     expect(p3?.focusStreak).toBe(3);
     expect(p3?.nextFocusPenaltyPct).toBe(TRAINING.focusRepeatFloorPct); // 40 = piso
-    const p4 = await applyTraining(handle.db, id, 'fisico'); // 4ª sessão = piso (40%)
+    const p4 = await train(id, 'fisico'); // 4ª sessão = piso (40%)
     expect(p4.trainingXp).toBe(240 + TRAINING.focusRepeatFloorPct); // 280
   });
 
-  it('FOR UPDATE serializa dois treinos simultâneos (sem lost update)', async () => {
+  it('1×/dia (SPEC-041): treinar 2× no MESMO dia → o 2º é no-op (não re-deposita)', async () => {
+    const id = await newAthlete();
+    const first = await applyTraining(handle.db, id, 'fisico', 7);
+    expect(first.trainingXp).toBe(100);
+    const second = await applyTraining(handle.db, id, 'fisico', 7); // MESMO dia → no-op
+    expect(second.trainingXp).toBe(100); // não virou 180
+    expect(second.focusStreak).toBe(1); // o streak NÃO avançou
+    const reread = await readAthleteProgress(handle.db, id);
+    expect(reread?.trainingXp).toBe(100);
+    expect(reread?.focusStreak).toBe(1);
+  });
+
+  it('o claim `train` serializa 2 treinos concorrentes no MESMO dia: exatamente 1 deposita', async () => {
     const id = await newAthlete();
     const results = await Promise.allSettled([
-      applyTraining(handle.db, id, 'fisico'),
-      applyTraining(handle.db, id, 'fisico'),
+      applyTraining(handle.db, id, 'fisico', 9),
+      applyTraining(handle.db, id, 'fisico', 9), // MESMO dia
     ]);
     expect(results.every((r) => r.status === 'fulfilled')).toBe(true);
     const p = await readAthleteProgress(handle.db, id);
-    // serializado: 100 (fresco) + 80 (repeat 1) = 180, streak 2. Sem o lock: lost update → 100/streak 1.
-    expect(p?.trainingXp).toBe(180);
-    expect(p?.focusStreak).toBe(2);
+    // o claim `'train'` (onConflictDoNothing) deixa 1 depositar; o outro é no-op → 100, streak 1.
+    expect(p?.trainingXp).toBe(100);
+    expect(p?.focusStreak).toBe(1);
   });
 
   it('ganha ponto (seam DLC), gasta +1 no foco escolhido e persiste atômico', async () => {
     const id = await newAthlete();
     // 1 treino acelerado (500%) → depósito 500 ≥ 300 → 1 ponto, resto 200.
-    const trained = await applyTraining(handle.db, id, 'fisico', { speedMultiplierPct: 500 });
+    const trained = await train(id, 'fisico', { speedMultiplierPct: 500 });
     expect(trained.freePoints).toBe(1);
     expect(trained.trainingXp).toBe(200);
 
@@ -190,7 +217,7 @@ describe.skipIf(!DB_URL)('training-repo — progressão contra Postgres real', (
   it('overall trunca (Math.floor), não arredonda, em somas não múltiplas de 4', async () => {
     const id = await newAthlete();
     // muitos pontos numa tacada (5000%) → depósito 5000 → 16 pontos na zona 1 (300 cada).
-    const trained = await applyTraining(handle.db, id, 'fisico', { speedMultiplierPct: 5000 });
+    const trained = await train(id, 'fisico', { speedMultiplierPct: 5000 });
     expect(trained.freePoints).toBeGreaterThanOrEqual(2);
     // gasta 2 → soma 138; 138/4 = 34,5 → floor = 34 (arredondar daria 35).
     await spendFreePoint(handle.db, id, 'fisico');
@@ -201,7 +228,7 @@ describe.skipIf(!DB_URL)('training-repo — progressão contra Postgres real', (
     expect(p.overall).toBe(34);
   });
 
-  it('sem ponto disponível → erro genérico, nada muda', async () => {
+  it('sem ponto disponível → erro genérico (GameplayError), nada muda', async () => {
     const id = await newAthlete();
     await expect(spendFreePoint(handle.db, id, 'fisico')).rejects.toThrow(
       'sem ponto de treino disponível',
@@ -214,7 +241,7 @@ describe.skipIf(!DB_URL)('training-repo — progressão contra Postgres real', (
   it('foco já em 99 → rejeita e NÃO consome o ponto (sem mutação parcial)', async () => {
     const id = await newAthlete();
     // dá 1 ponto livre e força o físico a 99 direto no banco.
-    await applyTraining(handle.db, id, 'fisico', { speedMultiplierPct: 500 });
+    await train(id, 'fisico', { speedMultiplierPct: 500 });
     await handle.db.update(athlete).set({ fisico: 99 }).where(eq(athlete.id, id));
 
     await expect(spendFreePoint(handle.db, id, 'fisico')).rejects.toThrow(/máximo/i);
@@ -224,8 +251,8 @@ describe.skipIf(!DB_URL)('training-repo — progressão contra Postgres real', (
   });
 
   it('atleta inexistente → erro genérico', async () => {
-    await expect(
-      applyTraining(handle.db, '00000000-0000-0000-0000-000000000000', 'fisico'),
-    ).rejects.toThrow('atleta não encontrado');
+    await expect(train('00000000-0000-0000-0000-000000000000', 'fisico')).rejects.toThrow(
+      'atleta não encontrado',
+    );
   });
 });

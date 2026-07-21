@@ -50,6 +50,13 @@ export type ErrorCode =
   | 'unauthorized'
   | 'no_active_athlete'
   | 'not_found'
+  | 'no_free_points'
+  | 'decision_resolved'
+  | 'invalid_option'
+  | 'insufficient_balance'
+  | 'already_owned'
+  | 'regen_ineligible'
+  | 'conflict'
   | 'internal';
 
 /** Resultado de parse/validação — molde do `createAthlete`/`validatePassword` da lib pura. */

@@ -15,6 +15,13 @@ const MESSAGE: Readonly<Record<ErrorCode, string>> = {
   unauthorized: 'não autorizado',
   no_active_athlete: 'sem atleta ativo',
   not_found: 'recurso não encontrado',
+  no_free_points: 'sem ponto de treino disponível',
+  decision_resolved: 'decisão já resolvida',
+  invalid_option: 'opção inválida',
+  insufficient_balance: 'saldo insuficiente',
+  already_owned: 'item já adquirido',
+  regen_ineligible: 'renascimento indisponível',
+  conflict: 'ação não permitida agora',
   internal: 'erro interno',
 };
 

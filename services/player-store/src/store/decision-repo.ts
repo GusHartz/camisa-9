@@ -20,6 +20,7 @@ import { athlete } from '../schema/athlete.js';
 import { purchase } from '../schema/purchase.js';
 import { decision } from '../schema/decision.js';
 import { bumpMoral } from './mood-repo.js';
+import { GameplayError } from './gameplay-error.js';
 
 type Tx = Parameters<Parameters<Db['transaction']>[0]>[0];
 
@@ -129,10 +130,11 @@ export async function answerDecision(
       .where(and(eq(decision.id, decisionId), eq(decision.athleteId, athleteId)))
       .limit(1)
       .for('update');
-    if (!row) throw new Error('decisão não encontrada');
-    if (row.status !== 'pending') throw new Error('decisão já resolvida');
+    if (!row) throw new GameplayError('decision_not_found', 'decisão não encontrada');
+    if (row.status !== 'pending')
+      throw new GameplayError('decision_resolved', 'decisão já resolvida');
     const opt = optionById(row.templateId, optionId);
-    if (!opt) throw new Error('opção inválida');
+    if (!opt) throw new GameplayError('invalid_option', 'opção inválida');
     await tx
       .update(decision)
       .set({ status: 'answered', chosenOption: opt.id, outcome: opt.outcome, resolvedBy: 'player' })
