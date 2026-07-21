@@ -71,11 +71,15 @@ export {
   recoveryDaysFor,
   injuryEndDay,
   injuryPhase,
+  daysLeftOf,
   isAvailable,
   comebackOutcome,
   type Severity,
   type Injury,
 } from './injury.js';
+export { dayPhase, type DayPhase } from './day-phase.js';
+export { daysUntilRevert } from './vacancy.js';
+export { kitFromClubId, type Kit } from './kit.js';
 export {
   MOOD,
   clampBar,

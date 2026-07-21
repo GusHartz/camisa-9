@@ -2,8 +2,26 @@
 // (`listen()`), e importá-lo aqui faria QUALQUER import do pacote subir um servidor real, inclusive
 // em typecheck/test. O molde é o barrel do scheduler, que pela mesma razão não exporta o dele.
 export { createApiServer, type ApiDeps } from './server.js';
-export { createRoutes, type Routes } from './router.js';
+export { createRoutes, type RouteDeps, type Routes } from './router.js';
 export { requireSession, requireAthlete } from './auth/require.js';
+// O contrato público da faixa (SPEC-038) — o card 4 (WPF) e o painel de auditoria (1.5) consomem.
+export { readBandState, type BandDeps } from './band/band-state.js';
+export type {
+  BandAppearance,
+  BandAthlete,
+  BandAttributes,
+  BandBars,
+  BandClub,
+  BandHome,
+  BandInjury,
+  BandKit,
+  BandMatch,
+  BandMate,
+  BandQueue,
+  BandState,
+  BandTime,
+  DayPhase,
+} from './band/types.js';
 export {
   bearerToken,
   hashToken,

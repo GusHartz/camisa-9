@@ -6,12 +6,11 @@
 // mentira — daí os testes de TTL/rate-limit rodarem sem um único `sleep`.
 import { createServer, type IncomingMessage, type Server, type ServerResponse } from 'node:http';
 import { randomUUID } from 'node:crypto';
-import type { Db } from '@camisa-9/player-store';
 import { readJsonBody } from './http/body.js';
 import { clientIp } from './http/client-ip.js';
 import { fail, logInternal, send } from './http/respond.js';
-import type { Handler, RouteCtx } from './http/types.js';
-import { createRoutes } from './router.js';
+import type { RouteCtx } from './http/types.js';
+import { createRoutes, type RouteDeps } from './router.js';
 
 /** Teto do corpo. 8 KiB é ordens de grandeza acima de um login e ordens abaixo de um problema. */
 const MAX_BODY_BYTES = 8 * 1024;
@@ -20,19 +19,17 @@ const MAX_BODY_BYTES = 8 * 1024;
  *  `POST /healthz` (que não casa rota nenhuma e vira 404) sairia sem `no-store`. */
 const CACHEABLE = new Set(['GET /healthz']);
 
-export interface ApiDeps {
-  readonly db: Db;
+/** ⚠️ Estende `RouteDeps` (db + worldDb + worldSeed + extraRoutes) com o que só o TRANSPORTE precisa:
+ *  o relógio e os saltos de proxy. O segundo handle (world-store) entrou na SPEC-038. */
+export interface ApiDeps extends RouteDeps {
   /** Relógio injetado — a borda passa `Date.now`; o teste passa o dele. */
   readonly now: () => number;
   /** Saltos de proxy confiáveis (`TRUST_PROXY_HOPS`). Default 0 = ignora `X-Forwarded-For`. */
   readonly trustProxyHops?: number;
-  /** Rotas extras — a SUÍTE registra aqui o handler protegido que exercita o middleware, sem
-   *  poluir o router de produção. */
-  readonly extraRoutes?: Readonly<Record<string, Handler>>;
 }
 
 export function createApiServer(deps: ApiDeps): Server {
-  const routes = createRoutes(deps.db, deps.extraRoutes);
+  const routes = createRoutes(deps);
   const hops = deps.trustProxyHops ?? 0;
 
   const server = createServer((req, res) => {

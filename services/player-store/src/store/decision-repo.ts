@@ -229,6 +229,23 @@ export async function readDecisionLog(db: Db, athleteId: string): Promise<Decisi
   return rows.map(toLogEntry);
 }
 
+/** Quantas decisões AINDA PENDENTES o atleta tem no `day` (SPEC-038) — o badge da faixa. Uma
+ *  CONTAGEM, não o log (i18n: zero prosa na API). Filtra `status='pending' AND day` — o
+ *  `readDecisionLog` traz o log inteiro sem filtro e não serve. */
+export async function countPendingDecisions(
+  db: Db,
+  athleteId: string,
+  day: number,
+): Promise<number> {
+  const rows = await db
+    .select({ n: sql<number>`count(*)::int` })
+    .from(decision)
+    .where(
+      and(eq(decision.athleteId, athleteId), eq(decision.day, day), eq(decision.status, 'pending')),
+    );
+  return rows[0]?.n ?? 0;
+}
+
 function hydrate(templateId: string): Decision | null {
   const t = templateById(templateId);
   return t ? { templateId: t.id, type: t.type, prompt: t.prompt, options: t.options } : null;

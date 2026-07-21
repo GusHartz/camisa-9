@@ -8,6 +8,7 @@ import {
   isAvailable,
   isSeverity,
   recoveryDaysFor,
+  daysLeftOf,
   type Injury,
 } from './injury.js';
 
@@ -41,5 +42,12 @@ describe('injury — o arco (puro)', () => {
 
   it('o comeback é um outcome declarado (a volta por cima, nunca punição cega)', () => {
     expect(Object.keys(INJURY.comeback).length).toBeGreaterThan(0);
+  });
+
+  it('daysLeftOf conta a volta e nunca fica negativo (SPEC-038)', () => {
+    expect(daysLeftOf(100, 10, 100)).toBe(10); // lesionou hoje, 10 dias de fora
+    expect(daysLeftOf(100, 10, 105)).toBe(5); // no meio do arco
+    expect(daysLeftOf(100, 10, 110)).toBe(0); // dia da volta
+    expect(daysLeftOf(100, 10, 130)).toBe(0); // muito depois — nunca negativo
   });
 });

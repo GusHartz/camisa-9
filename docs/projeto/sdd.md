@@ -49,7 +49,7 @@
 ### Arte e assets (dois níveis de pixel art — lei)
 - **Nível JOGO (canônico):** grid de pixel fixo; escala apenas por múltiplos inteiros (nearest-neighbor; nunca densidades misturadas); paleta limitada (~24-32 cores em tokens); contornos grossos; sprites de personagem 32-48px. É o nível da faixa, do modo mini e de toda screenshot (Steam exige gameplay real).
 - **Nível KEY ART:** pixel de ilustração (alta densidade) — exclusivo de capsule, library hero e cards compartilháveis.
-- **Regra-ponte (gate de arte):** o mascote (bode coroado camisa 10) deve ser inconfundivelmente o mesmo personagem no sprite de 48px e na key art; o sprite é o canônico — em conflito, a key art recua. Anti-over-promise: a distância entre capa e jogo é de densidade, nunca de identidade.
+- **Regra-ponte (gate de arte):** o mascote (bode coroado camisa 10) deve ser inconfundivelmente o mesmo personagem no sprite de 48px e na key art; o sprite é o canônico — em conflito, a key art recua. Anti-over-promise: a distância entre capa e jogo é de densidade, nunca de identidade. **Avatar ≠ mascote (SPEC-038):** o mascote é MARCA (key art, ícone, loja); o avatar do ATLETA na faixa é composição de camadas com paleta indexada, nunca o mascote.
 
 ---
 
@@ -126,7 +126,7 @@
 | Gate | Regra |
 |------|-------|
 | **Money path — a rodada** | Nenhuma SPEC que toque o motor entra sem testes de propriedade (determinismo, fuso, replay, falha parcial) **e** protocolo de falha pública definido. A rodada das 15h falhando com todos online = pior acidente possível. |
-| **Arte** | Nenhum sprite/venue sem aprovação do founder em contexto real — screenshot da faixa a 110px sobre desktop de verdade. |
+| **Arte** | Nenhum sprite/venue sem aprovação do founder em contexto real — screenshot da faixa na altura cena (110px), e um par compacta/normal, sobre desktop de verdade. |
 | **Economia** | Toda SPEC de monetização/quota checada contra as regras NUNCA (campo 05) antes do Claude Code: nada de stats compráveis, nada de ponte com apostas. |
 | **Lançamento público** | Filtro de nomes + report funcionando. Moderação plena adiada no beta (decisão consciente — network confiável). |
 | **Steam (externo)** | Review da loja + calendário de festivais planejado com folga. Nunca prometer data de rodada inaugural sem build aprovada. |

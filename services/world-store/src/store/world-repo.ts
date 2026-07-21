@@ -46,3 +46,84 @@ export async function readClubRoster(db: Db, seed: string, clubId: string): Prom
     .where(and(eq(athlete.worldSeed, seed), eq(athlete.clubId, clubId)));
   return [...rows].sort((a, b) => a.ord - b.ord).map(rowToAthlete);
 }
+
+// ── Readers ESTREITOS da SPEC-038 (a faixa lê um clube, nunca o mundo inteiro) ──
+// ⚠️ Todos com TIPO PRÓPRIO. Nenhum usa `rowToAthlete` nem toca `types.ts` do engine: o
+// `Athlete` do engine não tem `isHuman`, e incluí-lo mudaria `WorldState` → regeneraria os goldens
+// (o critério DURO). É o padrão-dispatch da SPEC-036 aplicado a um reader.
+
+/** Dados enxutos do clube — `{id, name, leagueId, tier}`. ⚠️ `tier` vive na tabela `league`
+ *  (não existe `club.tier`); daí o join `club ⋈ league`. `null` se o clube não existe. */
+export interface ClubBrief {
+  readonly id: string;
+  readonly name: string;
+  readonly leagueId: string;
+  readonly tier: number;
+}
+
+export async function readClubBrief(
+  db: Db,
+  seed: string,
+  clubId: string,
+): Promise<ClubBrief | null> {
+  const rows = await db
+    .select({ id: club.id, name: club.name, leagueId: club.leagueId, tier: league.tier })
+    .from(club)
+    .innerJoin(
+      league,
+      and(eq(league.worldSeed, club.worldSeed), eq(league.leagueId, club.leagueId)),
+    )
+    .where(and(eq(club.worldSeed, seed), eq(club.id, clubId)))
+    .limit(1);
+  return rows[0] ?? null;
+}
+
+/** Um jogador do elenco COM `isHuman` — a coluna que `rowToAthlete` descarta. Tipo próprio de
+ *  fronteira (não é o `Athlete` do engine). Em ordem canônica (`ord`). */
+export interface ClubSquadEntry {
+  readonly athleteId: string; // id do MUNDO
+  readonly name: string;
+  readonly position: string;
+  readonly age: number;
+  readonly ability: number;
+  readonly isHuman: boolean;
+}
+
+export async function readClubSquad(
+  db: Db,
+  seed: string,
+  clubId: string,
+): Promise<ClubSquadEntry[]> {
+  const rows = await db
+    .select({
+      athleteId: athlete.id,
+      name: athlete.name,
+      position: athlete.position,
+      age: athlete.age,
+      ability: athlete.ability,
+      isHuman: athlete.isHuman,
+      ord: athlete.ord,
+    })
+    .from(athlete)
+    .where(and(eq(athlete.worldSeed, seed), eq(athlete.clubId, clubId)));
+  return [...rows]
+    .sort((a, b) => a.ord - b.ord)
+    .map((r) => ({
+      athleteId: r.athleteId,
+      name: r.name,
+      position: r.position,
+      age: r.age,
+      ability: r.ability,
+      isHuman: r.isHuman,
+    }));
+}
+
+/** Os ids dos clubes de uma liga, em ordem canônica (`ord`) — o insumo do `generateFixtures`
+ *  para achar o adversário da rodada na cena de véspera. */
+export async function readLeagueClubIds(db: Db, seed: string, leagueId: string): Promise<string[]> {
+  const rows = await db
+    .select({ id: club.id, ord: club.ord })
+    .from(club)
+    .where(and(eq(club.worldSeed, seed), eq(club.leagueId, leagueId)));
+  return [...rows].sort((a, b) => a.ord - b.ord).map((r) => r.id);
+}

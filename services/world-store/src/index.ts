@@ -1,6 +1,17 @@
 // Barrel público do @camisa-9/world-store (SPEC-013).
 export { createDb, type Db, type DbHandle } from './client.js';
-export { readClubRoster, readWorld, writeWorld, writeWorldState } from './store/world-repo.js';
+export {
+  readClubRoster,
+  readClubBrief,
+  readClubSquad,
+  readLeagueClubIds,
+  readWorld,
+  writeWorld,
+  writeWorldState,
+  type ClubBrief,
+  type ClubSquadEntry,
+} from './store/world-repo.js';
+export { readOccupationsByClub } from './store/occupation-by-club.js';
 export {
   rowToAthlete,
   rowsToWorldState,
@@ -19,6 +30,7 @@ export {
   occupyNpcSlot,
   readOccupation,
   readWorldOccupations,
+  toOccupationView,
   requestRegen,
   vacateSlot,
   OccupyError,
@@ -61,6 +73,7 @@ export {
 export {
   runDailyRound,
   runRoundForDay,
+  targetRoundFor,
   type DailyRoundReport,
   type DailyRoundStatus,
   type WorldModulator,

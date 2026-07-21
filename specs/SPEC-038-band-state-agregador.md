@@ -17,24 +17,17 @@
 | **Appetite** | **2 a 3 dias** (agregador + readers novos ~1,5d · suíte ao vivo campo a campo ~1d · patches ~0,5d). |
 | **Prioridade** | ALTA — é a rota que a faixa lê; sem ela a SPEC-037 entrega um servidor que só sabe autenticar. |
 | **Criada em** | 2026-07-20 |
-| **Status** | **PROPOSTA — aguardando aprovação do founder.** ⚠️ **Dependência DURA: a SPEC-037 precisa estar mergeada** (esta SPEC consome `createApiServer`, o middleware `AuthedHandler` e o seam `RouteCtx` que ela entrega). |
+| **Aprovada em** | *(preencher na aprovação do card)* |
+| **Aprovada por** | *(preencher na aprovação do card)* |
+| **Status** | **PROPOSTA — aguardando aprovação do founder.** ⚠️ **Dependência DURA: a SPEC-037 precisa estar mergeada** (esta SPEC consome `createApiServer`, os middlewares `requireSession`/`requireAthlete` e o tipo `AuthedHandler` e o seam `RouteCtx` que ela entrega). |
 
-### O card original virou 4 cards
-
-| Card | Entrega |
-|---|---|
-| **1 — SPEC-037** (0.4) | **O servidor**: `services/api` (`node:http`, seam `RouteCtx`), sessão opaca, `/healthz` + `/v1/auth/login` + `/v1/auth/logout`, rate limit, migration `0010_session`, harness de operador. |
-| **2 — SPEC-038** (esta, 0.4) | **A rota de leitura + o agregador**: `GET /v1/band`, o contrato `BandState`, os readers novos (world-store + player-store), as regras puras novas em `packages/player`, o `markActive`. |
-| **3 — SPEC futura** (3.7) | **Escritas de gameplay** (`POST /v1/training`, `/decisions/:id/answer`, `/purchases`, `/regen`) — as ações que estes dois cards só expõem como estado. ~15 linhas cada, sobre função já testada. |
-| **4 — SPEC futura** (3.4) | A faixa **visual**: WPF portando o interop de `spikes/widget-taskbar/`, as 3 alturas (64/88/110), a arte, o avatar em camadas, `appearanceFromId`. **Já nasce ACIONÁVEL**, porque o card 3 a precede. |
-
-A ordem segue `roadmap.md:149` (*"server-first — a UI só apresenta o que o motor já garante"*) ⇒ **a cláusula "a faixa é read-only por construção" morre**.
+O card original de "Faixa: a vida no CT" virou **4 cards** (1 = SPEC-037 o servidor; 2 = esta SPEC, a rota + o agregador; 3 = escritas de gameplay/3.7; 4 = a faixa visual/3.4 — o detalhe está no cabeçalho de Dependências). A ordem segue `roadmap.md:149` (*"server-first — a UI só apresenta o que o motor já garante"*) ⇒ **a cláusula "a faixa é read-only por construção" morre**.
 
 ---
 
 ## Decisões travadas com o founder (2026-07-20)
 
-0. **Esta SPEC depende da SPEC-037 — dependência DURA, não convenção.** O `GET /v1/band` é registrado no `src/router.ts`, servido pelo `createApiServer` e protegido pelo middleware `AuthedHandler`, os três **entregues pela SPEC-037**; o `athleteId` do agregador vem de `readActiveAthlete(session.accountId)`, e a sessão é a tabela `player.session` da migration `0010`. **Não há como mergear a 038 antes da 037** — sem o servidor e sem o middleware de sessão, esta fatia não tem onde se plugar nem de onde tirar o ator.
+0. **Esta SPEC depende da SPEC-037 — dependência DURA, não convenção.** O `GET /v1/band` é registrado no `src/router.ts`, servido pelo `createApiServer` e protegido pelos middlewares `requireSession`/`requireAthlete` e o tipo `AuthedHandler`, os três **entregues pela SPEC-037**; o `athleteId` do agregador vem de `readActiveAthlete(session.accountId)`, e a sessão é a tabela `player.session` da migration `0010`. **Não há como mergear a 038 antes da 037** — sem o servidor e sem o middleware de sessão, esta fatia não tem onde se plugar nem de onde tirar o ator.
 
 1. **Fôlego NÃO é barra — são DUAS, Forma e Moral.** O card pede "forma/moral/**folego**", contra `functional-spec.md:33,44`, `vision-scope.md:54` e `roadmap.md:65` (*"stamina existe só dentro da partida, não persiste, invisível fora do jogo"*) e contra o código (`schema/athlete.ts:50-51` tem só `forma`/`moral`). O R4 FINAL cortou o fôlego diário. ⇒ `BandBars` tem **exatamente dois campos**, cravado por teste. Nada a patchear — **o card é que está velho**.
 
@@ -71,7 +64,7 @@ Dar à faixa **de onde ler**. A SPEC-037 entrega a primeira superfície do proje
 - **Buracos confirmados:** `rowToAthlete` (`world-mapper.ts:131`) **descarta `isHuman`** — incluí-lo mudaria `Athlete` → `WorldState` → **regeneraria os goldens** (proibido); `readWorldOccupations` devolve o mundo inteiro; `readWorld` são **5 SELECTs / ~1.280 atletas** (proibido no caminho quente); `readRound` lê de `published_round` ⇒ **rodada não jogada não existe lá** e não serve para o adversário na véspera; `QueueEntry.position` (`waiting-repo.ts:13,15`; a coluna em `waiting-list.ts:17`, documentada em `:5`) é a **posição de futebol**, não o lugar na fila; **nenhuma máquina de estados do dia existe**.
 - **Guardrail em `packages/*`:** `eslint.config.mjs:83` restringe o guardrail a `packages/*/src` — nada de relógio, `random` ou transcendental ali ⇒ `dayPhase` recebe a **hora já resolvida** e `daysUntilRevert` recebe o **limiar injetado** (`VACANCY.revertAfterDays` vive num *service*, e `packages/player` não importa service).
 - **Âncoras de doc:** `functional-spec.md:147` (*"escrita no mundo é exclusiva do motor"*) · `:20` `[SUPOSIÇÃO]` (estado da vaga é do motor, não da sessão — **esta SPEC resolve**) · `:23` (*"vida do atleta: CT, casa, pré-jogo"*) · `:77` (*"12h escalação · 13-15h pré-jogo"*, a linha que o P12 desambigua); `sdd.md:47` (i18n: nada localizável na API) · `:155` (conta A não acessa dados de conta B) · `:84` (o ator só age sobre os próprios atletas).
-- **Infra herdada (vale para as duas fatias):** `services/*` é **typecheck-only** (glob), **nunca** em `tsc -b` (TS6310); `paths` e `alias` são **listas explícitas**; `vitest` roda `fileParallelism:false`; **todos os locks em `services/**` são `_xact_`** (`ADR-002:57` — a API roda no endpoint **pooled**); `client.ts:47` dá **20 conexões** totais. O gotcha do `wipeAll` (`session` antes de `account`) é detalhado na SPEC-037, que cria a tabela — aqui só se **respeita**.
+- **Infra herdada (vale para as duas fatias):** `services/*` é **typecheck-only** (glob), **nunca** em `tsc -b` (TS6310); `paths` e `alias` são **listas explícitas**; `vitest` roda `fileParallelism:false`; **todos os locks em `services/**` são `_xact_`** (`ADR-002:57` — a API roda no endpoint **pooled**); `client.ts:47` dá **10 conexões por pool**; a API sobe **um** pool hoje (10) e passa a **dois (20)** quando o handle do world-store entrar. A `session` cai por **ON DELETE CASCADE** ao apagar `account` (`schema/session.ts:17`); limpá-la explicitamente no `wipeAll` é **higiene de isolamento entre suítes** (`fileParallelism:false`), **não** uma FK que quebra o teste — nenhuma suíte vai falhar como aviso, e é por isso que a afirmação errada da 037 sobreviveu tanto tempo.
 
 ---
 
@@ -94,10 +87,10 @@ Dar à faixa **de onde ler**. A SPEC-037 entrega a primeira superfície do proje
 - [ ] `daily-round.ts` — **extrair e exportar `targetRoundFor(dayIndex, startDayIndex)`** (o `:71`, hoje inline). Refactor puro.
 
 ### D) `services/api` — a rota e o agregador (sobre o servidor da SPEC-037)
-- [ ] `src/routes/band.ts` — o handler `AuthedHandler` da rota.
+- [ ] `src/routes/band.ts` — o handler `(ctx, athleteId, accountId)`, registrado via `requireAthlete` (`auth/require.ts:27`, já existente); o tipo `AuthedHandler` é da SPEC-037.
 - [ ] `src/band/` — `types.ts` (**o CONTRATO**) · `band-state.ts` (as 2 ondas) · `from-player.ts` · `from-world.ts`.
-- [ ] `src/router.ts` — **editar**: acrescentar o caso `GET /v1/band` ao `switch` (o arquivo nasce na SPEC-037).
-- [ ] `src/http/rate-limit.ts` — **editar**: o **terceiro balde** (`accountId`, 30/min). Os dois baldes de `/v1/auth/*` e o `reset()` vêm da SPEC-037.
+- [ ] `src/router.ts` — **editar**: acrescentar a entrada `'GET /v1/band': requireAthlete(deps.db, band(deps))` à **tabela de rotas** de `createRoutes` (`router.ts:42`), **e estender o `limitByIp`** (`router.ts:32-52`) para cobrir `/v1/band` além de `/v1/auth/*` — o teto de IP **pré-auth** (decisão do founder; ver Riscos). O balde por `accountId` fica dentro do handler.
+- [ ] `src/http/rate-limit.ts` fica **INTOCADO** (genérico por chave; só o `reset()` é reusado nos testes). São **dois baldes em camada** no `/v1/band`: **(a) IP** via o `limitByIp` estendido do router (pré-auth, barato); **(b) `accountId`** DENTRO de `routes/band.ts`, após `requireAthlete` (`const r = hit(`band:acct:${accountId}`, 30, ctx.epochMs); if (!r.allowed) return rateLimited(r.retryAfterSec);`) — o `accountId` só existe pós-sessão, por isso não pode viver no router. Constante `BAND_ACCOUNT_LIMIT = 30` em `band.ts`. Da SPEC-037 vêm o `hit`/`reset()` genéricos e o `limitByIp` (`router.ts:17,32`).
 
 **`readBandState` mora em `services/api/src/band/`, não em `world-entry`** — o molde de assinatura é o `moodModulator` (dois handles, zero transação cross-schema), mas `world-entry` é dependência do **scheduler** (money path), e um agregador de UI muda quando o contrato de UI muda. É **transporte-livre** e testável **sem subir servidor**. **Explicitamente não-atômico** (snapshot eventualmente-consistente, leitura de UI) — dizer isso no cabeçalho do arquivo.
 
@@ -120,24 +113,6 @@ Ver Critérios. Foco: autorização cross-conta, o agregador campo a campo, esta
 - **`minClientVersion`** — fora por decisão (Decisão 5): sem cliente e sem `X-Client-Version`. Entra **aditivamente** quando o card 4 existir.
 - **A dívida de i18n do `decisions.ts`** — registrada, não consertada.
 - **Migration de qualquer espécie** — **esta fatia NÃO tem migration**: todo campo novo do contrato sai de coluna existente, de reader estreito novo ou de fn pura.
-
----
-
-## A superfície HTTP
-
-Erro **sempre** `{ error, code }` — `code` é a chave **estável e não-localizável** (o cliente roteia e traduz por ela); `error` é frase genérica. **Nunca** stack, SQL ou detalhe interno (OP-11). O serializador único (`http/respond.ts`) e o `no-store` por default vêm da SPEC-037.
-
-```
-GET /v1/band                 ⚠️ NENHUM identificador em path, query ou body
-  200  BandState                                               + Cache-Control: no-store
-  401  unauthorized · 409 no_active_athlete · 500 internal
-  429  rate_limited + retryAfter + header `Retry-After`
-  Efeito colateral declarado: markActive best-effort.
-```
-
-**O terceiro balde de rate limit** (`sdd.md:100`): janela fixa **in-process**, **`GET /v1/band` por `accountId` (30/min)**, teto duro contra loop (um token válido em loop satura os 20 slots de pool e derrubaria a faixa de todos — a política de 1×/60s do cliente é **cooperação**, nunca o controle). ⚠️ Com `fileParallelism:false` o `Map` é **estado de módulo compartilhado entre suítes** ⇒ o `reset()` do limitador (SPEC-037) é chamado no `beforeEach` de toda suíte que toca `/v1/band`.
-
-**`markActive` — em `GET /v1/band`, não no login:** o seam da SPEC-023 mede **presença**, não sessão viva (no login o sinal mentiria nos dois sentidos). **A faixa aberta É o sinal.** Três armadilhas: **(1)** o dia é **`resolveSlot(epochMs).dayIndex`**, ⚠️ **não `dueDayIndex`** — antes das 15h este é *ontem*, e o `runVacancyPass` (`vacancy-repo.ts:94`) leria `inactive=1` e **congelaria quem abriu a faixa de manhã**, disparando o e-mail "segurando sua camisa" contra um presente; **(2) throttle grátis** — o agregador já leu a ocupação ⇒ `if (club.lastActiveDay !== day)` reduz a **1 escrita/dia/jogador** (senão o `FOR UPDATE` de todo poll serializaria contra o `runVacancyPass`); **(3) isolamento** — try/catch + log genérico: um relógio de vacância que falha não devolve 500 na faixa.
 
 ---
 
@@ -168,7 +143,7 @@ export interface BandState {
 | `serverTime.brtHour` / `.brtMinute` | `number` | `resolveSlot(...)` · `anchor.ts:22` (fuso fixo UTC-3, sem `Intl`) | — |
 | `serverTime.roundSettled` | `boolean` | `(readTickCursor ?? -1) >= slot.dayIndex` · `tick-progress-repo.ts:9` ⚠️ **`slot.dayIndex`, não `dueDayIndex`** | world |
 | `phase` | `DayPhase` | **`dayPhase(slot.hour)` — NOVA** (as 15h caem dentro de `casa`) | — |
-| `athlete.id` | `string` | da **SESSÃO** (`readActiveAthlete` · `player-repo.ts:134`) — **nunca do cliente** | player |
+| `athlete.id` | `string` | do `SessionCtx` (já resolvido por `resolveSession` · `session.ts:65`) — **não** re-chamar `readActiveAthlete` | player |
 | `athlete.name` / `.position` | `string` | `readAthleteIdentity` · `player-repo.ts:106` (`position` cru; a borda guarda com `isPosition`) | player |
 | `athlete.appearance` | `{skinTone,hairStyle,hairColor}` | coluna `athlete.appearance` jsonb (`schema/athlete.ts:29`) — **estender o reader** (sem migration) | player |
 | `athlete.overall` | `number` | `readAthleteProgress` · `training-repo.ts:100` | player |
@@ -199,7 +174,7 @@ export interface BandState {
 | `club.round` | `number \| null` | **`targetRoundFor(tickDay, startDayIndex)`** — extraído de `daily-round.ts:71`; `null` fora de temporada | world |
 | `club.lastActiveDay` / `.frozenSinceDay` | `number \| null` | `readOccupation` (espaço `slot.dayIndex`; `lastActiveDay` **é também o throttle do `markActive`**) | world |
 | `club.daysUntilRevert` | `number \| null` | **`daysUntilRevert(...)`** com o limiar injetado; `null` se não congelado | — |
-| `club.todayMatch` | `BandMatch \| null` | **PRÉ-JOGO:** `generateFixtures(readLeagueClubIds(...))[round−1]` (engine, `index.ts:13`). **PÓS-JOGO:** `readRound` preenche o **placar**. ⚠️ `readRound` sozinho **não serve** — rodada não jogada não existe em `published_round` ⇒ `todayMatch` seria `null` durante toda a véspera, a única fase em que o campo tem razão de existir | world |
+| `club.todayMatch` | `BandMatch \| null` | **PRÉ-JOGO:** `generateFixtures(ids.map((id) => ({ id, name: id, strength: 0 })))` (só `c.id` é consumido, `fixtures.ts:11`) e então `.find((f) => f.round === round && (f.homeId === clubId || f.awayId === clubId))`. ⚠️ o retorno é um array PLANO de 380 fixtures — **nunca** indexar por `[round−1]`. **PÓS-JOGO:** `readRound` preenche o **placar**. ⚠️ `readRound` sozinho **não serve** — rodada não jogada não existe em `published_round` ⇒ `todayMatch` seria `null` durante toda a véspera, a única fase em que o campo tem razão de existir | world |
 | `…opponentClubId` / `.opponentName` | `string` | do fixture ou do `MatchResult` (`types.ts:32-43`) / **`readClubBrief` do adversário** | world |
 | `…isHome` / `.played` | `boolean` | `homeId === clubId` / a rodada existe em `published_round` | — |
 | `…goalsFor` / `.goalsAgainst` | `number \| null` | do `MatchResult`; `null` enquanto `!played` | — |
@@ -217,13 +192,9 @@ export interface BandState {
 
 **Regra de nulidade:** `null` = **"não se aplica"**, jamais "não sei" — a razão de `trainedToday` ser omitido em vez de `false`.
 
-**Custo de I/O:** duas ondas (`Promise.all` em cada; a onda 2 depende de `clubId`/`dayIndex`). **Teto: ≤ 24 round-trips**, p95 < 150 ms (onda 1 = 11 · onda 2 = 7 · `markActive` = 4 = **22**; inclui BEGIN/COMMIT das transações só-leitura de `readWallet` e do `markActive`). ⚠️ **Anti-requisito elevado a critério:** `readBandState` **NUNCA** chama `readWorld` nem `readWorldOccupations`.
+**`worldSeed` — de `ApiDeps`, nunca do request:** todos os readers do world-store (`readClubBrief`, `readClubSquad`, `readOccupation`, `readTickCursor`, `readQueue`, `markActive`) exigem a seed; ela vem de `ApiDeps` (env `WORLD_SEED`), **NUNCA** do cliente.
 
----
-
-## Migration
-
-**Nenhuma. SEM MIGRATION** (OP-01 não é acionada): o `appearance` sai de coluna jsonb existente (`schema/athlete.ts:29`), o `isHuman` de coluna existente (`is_human`), o kit e as fases de funções puras novas, e nenhum reader novo cria tabela, coluna ou índice. O world-store (`0008`) e o player-store (`0010`, criado pela SPEC-037) ficam **intocados** por esta fatia.
+**Custo de I/O:** duas ondas (`Promise.all` em cada; a onda 2 depende de `clubId`/`dayIndex`). O `resolveSession` do middleware emite **3 queries** no pool do player ANTES do handler (`readSessionByHash` + `touchSession` + `readActiveAthlete` · `session.ts:54-67`). **Teto por request: ≤ 28 round-trips** (as 3 do middleware + onda 1 = 11 · onda 2 = 7 · `markActive` = 4 = **25** na 1ª chamada do dia; **21** da 2ª em diante, sem o `markActive`), p95 < 150 ms; inclui BEGIN/COMMIT das transações só-leitura de `readWallet` e do `markActive`. ⚠️ **Como contar:** interceptar `pool.query` **E** `pool.connect` (o `client.query` das transações) nos DOIS pools — contar só `pool.query` subconta `readWallet` e `markActive`. ⚠️ **Anti-requisito elevado a critério:** `readBandState` **NUNCA** chama `readWorld`, `readWorldOccupations` nem `readClubRoster` (a defesa do risco de PAYLOAD é o **grep-gate**, não o contador — um reader gordo com 1 query passaria no contador).
 
 ---
 
@@ -237,9 +208,12 @@ export interface BandState {
 | `services/player-store/src/store/player-repo.ts` · `decision-repo.ts` · `index.ts` | editar — `appearance` no identity · `countPendingDecisions` · barrel. |
 | `services/world-store/src/store/world-repo.ts` | editar — `readClubBrief` · `readClubSquad` (**tipo próprio com `isHuman`**) · `readLeagueClubIds`. |
 | `services/world-store/src/store/occupation-repo.ts` · `daily-round.ts` · `index.ts` | editar — `readOccupationsByClub` · exportar `targetRoundFor` · barrel. |
-| `services/api/src/routes/band.ts` | criar — a rota protegida (`AuthedHandler` da SPEC-037). |
+| `services/api/src/routes/band.ts` | criar — o handler `(ctx, athleteId, accountId)` **registrado via `requireAthlete(deps.db, band(deps))` (`auth/require.ts:27`, já existente)**; o `409 no_active_athlete` é do middleware, não do handler. |
 | `services/api/src/band/{types,band-state,from-player,from-world}.ts` | criar — o CONTRATO + o agregador (2 ondas) + os dois lados. |
-| `services/api/src/router.ts` · `src/http/rate-limit.ts` · `src/index.ts` | editar — o caso `GET /v1/band` · o 3º balde (`accountId` 30/min) · barrel (arquivos nascem na SPEC-037). |
+| `services/api/package.json` | editar — +dependência `@camisa-9/world-store`. |
+| `services/api/src/server.ts` | editar — `ApiDeps` ganha `readonly worldDb: WorldDb` e `readonly worldSeed: string`, repassados a `createRoutes(deps)`. |
+| `services/api/src/main.ts` | editar — segundo `createDb` (world-store); `WORLD_SEED` obrigatória junto de `DATABASE_URL` (falha rápido); `pool.end()` dos DOIS pools no shutdown. |
+| `services/api/src/router.ts` · `src/index.ts` | editar — a entrada `'GET /v1/band'` na **tabela de rotas** + `createRoutes(deps)` (não `createRoutes(db)`) · barrel. ⚠️ `src/http/rate-limit.ts` fica **INTOCADO** — o 3º balde (`accountId` 30/min) nasce dentro de `routes/band.ts`. (arquivos nascem na SPEC-037). |
 | `services/api/test/{band-state,server-band}.test.ts` | criar — agregador **sem servidor** + a rota em `listen(0)`. **O teste das chaves de `BandBars` vive em `band-state.test.ts`.** |
 | `docs/projeto/{sdd,functional-spec,vision-scope,roadmap}.md` | editar — os patches P1, P2, P3, P4, P7, P10, P11, P12. |
 | `docs/projeto/roadmap.md`, `CLAUDE.md` | editar (no DONE) — **0.4 🚧→✅** (é esta SPEC que fecha o item; a SPEC-037 só o marca 🚧) + 2.1 + 3.4/3.7 + "Estado atual". |
@@ -249,16 +223,41 @@ export interface BandState {
 
 ---
 
+## Mudanças de schema
+
+**Nenhuma. SEM MIGRATION** (OP-01 não é acionada): o `appearance` sai de coluna jsonb existente (`schema/athlete.ts:29`), o `isHuman` de coluna existente (`is_human`), o kit e as fases de funções puras novas, e nenhum reader novo cria tabela, coluna ou índice. O world-store (`0008`) e o player-store (`0010`, criado pela SPEC-037) ficam **intocados** por esta fatia.
+
+---
+
+## Mudanças de API
+
+Erro **sempre** `{ error, code }` — `code` é a chave **estável e não-localizável** (o cliente roteia e traduz por ela); `error` é frase genérica. **Nunca** stack, SQL ou detalhe interno (OP-11). O serializador único (`http/respond.ts`) e o `no-store` por default vêm da SPEC-037.
+
+```
+GET /v1/band                 ⚠️ NENHUM identificador em path, query ou body
+  200  BandState                                               + Cache-Control: no-store
+  401  unauthorized · 409 no_active_athlete · 500 internal
+  429  rate_limited + retryAfter + header `Retry-After`
+  Efeito colateral declarado: markActive best-effort.
+```
+
+**Rate limit em DUAS camadas** (`sdd.md:100`), janela fixa **in-process**: **(a) por IP** — o `limitByIp` do router estendido a `/v1/band` (pré-auth, contra flood de token inválido); **(b) por `accountId` (30/min)** dentro do handler — teto duro contra loop autenticado (um token válido em loop satura os 20 slots de pool e derrubaria a faixa de todos; a política de 1×/60s do cliente é **cooperação**, nunca o controle). Ver a decisão do teto pré-auth em Riscos. ⚠️ Com `fileParallelism:false` o `Map` é **estado de módulo compartilhado entre suítes** ⇒ o `reset()` do limitador (SPEC-037) é chamado no `beforeEach` de toda suíte que toca `/v1/band`.
+
+**`markActive` — em `GET /v1/band`, não no login:** o seam da SPEC-023 mede **presença**, não sessão viva (no login o sinal mentiria nos dois sentidos). **A faixa aberta É o sinal.** Três armadilhas: **(1)** o dia é **`resolveSlot(epochMs).dayIndex`**, ⚠️ **não `dueDayIndex`** — antes das 15h este é *ontem*, e o `runVacancyPass` (`vacancy-repo.ts:94`) leria `inactive=1` e **congelaria quem abriu a faixa de manhã**, disparando o e-mail "segurando sua camisa" contra um presente; **(2) throttle grátis** — o agregador já leu a ocupação ⇒ `if (club.lastActiveDay !== day)` reduz a **1 escrita/dia/jogador** (senão o `FOR UPDATE` de todo poll serializaria contra o `runVacancyPass`); **(3) isolamento** — try/catch + log genérico: um relógio de vacância que falha não devolve 500 na faixa.
+
+---
+
 ## Critérios de aceitação
 
-1. **Autorização cross-atleta, inviolável por construção** *(ao vivo + grep)*: o token de A com `?athleteId=<de B>`, header `X-Athlete-Id: <de B>` e o id de B no corpo devolve **sempre** o `BandState` de **A**, ignorando os parâmetros; grep prova que **nenhuma rota lê `athleteId`/`accountId` de path, query ou body**. Flipa `sdd.md:155` *(o patch P6 correspondente é entregável da SPEC-037)*. **E** `/v1/band` sem header, com header malformado, com token inexistente e com token expirado → **401** nos quatro, e um espião prova que **`readBandState` nunca rodou**.
-2. **`readBandState` completo e degradado** *(ao vivo)*: mundo semeado + humano em tier-4 + treino + compra + lesão ativa + decisões pendentes → todo campo do Contrato bate com sua fonte, incl. `squad.length === 16`, exatamente **um** `isMe`, `isHuman` cruzado com `readOccupationsByClub`, `injury.daysLeft ≥ 0`, `club.kit` determinístico e `home.lifestyleTier` == `readWallet`. **E** atleta sem ocupação (na fila) e seed **sem mundo semeado** (o dia 1 de produção) → **200** com `club: null`, `squad: []`, `queue` preenchido no primeiro e `null` no segundo. **Nunca 500.**
-3. **`dayPhase` e os três relógios** *(puro + ao vivo)*: tabela das 24 horas com as fronteiras **11/12** e **20/21**; `dayPhase(15) === 'casa'`; teste de assinatura prova que **não depende de `roundSettled`**. **E** tick liquidado ontem + `epochMs` das 12h de hoje → `roundSettled` **`false`** (prova `slot.dayIndex`, não `dueDayIndex` — senão a faixa anunciaria "o jogo já aconteceu" às 09h). **E** decisões/lesão do dia D consultadas às **09h de D+1** → `pendingDecisions` reflete D (não 0) e `injury.daysLeft` bate com o que `advanceRecovery` usará (prova o **`tickDay`**).
-4. **`markActive`** *(ao vivo)*: 3 chamadas no mesmo dia → `last_active_day` gravado **exatamente 1×** com **`resolveSlot(epochMs).dayIndex`**, incluindo uma às **09h** e outra às **16h do mesmo dia**. **E** `markActive` às 09h de D + `runVacancyPass(D)` → a vaga **não** congela. **E** stubado para lançar → a rota devolve **200** com o `BandState` íntegro. **E** vaga congelada + `GET /v1/band` → `frozen_since_day` volta a `null` (thaw).
-5. **As barras são DUAS, e o contrato é só-aditivo** *(ao vivo + puro)*: sobre um `BandState` **produzido pelo agregador**, `Object.keys(state.bars).sort()` é exatamente `['forma','moral']` — ⚠️ o teste vive em `services/api/test/`, **nunca** em `packages/player` (inverteria a dependência `packages/* → services/*` e compilaria em silêncio; e `interface` não tem chaves em runtime). **E** um teste de forma sobre fixture quebra se qualquer campo for renomeado, removido ou mudar de tipo. **E** nenhuma string localizável na resposta (decisões saem como **contagem**).
-6. **O balde de `/v1/band` limita** *(ao vivo)*: **31 chamadas a `/v1/band` com o mesmo token em 1 min → a 31ª é 429**, com `retryAfter` no corpo **e header `Retry-After`**.
-7. **Grep-gates estruturais de `band`**: `src/band/**` **não importa** `readWorld` nem `readWorldOccupations`, e um contador sobre os dois pools fica em **≤ 24 round-trips** por `GET /v1/band`; **zero** `pg_advisory_lock` de sessão, `LISTEN`, `NOTIFY` ou `SET SESSION` no código novo — só `_xact_`/`FOR UPDATE` (`ADR-002:57`); nada fora de `src/http/`+`src/routes/` importa `node:http`; nenhuma rota lê `athleteId` de path/query/body.
-8. **OPs & gates** *(o critério DURO)*: sem `any` (14); ≤50 linhas/função (15); ≤300/arquivo (16); zero regra de negócio no transporte (17) — as regras nascem em `packages/player` e `targetRoundFor` é **extraído**, não reimplementado; erros genéricos (11); **SEM migration** (nada de schema novo nesta fatia); segredos só-env (02/12); `lint`/`typecheck`/`build`/`test`/prettier verdes; **testes preservados** (a baseline de 467 do repo, mais os que a SPEC-037 acrescenta antes desta); **engine e os 4 goldens INTOCADOS (`git diff` = 0)**.
+1. **Autorização cross-atleta, inviolável por construção** *(ao vivo + grep)*: o token de A com `?athleteId=<de B>`, header `X-Athlete-Id: <de B>` e o id de B no corpo devolve **sempre** o `BandState` de **A**, ignorando os parâmetros; grep prova que **nenhuma rota lê `athleteId`/`accountId` de path, query ou body** (`router.ts:6-7`). Flipa `sdd.md:155` *(o patch P6 correspondente é entregável da SPEC-037)*. **E** `/v1/band` sem header → **401** (a matriz dos quatro 401 já está cravada na SPEC-037, `server-auth.test.ts:118`): o único que a 038 pode quebrar é **esquecer de embrulhar a rota** — o caso prova que `GET /v1/band` está registrado embrulhado em `requireAthlete`, não cru na tabela (`router.ts:42`).
+2. **Conta mid-regen → 409** *(ao vivo)*: conta com sessão viva e SEM atleta ativo (mid-regen, SPEC-022) → `GET /v1/band` devolve **409 `no_active_athlete`**, e um espião prova que **`readBandState` nunca rodou** (nenhuma query dos dois bancos emitida) — prova que a rota está embrulhada em `requireAthlete`, não registrada crua na tabela.
+3. **`readBandState` completo e degradado** *(ao vivo)*: mundo semeado + humano em tier-4 + treino + compra + lesão ativa + decisões pendentes → todo campo do Contrato bate com sua fonte, incl. `squad.length === 16`, exatamente **um** `isMe`, `isHuman` cruzado com `readOccupationsByClub`, `injury.daysLeft ≥ 0`, `club.kit` determinístico e `home.lifestyleTier` == `readWallet`. **E** atleta sem ocupação (na fila) e seed **sem mundo semeado** (o dia 1 de produção) → **200** com `club: null`, `squad: []`, `queue` preenchido no primeiro e `null` no segundo. **Nunca 500.**
+4. **`dayPhase` e os três relógios** *(puro + ao vivo)*: tabela das 24 horas com as fronteiras **11/12** e **20/21**; `dayPhase(15) === 'casa'`; teste de assinatura prova que **não depende de `roundSettled`**. **E** tick liquidado ontem + `epochMs` das 12h de hoje → `roundSettled` **`false`** (prova `slot.dayIndex`, não `dueDayIndex` — senão a faixa anunciaria "o jogo já aconteceu" às 09h). **E** decisões/lesão do dia D consultadas às **09h de D+1** → `pendingDecisions` reflete D (não 0) e `injury.daysLeft` bate com o que `advanceRecovery` usará (prova o **`tickDay`**).
+5. **`markActive` — o throttle é contado, não inferido** *(ao vivo)*: 3 `GET /v1/band` no mesmo dia → `vi.spyOn` em `markActive` prova `toHaveBeenCalledTimes(1)` (⚠️ o `markActive` é um UPDATE **incondicional** `vacancy-repo.ts:46` — ler `last_active_day` após as 3 chamadas passaria **com ou sem** o throttle; só contar a ESCRITA falha com o defeito presente), gravado com **`resolveSlot(epochMs).dayIndex`**, com uma chamada às **09h** e outra às **16h do mesmo dia**. **E** `markActive` às 09h de D + `runVacancyPass(D)` → a vaga **não** congela. **E** stubado para lançar → a rota devolve **200** com o `BandState` íntegro. **E** vaga congelada + `GET /v1/band` → `frozen_since_day` volta a `null` (thaw).
+6. **As barras são DUAS, e o contrato é só-aditivo** *(ao vivo + puro)*: sobre um `BandState` **produzido pelo agregador**, `Object.keys(state.bars).sort()` é exatamente `['forma','moral']` — ⚠️ o teste vive em `services/api/test/`, **nunca** em `packages/player` (inverteria a dependência `packages/* → services/*` e compilaria em silêncio; e `interface` não tem chaves em runtime). **E** um teste de forma percorre uma tabela literal **`V1_SHAPE`** (cada campo do contrato → seu `typeof` esperado, com `|null` explícito) assertando **presença + tipo**, **SEM** assertar ausência de chaves extras (um `toEqual`/snapshot do fixture inteiro quebraria também num campo **acrescentado** — que a política aditiva-only declara legal, ex.: o `trainedToday` do card 3); a igualdade exata só vale para `bars`, onde um `folego` acrescentado **deve** falhar. **E** nenhuma string localizável na resposta (decisões saem como **contagem**).
+7. **O `/v1/band` limita em DUAS camadas** *(ao vivo)*: **(a) por `accountId`** — 31 chamadas com o mesmo token em 1 min → a 31ª é **429** (`retryAfter` no corpo **e** header `Retry-After`); ⚠️ **discriminantes (um balde por IP passaria idêntico):** DUAS contas do **mesmo IP** — depois de A esgotar as 30, a **1ª** chamada de B é **200**; MESMA conta de **dois IPs** → a 31ª ainda é **429** (prova que a chave é o `accountId`, não o IP — dois jogadores atrás do mesmo NAT não se derrubam). **(b) por IP, ANTES da auth** — N+1 chamadas a `/v1/band` com token **inválido** do mesmo IP → **429**, e um espião prova que **`readSessionByHash` NÃO foi consultado** na chamada limitada (o teto morde antes de tocar o banco; decisão do founder — ver Riscos).
+8. **Grep-gates estruturais de `band`**: `src/band/**` **não importa** `readWorld`, `readWorldOccupations` nem `readClubRoster`, e um contador que intercepta `pool.query` **E** `pool.connect` sobre os dois pools fica em **≤ 28 round-trips por request** (contado nas 1ª **e** 2ª chamadas do dia, senão a folga engole o defeito); **zero** `pg_advisory_lock` de sessão, `LISTEN`, `NOTIFY` ou `SET SESSION` no código novo — só `_xact_`/`FOR UPDATE` (`ADR-002:57`); só `src/server.ts`, `src/http/client-ip.ts` e `src/http/respond.ts` (os dois últimos type-only) importam `node:http`, **nada** em `src/band/` ou `src/routes/` o importa; nenhuma rota lê `athleteId` de path/query/body.
+9. **OPs & gates** *(o critério DURO)*: sem `any` (14); ≤50 linhas/função (15); ≤300/arquivo (16); zero regra de negócio no transporte (17) — as regras nascem em `packages/player` e `targetRoundFor` é **extraído**, não reimplementado; erros genéricos (11); **SEM migration** (nada de schema novo nesta fatia); segredos só-env (02/12) — incl. a nova env **`WORLD_SEED`** (`main.ts`, falha rápido junto de `DATABASE_URL`); o segundo handle do world-store fiado por `ApiDeps` (`+dependência @camisa-9/world-store` no `package.json`, `worldDb`/`worldSeed` no `server.ts`, `createRoutes(deps)` no `router.ts`); `lint`/`typecheck`/`build`/`test`/prettier verdes; **testes preservados** (baseline **540** — 529 pós-SPEC-037 + 11 da SPEC-039; conferir `npm test` em `main` no início da fatia e usar esse número); **engine e os 4 goldens INTOCADOS (`git diff` = 0)**.
 
 ---
 
@@ -274,18 +273,22 @@ export interface BandState {
 
 ## Riscos e dependências
 
-| Risco | Mitigação |
-|---|---|
-| **Contrato errado descoberto com o WPF já escrito** — o mais caro | `/v1` + política **aditiva-only** + teste de forma (critério 5): campo que faltou **entra sem quebrar**. O irrecuperável é tipo errado ⇒ `null`="não se aplica"; `trainedToday`, `minClientVersion` e `shirtNumber` **omitidos, não fingidos**. ✅ A inversão de ordem ajuda: o card 3 cresce o payload **antes** de existir cliente distribuído. |
-| **O card do NÚMERO DA CAMISA atrasar** | Dependência **DURA declarada**. Entra **aditivamente** e nada nesta fatia nem no card 3 depende dele. ⚠️ **Não se resolve sozinho** — precisa virar card **agora**, junto do re-shape. |
-| **`isHuman` no roster regeneraria os goldens** | `readClubSquad` nasce com **tipo próprio**; `rowToAthlete`/`readClubRoster`/`types.ts` intocados. `git diff` = 0. |
-| **`readWorld` no caminho quente** — alguém "simplifica" e a faixa puxa 1.280 atletas por poll | `readClubBrief` existe exatamente para isso; contador ≤24 **+ grep** (critério 7). |
-| **`/v1/band` em loop satura os pools** (20 conexões, ~22 round-trips/chamada) | Balde de 30/min por `accountId`. A política de 1×/60s do cliente é **cooperação** — promessa de um binário na máquina do jogador, nunca o controle. |
-| **`/v1/band` bloqueia durante a viragem** | Nomeado e deferido: é leitura (zero corrupção); `connectionTimeoutMillis: 10_000` limita a espera. `SET SESSION` proibido sob o pooler ⇒ card próprio. |
+| Risco | Probabilidade | Mitigação |
+|---|---|---|
+| **Contrato errado descoberto com o WPF já escrito** — o mais caro | Média | `/v1` + política **aditiva-only** + teste de forma (critério 6): campo que faltou **entra sem quebrar**. O irrecuperável é tipo errado ⇒ `null`="não se aplica"; `trainedToday`, `minClientVersion` e `shirtNumber` **omitidos, não fingidos**. ✅ A inversão de ordem ajuda: o card 3 cresce o payload **antes** de existir cliente distribuído. |
+| **O card do NÚMERO DA CAMISA atrasar** | Alta | Dependência **DURA declarada**. Entra **aditivamente** e nada nesta fatia nem no card 3 depende dele. ⚠️ **Não se resolve sozinho** — precisa virar card **agora**, junto do re-shape. |
+| **`isHuman` no roster regeneraria os goldens** | Baixa | `readClubSquad` nasce com **tipo próprio**; `rowToAthlete`/`readClubRoster`/`types.ts` intocados. `git diff` = 0. |
+| **`readWorld` no caminho quente** — alguém "simplifica" e a faixa puxa 1.280 atletas por poll | Média | `readClubBrief` existe exatamente para isso; grep-gate (`readWorld`/`readWorldOccupations`/`readClubRoster`) + contador ≤28 (critério 8). |
+| **`/v1/band` em loop satura os pools** (dois pools = 20 conexões, ~25 round-trips na 1ª chamada do dia) | Média | Dois baldes: IP (pré-auth) + 30/min por `accountId`. A política de 1×/60s do cliente é **cooperação** — promessa de um binário na máquina do jogador, nunca o controle. |
+| **`/v1/band` bloqueia durante a viragem** | Baixa | Nomeado e deferido: é leitura (zero corrupção); `connectionTimeoutMillis: 10_000` limita a espera. `SET SESSION` proibido sob o pooler ⇒ card próprio. |
+
+### Teto pré-autenticação — decidido (founder, 2026-07-20)
+
+Sem endurecimento, o `GET /v1/band` nasceria **sem teto de IP antes da autenticação**: o balde de `accountId` é pós-`resolveSession`, então um flood de `Authorization: Bearer <lixo>` do mesmo IP pagaria **um `readSessionByHash` por request** (`session.ts:62`) sem passar por balde nenhum — a mesma classe de furo que a revisão da SPEC-037 fechou no `logout` ("nasceu sem teto"). **Decisão: endurecer.** O `limitByIp` do router (`router.ts:32-52`) passa a cobrir **`/v1/band` além de `/v1/auth/*`** (mesmo teto de IP), e o balde por `accountId` continua dentro do handler. São **dois baldes em camada**: IP barato e pré-auth contra flood anônimo, `accountId` pós-sessão contra loop autenticado. Cravado pelo critério 8b.
 
 ⚠️ **Linha de corte pré-aprovada** (registrada nos Riscos da SPEC-037): atinge itens **desta** fatia, nesta ordem — (1) `markActive` + P10; (2) `queue`; (3) `athlete.appearance`. **`club.todayMatch` NÃO se corta** (é o único conteúdo da véspera), nem as duas barras, `phase` ou `squad`.
 
-**Dependência DURA:** **SPEC-037 — Camada HTTP e sessão.** Esta SPEC **consome** o `createApiServer`, o middleware `AuthedHandler` e o seam `RouteCtx` que ela entrega, mais a tabela `player.session` da migration `0010` (de onde sai o `accountId` → `readActiveAthlete` → `athleteId`) e o `respond.ts`/`rate-limit.ts` que ela cria. **Não há como mergear a 038 antes da 037** — sem servidor e sem middleware de sessão não existe rota a registrar nem ator a derivar.
+**Dependência DURA:** **SPEC-037 — Camada HTTP e sessão.** Esta SPEC **consome** o `createApiServer`, os middlewares `requireSession`/`requireAthlete` e o tipo `AuthedHandler` e o seam `RouteCtx` que ela entrega, mais a tabela `player.session` da migration `0010` (de onde sai o `accountId` → `readActiveAthlete` → `athleteId`) e o `respond.ts`/`rate-limit.ts` que ela cria. **Não há como mergear a 038 antes da 037** — sem servidor e sem middleware de sessão não existe rota a registrar nem ator a derivar.
 
 **Demais dependências:** SPEC-016 (`readActiveAthlete`, `readAthleteIdentity`) · 017/019 (`readAthleteProgress`) · 020 (`readOccupation`, o overlay) · 022 · 023 (**`markActive`**, `VACANCY`) · 024 (`readWallet`) · 025 (`decision`, o hash FNV) · 026 (`readInjuryState`, `injuryPhase`) · 027 (`readMood`) · 030/032 (`dueDayIndex`, `readTickCursor`) · 034 (`readQueue`) · 035 (ADR-002).
 
@@ -319,8 +322,8 @@ export interface BandState {
 - **⚠️ `occupation-repo.ts` tem 303 linhas físicas** — passa a OP-16 (o `max-lines` ignora branco/comentário), mas o reader novo deve nascer com folga; se apertar, nasce em `occupation-by-club.ts`.
 - **⚠️ O agregador é explicitamente NÃO-ATÔMICO** — dois handles, zero transação cross-schema, snapshot eventualmente-consistente. É leitura de UI; dizer isso no cabeçalho de `band-state.ts` para que ninguém "conserte" depois.
 - **⚠️ `services/*` é typecheck-only** — entra pelo **glob** do `tsconfig.typecheck.json` e **NUNCA** nas references do `tsc -b` (TS6310).
-- **⚠️ `fileParallelism: false`** — as suítes dividem **um** Postgres **e o mesmo processo Node**: limpeza em ordem de FK e `reset()` do rate-limiter no `beforeEach` de toda suíte que toca `/v1/band`. A ordem canônica do `wipeAll` (`session → injury → decision → purchase → dailyLedger → athlete → account`) é detalhada na SPEC-037, que cria a tabela `session`; aqui só se respeita.
-- **⚠️ Locks xact-scoped obrigatórios** (`ADR-002:57`) — a API roda no endpoint **pooled**. Vira grep-gate (critério 7).
+- **⚠️ `fileParallelism: false`** — as suítes dividem **um** Postgres **e o mesmo processo Node**: limpeza em ordem de FK e `reset()` do rate-limiter no `beforeEach` de toda suíte que toca `/v1/band`. A ordem canônica do `wipeAll` (`session → injury → decision → purchase → dailyLedger → athlete → account`) é detalhada na SPEC-037; ⚠️ a `session` cai por **ON DELETE CASCADE** ao apagar `account` (`schema/session.ts:17`) — limpá-la explicitamente é **higiene de isolamento entre suítes**, **não** uma FK que quebra o teste (é por isso que a afirmação errada da 037 sobreviveu tanto tempo).
+- **⚠️ Locks xact-scoped obrigatórios** (`ADR-002:57`) — a API roda no endpoint **pooled**. Vira grep-gate (critério 8).
 - **Zero dep nova.**
 - **Reversível:** a rota é aditiva e desligável junto com o container; **não há migration** a reverter.
 - **⚠️ Ritual do board H1VE — o passo mais fácil de esquecer** (a SPEC-030 ficou **presa em `spec`** por isso): escrever o arquivo **não** publica. Rodar **`h1ve spec --from specs/SPEC-038-band-state-agregador.md`**, obter a **aprovação no próprio card**, e no fim **`h1ve done --doc`** antes do PR. "Aprovado no chat" ≠ clique no board.
@@ -334,7 +337,7 @@ export interface BandState {
 - [x] Escopo delimitado (card 2 de 4; servidor/auth na SPEC-037; escritas de gameplay, faixa visual e número da camisa fora)
 - [x] Arquivos listados corretos (verificados no repo, com linhas)
 - [x] **Sem mudança de schema** — nenhuma migration nesta fatia (OP-01 não acionada)
-- [x] Critérios testáveis (8, incl. grep-gates e o selo de goldens)
+- [x] Critérios testáveis (9, incl. grep-gates e o selo de goldens)
 - [x] Riscos e dependências avaliados (**dependência DURA da SPEC-037**)
 - [x] Decisões co-desenhadas registradas (todas de 2026-07-20)
 - [ ] **Aprovada** — *aguardando founder/architect no card*
