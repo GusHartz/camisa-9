@@ -3,6 +3,7 @@ using System.Globalization;
 using System.Runtime.CompilerServices;
 using System.Windows.Media;
 using BandClient.Api;
+using BandClient.State;
 
 namespace BandClient.View;
 
@@ -37,6 +38,14 @@ public sealed class BandViewModel : INotifyPropertyChanged
     private Brush _kitPrimaryBrush = NeutralBrush;
     private Brush _kitSecondaryBrush = NeutralBrush;
     private bool _kitVisible;
+    private readonly MatchReplay _replay;
+    private string? _lastReplayKey; // dedup do auto-play: "seasonId:round" da última partida tocada
+    private IReadOnlyList<BandGoal>? _lastGoals; // a timeline p/ o re-assistir
+    private bool _replayActive;
+    private bool _replayAvailable;
+    private double _myGoalFlashOpacity;
+    private double _theirGoalFlashOpacity;
+    private BandClub? _lastClub; // o último clube do poll — p/ restaurar o MatchLine ao fim do replay
 
     public string StatusLine { get => _statusLine; private set => Set(ref _statusLine, value); }
     public string Phase { get => _phase; private set => Set(ref _phase, value); }
@@ -98,6 +107,7 @@ public sealed class BandViewModel : INotifyPropertyChanged
 
         ApplyClub(s.Club);
         ApplyQueue(s.Queue, s.Club);
+        MaybeAutoPlay(s.Club);
 
         int squad = s.Squad?.Count ?? 0;
         string me = MeOf(s);
@@ -120,16 +130,101 @@ public sealed class BandViewModel : INotifyPropertyChanged
 
     public void SetStatus(string line) => StatusLine = line;
 
+    // --- Replay da partida (SPEC-044): a fatia 1 (SPEC-043) deu a timeline; aqui ela é REPRODUZIDA. ---
+
+    public BandViewModel(int replayWatchSeconds = 240)
+    {
+        _replay = new MatchReplay(replayWatchSeconds);
+        _replay.Frame += OnReplayFrame;
+        _replay.Ended += OnReplayEnded;
+    }
+
+    /// <summary>Para o replay no fechamento da faixa — evita o timer ZUMBI tocando no reauth (o app
+    ///  não morre no 401; a fatia 2 senão churnaria PropertyChanged num VM órfão). Só para o timer.</summary>
+    public void StopReplay() => _replay.Stop();
+
+    public bool ReplayActive
+    {
+        get => _replayActive;
+        private set => Set(ref _replayActive, value);
+    }
+    public bool ReplayAvailable
+    {
+        get => _replayAvailable;
+        private set => Set(ref _replayAvailable, value);
+    }
+    public double MyGoalFlashOpacity
+    {
+        get => _myGoalFlashOpacity;
+        private set => Set(ref _myGoalFlashOpacity, value);
+    }
+    public double TheirGoalFlashOpacity
+    {
+        get => _theirGoalFlashOpacity;
+        private set => Set(ref _theirGoalFlashOpacity, value);
+    }
+
+    /// <summary>Reproduz a última partida liquidada de novo (o "re-assistir"), ignorando o dedup.</summary>
+    public void ReWatch()
+    {
+        if (_lastGoals is { } goals)
+            _replay.Play(goals);
+    }
+
+    // Durante o replay, o MatchLine é DIRIGIDO pelo motor (relógio + placar que sobe); o poll (Apply)
+    // não o sobrescreve (guard em ApplyClub). O flash marca o gol recém-ocorrido.
+    private void OnReplayFrame(ReplayFrame f)
+    {
+        ReplayActive = _replay.IsPlaying;
+        MatchLine = $"⏱ {f.Minute}'  {f.MyGoals}–{f.TheirGoals}";
+        MyGoalFlashOpacity = f.GoalNow && f.GoalIsMine ? 1 : 0;
+        TheirGoalFlashOpacity = f.GoalNow && !f.GoalIsMine ? 1 : 0;
+    }
+
+    // Fim natural do replay (90'): volta ao placar final ESTÁTICO e apaga o flash — senão o ⚽ de um
+    // gol no 90' ficaria preso e o MatchLine preso em "⏱ 90' x–y" até o próximo poll (~60s).
+    private void OnReplayEnded()
+    {
+        ReplayActive = false;
+        MyGoalFlashOpacity = 0;
+        TheirGoalFlashOpacity = 0;
+        ApplyClub(_lastClub);
+    }
+
+    // Auto-play 1× quando uma partida NOVA (chave seasonId:round) liquida com gols. O dedup impede
+    // re-disparar a cada poll de 60s. `Goals` presente (mesmo `[]`, um 0-0) = liquidada.
+    private void MaybeAutoPlay(BandClub? club)
+    {
+        BandMatch? m = club?.TodayMatch;
+        if (club is null || m is not { Played: true, Goals: { } goals })
+        {
+            ReplayAvailable = false; // pré-jogo / sem clube / sem timeline → nada a reproduzir
+            return;
+        }
+        _lastGoals = goals;
+        ReplayAvailable = true;
+        string key = $"{club.SeasonId}:{club.Round}";
+        if (key == _lastReplayKey)
+            return; // já auto-tocou esta rodada
+        _lastReplayKey = key;
+        _replay.Play(goals);
+    }
+
     private void ApplyClub(BandClub? c)
     {
+        _lastClub = c;
         if (c is null)
         {
             ClubLine = "sem clube (fila / reservado)";
-            MatchLine = "";
+            if (!ReplayActive)
+                MatchLine = "";
             return;
         }
         string round = c.Round is { } r ? $" · rod {r}" : " · fora de temporada";
         ClubLine = $"{c.Name} · T{c.Tier} · {c.Position}º{round}";
+
+        if (ReplayActive)
+            return; // o replay dirige o MatchLine; o poll não o sobrescreve
 
         BandMatch? m = c.TodayMatch;
         if (m is null)

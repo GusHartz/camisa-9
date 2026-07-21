@@ -57,8 +57,14 @@ public sealed record BandMatch(
     bool IsHome,
     bool Played,
     int? GoalsFor,
-    int? GoalsAgainst
+    int? GoalsAgainst,
+    // SPEC-043/044: a timeline de gols (cronológica), orientada `isMine`. Ausente/null pré-jogo ou
+    // num cliente/servidor sem o campo (tolerante). Default null p/ a desserialização e a construção.
+    IReadOnlyList<BandGoal>? Goals = null
 );
+
+/// <summary>Um gol na timeline da partida (SPEC-043) — minuto + se foi do clube do humano.</summary>
+public sealed record BandGoal(int Minute, bool IsMine);
 
 public sealed record BandClub(
     string ClubId,
