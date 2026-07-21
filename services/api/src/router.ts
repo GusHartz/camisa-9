@@ -11,22 +11,31 @@ import { requireAthlete } from './auth/require.js';
 import { hit } from './http/rate-limit.js';
 import { fail, rateLimited } from './http/respond.js';
 import type { Handler, RouteCtx, RouteResult } from './http/types.js';
+import { answerDecisionRoute } from './routes/answer-decision.js';
 import { band } from './routes/band.js';
 import { health } from './routes/health.js';
 import { login } from './routes/login.js';
 import { logout } from './routes/logout.js';
+import { purchases } from './routes/purchases.js';
+import { regen } from './routes/regen.js';
+import { trainingSpend } from './routes/training-spend.js';
 
-/** Teto por IP, PRÉ-AUTH — em todo `/v1/auth/*` E no `/v1/band` (`sdd.md:100`; decisão do founder na
- *  SPEC-038: sem isto, o `/v1/band` pagaria um `readSessionByHash` por token-lixo antes de balde algum). */
-const IP_LIMIT = 10;
-
-/** Prefixo pré-auth → RÓTULO do balde de IP. Os baldes são SEPARADOS por prefixo: um flood de login
- *  (`ip:auth:`) não consome o budget da faixa (`ip:band:`), e vice-versa — mesmo teto (10) nos dois.
- *  ⚠️ O balde de IP é por-IP, não por-conta: num NAT, contas no mesmo IP dividem os 10/min (é o teto
- *  coarse pré-auth). O controle fino por-conta é o balde `accountId` (30/min) DENTRO do handler. */
-const IP_BUCKETS: ReadonlyArray<readonly [string, string]> = [
-  [' /v1/auth/', 'auth'],
-  [' /v1/band', 'band'],
+/** Prefixo pré-auth → [RÓTULO do balde de IP, TETO/min]. O balde de IP é a defesa COARSE pré-auth (um
+ *  `Bearer` inválido pagaria um `readSessionByHash` por request sem teto — o furo que a SPEC-038 fechou
+ *  no `/v1/band`). Os baldes são SEPARADOS por ROTA: um flood numa rota não consome o budget das outras
+ *  (`ip:auth:` ≠ `ip:band:` ≠ `ip:training:` …). ⚠️ Regra (achado da revisão da SPEC-041): o teto de IP
+ *  fica ≥ o teto FINO por-conta da rota, senão o IP domina e o por-conta vira ILUSÓRIO — com um `write`
+ *  comum a 10, um jogador distribuindo 15 pontos acumulados batia 429 no 11º `spend` (o gancho central),
+ *  e um treino pesado starvava compra/regen no mesmo NAT. O treino leva 40 (> os 30 por-conta; burst
+ *  legítimo alto = distribuir N pontos); as demais ficam em 10 (responder/comprar/regen nunca passam
+ *  disso). O balde é por-IP, não por-conta: num NAT, contas no mesmo IP dividem o teto (o coarse). */
+const IP_BUCKETS: ReadonlyArray<readonly [string, string, number]> = [
+  [' /v1/auth/', 'auth', 10],
+  [' /v1/band', 'band', 10],
+  [' /v1/training/', 'training', 40],
+  [' /v1/decisions/', 'decisions', 10],
+  [' /v1/purchases', 'purchases', 10],
+  [' /v1/regen', 'regen', 10],
 ];
 
 export interface Routes {
@@ -50,9 +59,9 @@ export interface RouteDeps {
  * prefixo, o teto morde ANTES de resolver a sessão: um flood de `Authorization: Bearer <lixo>` no
  * `/v1/band` é barrado sem pagar um `readSessionByHash` (o furo que a SPEC-038 fechou por decisão).
  */
-function limitByIp(handler: Handler, bucket: string): Handler {
+function limitByIp(handler: Handler, bucket: string, limit: number): Handler {
   return async (ctx) => {
-    const r = hit(`ip:${bucket}:${ctx.ip}`, IP_LIMIT, ctx.epochMs);
+    const r = hit(`ip:${bucket}:${ctx.ip}`, limit, ctx.epochMs);
     return r.allowed ? handler(ctx) : rateLimited(r.retryAfterSec);
   };
 }
@@ -68,6 +77,10 @@ export function createRoutes(deps: RouteDeps): Routes {
       deps.db,
       band({ db: deps.db, worldDb: deps.worldDb, worldSeed: deps.worldSeed }),
     ),
+    'POST /v1/training/spend': requireAthlete(deps.db, trainingSpend(deps.db)),
+    'POST /v1/decisions/answer': requireAthlete(deps.db, answerDecisionRoute(deps.db)),
+    'POST /v1/purchases': requireAthlete(deps.db, purchases(deps.db)),
+    'POST /v1/regen': requireAthlete(deps.db, regen(deps.worldDb, deps.worldSeed)),
     ...deps.extraRoutes,
   };
   // Todo prefixo pré-auth — inclusive o que ainda não existe — passa pelo balde de IP do seu prefixo.
@@ -75,7 +88,7 @@ export function createRoutes(deps: RouteDeps): Routes {
     const handler = table[key];
     if (!handler) continue;
     const bucket = IP_BUCKETS.find(([prefix]) => key.includes(prefix));
-    if (bucket) table[key] = limitByIp(handler, bucket[1]);
+    if (bucket) table[key] = limitByIp(handler, bucket[1], bucket[2]);
   }
   return {
     handle: async (ctx) => {

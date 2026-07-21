@@ -43,6 +43,7 @@ describe('economy — compras e validação (puro)', () => {
     expect(validatePurchase(9999, [], 'jato-particular')).toEqual({
       ok: false,
       reason: 'item inválido',
+      code: 'item_invalid',
     });
   });
 
@@ -50,11 +51,16 @@ describe('economy — compras e validação (puro)', () => {
     expect(validatePurchase(9999, ['videogame'], 'videogame')).toEqual({
       ok: false,
       reason: 'item já adquirido',
+      code: 'already_owned',
     });
   });
 
   it('validatePurchase: saldo insuficiente → erro', () => {
-    expect(validatePurchase(100, [], 'carro')).toEqual({ ok: false, reason: 'saldo insuficiente' });
+    expect(validatePurchase(100, [], 'carro')).toEqual({
+      ok: false,
+      reason: 'saldo insuficiente',
+      code: 'insufficient_balance',
+    });
   });
 
   it('validatePurchase: saldo EXATO (custo == saldo) → ok', () => {
@@ -65,6 +71,7 @@ describe('economy — compras e validação (puro)', () => {
     expect(validatePurchase(999999, [], 'casa')).toEqual({
       ok: false,
       reason: 'moradia fora de ordem',
+      code: 'housing_out_of_order',
     });
     // com o degrau anterior, passa
     expect(validatePurchase(999999, ['quitinete'], 'casa')).toEqual({ ok: true });

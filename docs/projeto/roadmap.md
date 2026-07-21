@@ -80,7 +80,7 @@ Objetivo: a dopamina ao vivo e a presença de 3 níveis.
 | 3.4 | **Presença 3 níveis** | Faixa acima da taskbar → mini ancorada à taskbar → notificações nativas com botões. ⚠️ **depende de 0.4**: a faixa lê `GET /v1/band` (SPEC-038); **server-first** — as escritas de gameplay (3.7) precedem a faixa visual, que por isso já nasce acionável (não read-only). |
 | 3.5 | **Regras de silêncio** | Nunca em tela cheia/apresentação; horário configurável. |
 | 3.6 | **Resumo de Retorno + beat de segunda** | Dopamina de reabertura. |
-| 3.7 | **Batida diária (o Dia do Jogador)** | Manhã jornal + foco do treino, 12h escalação do dia, 15h jogo, 18h decisões, noite notas; resumo semanal no domingo à noite. Carga: 0s–~18min/dia, nada obrigatório. ⚠️ **server-first (SPEC-038):** as escritas (3.7) precedem a faixa visual (3.4); o agregador `GET /v1/band` já serve o dia inteiro do atleta. |
+| 3.7 | **Batida diária (o Dia do Jogador)** | Manhã jornal + foco do treino, 12h escalação do dia, 15h jogo, 18h decisões, noite notas; resumo semanal no domingo à noite. Carga: 0s–~18min/dia, nada obrigatório. ⚠️ **server-first (SPEC-038):** as escritas (3.7) precedem a faixa visual (3.4); o agregador `GET /v1/band` já serve o dia inteiro do atleta. **Escritas ✅ SPEC-041:** `POST /v1/training/spend` (o jogador DISTRIBUI os pontos; o acúmulo é AUTOMÁTICO no scheduler — treino idle, "ausência nunca perde") · `/v1/decisions/answer` · `/v1/purchases` · `/v1/regen` (erro tipado `GameplayError` mapeado na borda; sem migration). |
 
 ### Fase 4 — Mundo visível e viralidade
 Objetivo: fazer o mundo ser sentido e compartilhado.

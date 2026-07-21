@@ -21,7 +21,8 @@ export interface Purchase {
   readonly tradeoff: Tradeoff;
 }
 
-export type PurchaseCheck = { readonly ok: true } | { readonly ok: false; readonly reason: string };
+export type PurchaseCheck =
+  { readonly ok: true } | { readonly ok: false; readonly reason: string; readonly code: string };
 
 /** Tunáveis da economia — TODA a calibração vive aqui (rebalanceia sem tocar lógica). Inteiro. */
 export const ECONOMY = {
@@ -166,11 +167,13 @@ export function validatePurchase(
   id: string,
 ): PurchaseCheck {
   const item = purchaseById(id);
-  if (!item) return { ok: false, reason: 'item inválido' };
-  if (ownedIds.includes(id)) return { ok: false, reason: 'item já adquirido' };
+  if (!item) return { ok: false, reason: 'item inválido', code: 'item_invalid' };
+  if (ownedIds.includes(id))
+    return { ok: false, reason: 'item já adquirido', code: 'already_owned' };
   if (item.kind === 'housing' && item.housingTier !== lifestyleTier(ownedIds) + 1) {
-    return { ok: false, reason: 'moradia fora de ordem' };
+    return { ok: false, reason: 'moradia fora de ordem', code: 'housing_out_of_order' };
   }
-  if (item.cost > balance) return { ok: false, reason: 'saldo insuficiente' };
+  if (item.cost > balance)
+    return { ok: false, reason: 'saldo insuficiente', code: 'insufficient_balance' };
   return { ok: true };
 }

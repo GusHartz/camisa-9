@@ -141,7 +141,7 @@ describe.skipIf(!DB_URL)('mood-repo — Forma & Moral contra Postgres real', () 
 
   it('o TREINO sobe a forma (evento-na-fonte)', async () => {
     const id = await newAthlete();
-    await applyTraining(handle.db, id, 'fisico');
+    await applyTraining(handle.db, id, 'fisico', 1);
     expect((await readMood(handle.db, id))?.forma).toBe(50 + MOOD.trainFormaBump);
   });
 
@@ -170,14 +170,14 @@ describe.skipIf(!DB_URL)('mood-repo — Forma & Moral contra Postgres real', () 
   it('clamps: os bumps não passam de [0,100]', async () => {
     const id = await newAthlete();
     await setMood(id, 99, 98);
-    await applyTraining(handle.db, id, 'fisico'); // +4 forma → teto 100 (não 103)
+    await applyTraining(handle.db, id, 'fisico', 1); // +4 forma → teto 100 (não 103)
     expect((await readMood(handle.db, id))?.forma).toBe(100);
   });
 
   it('isolamento: os wires de mood NÃO tocam focos nem saldo', async () => {
     const id = await newAthlete();
     await handle.db.update(schema.athlete).set({ balance: 500 }).where(eq(schema.athlete.id, id));
-    await applyTraining(handle.db, id, 'fisico'); // forma
+    await applyTraining(handle.db, id, 'fisico', 1); // forma
     await injureFromMatch(handle.db, id, 100, 'leve');
     await advanceRecovery(handle.db, id, 110); // comeback → moral
     const [a] = await handle.db

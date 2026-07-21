@@ -19,6 +19,7 @@ export {
   readAthleteProgress,
   type Progress,
 } from './store/training-repo.js';
+export { GameplayError } from './store/gameplay-error.js';
 export {
   createAccountWithTeam,
   joinTeamWithCode,

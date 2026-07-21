@@ -18,6 +18,7 @@ import type { Db } from '../client.js';
 import { athlete } from '../schema/athlete.js';
 import { purchase } from '../schema/purchase.js';
 import { dailyLedger } from '../schema/daily-ledger.js';
+import { GameplayError } from './gameplay-error.js';
 
 type Tx = Parameters<Parameters<Db['transaction']>[0]>[0];
 
@@ -97,9 +98,9 @@ export async function purchaseItem(db: Db, athleteId: string, itemId: string): P
       if (!row) throw new Error('atleta não encontrado');
       const owned = await readOwnedIds(tx, athleteId);
       const check = validatePurchase(row.balance, owned, itemId);
-      if (!check.ok) throw new Error(check.reason); // a mensagem já é genérica (OP-11)
+      if (!check.ok) throw new GameplayError(check.code, check.reason);
       const item = purchaseById(itemId);
-      if (!item) throw new Error('item inválido');
+      if (!item) throw new GameplayError('item_invalid', 'item inválido');
       const balance = row.balance - item.cost;
       await tx.update(athlete).set({ balance }).where(eq(athlete.id, athleteId));
       await tx.insert(purchase).values({ athleteId, itemId });
@@ -109,7 +110,7 @@ export async function purchaseItem(db: Db, athleteId: string, itemId: string): P
     // OP-11: o CHECK (saldo<0) / PK (posse dup) do pg viram genéricos; o de domínio já é genérico.
     // A causa fica só p/ log server-side (a resposta ao cliente sanitiza na borda HTTP futura).
     if (isConstraintViolation(err))
-      throw new Error('não foi possível concluir a compra', { cause: err });
+      throw new GameplayError('already_owned', 'não foi possível concluir a compra');
     throw err;
   }
 }

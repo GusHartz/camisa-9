@@ -18,7 +18,9 @@ import {
 } from '@camisa-9/player';
 import type { Db } from '../client.js';
 import { athlete } from '../schema/athlete.js';
+import { dailyLedger } from '../schema/daily-ledger.js';
 import { bumpForma } from './mood-repo.js';
+import { GameplayError } from './gameplay-error.js';
 
 type Tx = Parameters<Parameters<Db['transaction']>[0]>[0];
 
@@ -50,10 +52,21 @@ export async function applyTraining(
   db: Db,
   athleteId: string,
   focus: Focus | null,
+  day: number,
   opts?: TrainOpts,
 ): Promise<Progress> {
   return db.transaction(async (tx) => {
     const row = await loadActive(tx, athleteId);
+    // 1×/dia (SPEC-041): o claim `'train'` reivindica o dia; já treinado → no-op (não re-deposita).
+    if (!(await claimTrainDay(tx, athleteId, day))) {
+      return toProgress(
+        row.attributes,
+        row.trainingXp,
+        row.freePoints,
+        row.lastFocus,
+        row.focusStreak,
+      );
+    }
     const chosen = focus ?? coachFocus(row.attributes);
     const streak = resolveFocusStreak(row.lastFocus, row.focusStreak, chosen);
     const r = trainSession(row, chosen, {
@@ -84,9 +97,10 @@ export async function applyTraining(
 export async function spendFreePoint(db: Db, athleteId: string, focus: Focus): Promise<Progress> {
   return db.transaction(async (tx) => {
     const row = await loadActive(tx, athleteId);
-    if (row.freePoints <= 0) throw new Error('sem ponto de treino disponível');
+    if (row.freePoints <= 0)
+      throw new GameplayError('no_free_points', 'sem ponto de treino disponível');
     const applied = applyPoint(row.attributes, focus);
-    if (!applied.ok) throw new Error(applied.reason);
+    if (!applied.ok) throw new GameplayError('attribute_maxed', applied.reason);
     const freePoints = row.freePoints - 1;
     await tx
       .update(athlete)
@@ -106,6 +120,17 @@ export async function readAthleteProgress(db: Db, athleteId: string): Promise<Pr
   const r = rows[0];
   if (!r) return null;
   return toProgress(toAttributes(r), r.trainingXp, r.freePoints, r.lastFocus, r.focusStreak);
+}
+
+/** Reivindica o dia de treino no ledger (SPEC-041). `false` = já treinado hoje → o caller faz no-op.
+ *  Molde do claim de `accrueRound`/`applyDailyMood`: `onConflictDoNothing` na PK `(athlete, day, scope)`. */
+async function claimTrainDay(tx: Tx, athleteId: string, day: number): Promise<boolean> {
+  const claimed = await tx
+    .insert(dailyLedger)
+    .values({ athleteId, day, scope: 'train' })
+    .onConflictDoNothing()
+    .returning({ athleteId: dailyLedger.athleteId });
+  return claimed.length > 0;
 }
 
 async function loadActive(tx: Tx, athleteId: string): Promise<AthleteRow> {

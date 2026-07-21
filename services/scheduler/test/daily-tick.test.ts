@@ -32,6 +32,7 @@ import {
   readSessionByHash,
   injureFromMatch,
   readDecisionLog,
+  readAthleteProgress,
   readInjuryState,
   readMood,
   readWallet,
@@ -175,6 +176,23 @@ describe.skipIf(!DB_URL)('daily-tick — o tick de produção contra Postgres re
     expect((await readWallet(playerHandle.db, humanId))!.balance).toBe(paid); // saldo NÃO dobra
     expect((await readMood(playerHandle.db, humanId))!.moral).toBe(65); // mood NÃO re-decai (não 60)
     expect((await readDecisionLog(playerHandle.db, humanId)).length).toBe(decisions1); // NÃO re-gera
+  });
+
+  it('treino idle (SPEC-041): o tick ACUMULA XP p/ um humano AUSENTE, 1×/dia', async () => {
+    const world = (await readWorld(worldHandle.db, SEED))!;
+    await setSeasonAnchor(worldHandle.db, SEED, world.seasonId, START);
+    const clubId = world.tiers[world.tiers.length - 1]!.leagues[0]!.clubs[0]!.id;
+    const humanId = await seatHuman(clubId); // nunca chama rota nenhuma (ausente)
+
+    // TICK 1 — o técnico treina automaticamente (o jogador não fez nada)
+    await runDailyTick(worldHandle.db, playerHandle.db, SEED, epochAt(START));
+    const p1 = (await readAthleteProgress(playerHandle.db, humanId))!;
+    expect(p1.trainingXp).toBeGreaterThan(0); // acumulou sozinho — "ausência nunca perde"
+
+    // TICK 2 — o MESMO dia: o claim `'train'` impede re-depositar (1×/dia)
+    await runDailyTick(worldHandle.db, playerHandle.db, SEED, epochAt(START));
+    const p2 = (await readAthleteProgress(playerHandle.db, humanId))!;
+    expect(p2.trainingXp).toBe(p1.trainingXp); // NÃO dobrou
   });
 
   it('viragem (season_rolled): NÃO paga salário (dia de descanso, sem rodada) — fix do MAJOR', async () => {
