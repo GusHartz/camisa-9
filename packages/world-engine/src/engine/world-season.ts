@@ -90,7 +90,15 @@ function enrichMatch(
     away?.roster ?? [],
     injuryRng,
   );
-  const goals = matchGoals(m.homeId, m.homeGoals, m.awayId, m.awayGoals, goalRng);
+  const goals = matchGoals(
+    m.homeId,
+    m.homeGoals,
+    home?.roster ?? [],
+    m.awayId,
+    m.awayGoals,
+    away?.roster ?? [],
+    goalRng,
+  );
   const events = mergeChronological(injuries, goals, m.homeId);
   return events.length > 0 ? { ...m, events } : m;
 }

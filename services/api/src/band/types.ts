@@ -104,10 +104,20 @@ export interface BandKit {
   readonly crest: number;
 }
 
-/** Um gol na timeline da partida do dia (SPEC-043) — orientado ao humano (`isMine`). Aditivo `/v1`. */
+/** Um gol na timeline da partida do dia (SPEC-043) — orientado ao humano (`isMine`). SPEC-046: o
+ *  artilheiro/assistente (`byMe`/`scorer`/`assistByMe`/`assist`). Os NOMES só vêm p/ gols do MEU clube
+ *  (a faixa não tem o elenco do adversário → `null`). Aditivo `/v1`. */
 export interface BandGoal {
   readonly minute: number;
   readonly isMine: boolean;
+  /** O gol foi MEU (o artilheiro sou eu). */
+  readonly byMe: boolean;
+  /** Nome do artilheiro — só p/ gols do meu clube; `null` p/ o adversário / desconhecido. */
+  readonly scorer: string | null;
+  /** A assistência foi MINHA. */
+  readonly assistByMe: boolean;
+  /** Nome do assistente — só p/ gols do meu clube; `null` sem assistência / adversário. */
+  readonly assist: string | null;
 }
 
 /** Uma opção de uma decisão pendente (SPEC-045). O `id` responde a decisão (`optionId`); o `label`
@@ -138,6 +148,8 @@ export interface BandMatch {
   /** A timeline de gols (SPEC-043), cronológica. Presente (possivelmente `[]`) quando `played`
    *  (rodada liquidada); OMITIDA pré-jogo (ausente = "não se aplica"). Aditivo — o cliente antigo ignora. */
   readonly goals?: readonly BandGoal[];
+  /** A minha NOTA na partida (SPEC-046), 3.0..10.0. Presente quando `played`; `null` pré-jogo. */
+  readonly myRating: number | null;
 }
 
 export interface BandClub {

@@ -89,6 +89,18 @@ describe('simulateWorldSeason — eventos de partida rica (lesões SPEC-031 + go
     }
   });
 
+  it('ARTILHEIRO + ASSISTÊNCIA (SPEC-046): do elenco do lado certo; assistência ≠ o artilheiro', () => {
+    for (const e of goals) {
+      const ids = new Set((rosterOf.get(e.clubId) ?? []).map((a) => a.id));
+      expect(e.athleteId).toBeDefined();
+      expect(ids.has(e.athleteId!)).toBe(true);
+      if (e.assistId !== undefined) {
+        expect(ids.has(e.assistId)).toBe(true);
+        expect(e.assistId).not.toBe(e.athleteId);
+      }
+    }
+  });
+
   it('0-0 sem lesão → SEM chave `events` (ausência limpa)', () => {
     const clean = allMatches.find(
       (m) =>

@@ -57,9 +57,11 @@ export {
   applyDailyMood,
   readMood,
   readMoodByIds,
+  readFocosByIds,
   bumpMoral,
   bumpForma,
   type Mood,
+  type Focos,
 } from './store/mood-repo.js';
 export {
   authenticate,

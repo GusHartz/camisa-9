@@ -170,6 +170,28 @@ describe.skipIf(!DB_URL)('mood-modulator — Forma/Moral na partida contra Postg
     expect((await readOccupation(worldHandle.db, SEED, humanId))!.ability).toBe(BASE);
   });
 
+  it('SPEC-046: injeta as afinidades de papel dos focos VIVOS (finishing/playmaking/durability distintos)', async () => {
+    const clubId = await entryClubId();
+    const humanId = await createStrongHuman('FWD'); // entra; os focos serão sobrescritos abaixo
+    const res = await enterWorld(worldHandle.db, playerHandle.db, {
+      humanAthleteId: humanId,
+      worldSeed: SEED,
+      clubId,
+    });
+    // focos vivos ASSIMÉTRICOS → cada mapeamento fica unicamente pinado (pega swap tecnico↔tatico,
+    // chave errada [humanAthleteId vs athleteId] ou o wrapper applyHumanTraits dropado).
+    await playerHandle.db
+      .update(playerSchema.athlete)
+      .set({ fisico: 40, tecnico: 80, tatico: 60, mental: 50 })
+      .where(eq(playerSchema.athlete.id, humanId));
+    const world = (await readWorld(worldHandle.db, SEED))!;
+    const modulated = await moodModulator(worldHandle.db, playerHandle.db, SEED)(world);
+    const me = findAthlete(modulated, res.worldAthleteId)!;
+    expect(me.finishing).toBe(80); // Técnico
+    expect(me.playmaking).toBe(60); // Tático
+    expect(me.durability).toBe(40); // Físico
+  });
+
   it('mundo SEM humanos → o modulador é no-op (deep-equal)', async () => {
     const world = (await readWorld(worldHandle.db, SEED))!;
     const same = await moodModulator(worldHandle.db, playerHandle.db, SEED)(world);

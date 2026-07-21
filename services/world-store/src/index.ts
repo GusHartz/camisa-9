@@ -89,6 +89,6 @@ export {
   readQueue,
   type QueueEntry,
 } from './store/waiting-repo.js';
-export { applyMoodToWorld } from './store/mood-modulation.js';
+export { applyMoodToWorld, applyHumanTraits, type HumanTraits } from './store/mood-modulation.js';
 export type { PublishInput, PublishOutcome, PublishStatus } from '@camisa-9/world-engine';
 export * as schema from './schema/index.js';

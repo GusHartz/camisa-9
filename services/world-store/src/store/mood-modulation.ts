@@ -37,3 +37,44 @@ function modulateClub(club: WorldClub, abilityByAthleteId: ReadonlyMap<string, n
   if (!touched) return club;
   return { ...club, roster, strength: clubStrength(roster) };
 }
+
+/** As afinidades de papel do humano (SPEC-046), derivadas dos focos vivos. */
+export interface HumanTraits {
+  readonly finishing: number; // Técnico
+  readonly playmaking: number; // Tático
+  readonly durability: number; // Físico
+}
+
+/** Injeta as afinidades de papel (SPEC-046) nos `Athlete` mapeados — in-memory, como a Forma/Moral,
+ *  MAS sem recomputar `strength` (as afinidades pesam o SORTEIO de gol/assistência/lesão, não a força
+ *  do clube; o re-bake do overall no `clubStrength` é card seguinte). Mapa vazio → no-op. */
+export function applyHumanTraits(
+  world: WorldState,
+  traitsByAthleteId: ReadonlyMap<string, HumanTraits>,
+): WorldState {
+  if (traitsByAthleteId.size === 0) return world;
+  return {
+    ...world,
+    tiers: world.tiers.map((t) => ({
+      ...t,
+      leagues: t.leagues.map((l) => ({
+        ...l,
+        clubs: l.clubs.map((c) => traitClub(c, traitsByAthleteId)),
+      })),
+    })),
+  };
+}
+
+function traitClub(
+  club: WorldClub,
+  traitsByAthleteId: ReadonlyMap<string, HumanTraits>,
+): WorldClub {
+  let touched = false;
+  const roster = club.roster.map((a) => {
+    const t = traitsByAthleteId.get(a.id);
+    if (t === undefined) return a;
+    touched = true;
+    return { ...a, finishing: t.finishing, playmaking: t.playmaking, durability: t.durability };
+  });
+  return touched ? { ...club, roster } : club;
+}

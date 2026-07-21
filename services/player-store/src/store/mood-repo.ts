@@ -51,6 +51,40 @@ export async function readMoodByIds(
   return new Map(rows.map((r) => [r.id, { forma: r.forma, moral: r.moral }]));
 }
 
+/** Os 4 focos VIVOS do atleta (0..99). */
+export interface Focos {
+  readonly fisico: number;
+  readonly tecnico: number;
+  readonly tatico: number;
+  readonly mental: number;
+}
+
+/** Os focos vivos de VÁRIOS atletas (batch) — a costura da partida (SPEC-046) usa para injetar as
+ *  afinidades de papel (Técnico→finishing, Tático→playmaking, Físico→durability) do humano no elenco.
+ *  Devolve um mapa por id (ausentes ficam de fora). */
+export async function readFocosByIds(
+  db: Db,
+  athleteIds: readonly string[],
+): Promise<Map<string, Focos>> {
+  if (athleteIds.length === 0) return new Map();
+  const rows = await db
+    .select({
+      id: athlete.id,
+      fisico: athlete.fisico,
+      tecnico: athlete.tecnico,
+      tatico: athlete.tatico,
+      mental: athlete.mental,
+    })
+    .from(athlete)
+    .where(inArray(athlete.id, [...athleteIds]));
+  return new Map(
+    rows.map((r) => [
+      r.id,
+      { fisico: r.fisico, tecnico: r.tecnico, tatico: r.tatico, mental: r.mental },
+    ]),
+  );
+}
+
 /** O PASSE diário (`FOR UPDATE`): decai a Moral rumo a `baseline + offset do estilo de vida` (as
  *  compras possuídas) e a Forma rumo ao `baseline` (rebaixado enquanto recuperando de lesão no `day`).
  *  Monotônico (converge ao alvo, não oscila). Os eventos já entraram como bumps na fonte. IDEMPOTENTE

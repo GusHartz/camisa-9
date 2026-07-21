@@ -8,7 +8,7 @@ import {
   simulateWorldSeason,
   type WorldState,
 } from '@camisa-9/world-engine';
-import { applyMoodToWorld } from '../src/index.js';
+import { applyHumanTraits, applyMoodToWorld } from '../src/index.js';
 
 const SEED = 'mod-spec-029';
 
@@ -58,5 +58,29 @@ describe('applyMoodToWorld — modulação da partida (SPEC-029, puro)', () => {
     // mapeia a MESMA ability que o atleta já tem → nada muda (nem a força)
     const w2 = applyMoodToWorld(w, new Map([[target.id, target.ability]]));
     expect(findClub(w2, club.id)).toEqual(club); // deep-equal (força não recomputada à toa)
+  });
+});
+
+describe('applyHumanTraits — afinidades de papel (SPEC-046, puro)', () => {
+  it('mapa vazio → no-op (deep-equal)', () => {
+    const w = seedWorld(SEED);
+    expect(applyHumanTraits(w, new Map())).toEqual(w);
+  });
+
+  it('injeta finishing/playmaking/durability no atleta SEM recomputar a força', () => {
+    const w = seedWorld(SEED);
+    const club = firstClub(w);
+    const target = club.roster[0]!;
+    const w2 = applyHumanTraits(
+      w,
+      new Map([[target.id, { finishing: 80, playmaking: 60, durability: 90 }]]),
+    );
+    const club2 = findClub(w2, club.id)!;
+    const a = club2.roster.find((x) => x.id === target.id)!;
+    expect(a.finishing).toBe(80);
+    expect(a.playmaking).toBe(60);
+    expect(a.durability).toBe(90);
+    expect(club2.strength).toBe(club.strength); // afinidades NÃO mexem na força (só o sorteio)
+    expect(club2.roster.find((x) => x.id !== target.id)!.finishing).toBeUndefined(); // NPC intocado
   });
 });

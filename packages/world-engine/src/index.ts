@@ -12,7 +12,20 @@ export {
 } from './engine/prng.js';
 export { generateFixtures } from './engine/fixtures.js';
 export { resolveMatch, type Score } from './engine/match.js';
-export { matchGoals, matchInjuries, MATCH_EVENTS } from './engine/match-events.js';
+export {
+  matchGoals,
+  matchInjuries,
+  MATCH_EVENTS,
+  SCORER_WEIGHTS,
+  ASSIST_WEIGHTS,
+} from './engine/match-events.js';
+export {
+  matchRating,
+  RATING,
+  type MatchOutcome,
+  type RatingFocos,
+  type RatingInput,
+} from './engine/match-rating.js';
 export { computeStandings } from './engine/standings.js';
 export { simulateSeason } from './engine/season.js';
 export { DEMO_LEAGUE } from './data/league-seed.js';
