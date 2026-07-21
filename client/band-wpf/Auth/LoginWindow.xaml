@@ -1,0 +1,26 @@
+<Window x:Class="BandClient.Auth.LoginWindow"
+        xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation"
+        xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+        Title="NEXT GOAT — entrar"
+        SizeToContent="WidthAndHeight" ResizeMode="NoResize"
+        WindowStartupLocation="CenterScreen"
+        Background="#1E1E28" Foreground="#D4D4D4"
+        FontFamily="Segoe UI" FontSize="13">
+    <StackPanel Margin="24" Width="300">
+        <TextBlock Text="NEXT GOAT" FontSize="18" FontWeight="Bold" Foreground="#4EC9B0" />
+        <TextBlock Text="entre com sua conta" Margin="0,2,0,16" Foreground="#9A9AA5" />
+
+        <TextBlock Text="E-mail" Margin="0,0,0,4" />
+        <TextBox x:Name="EmailBox" Padding="6,4" />
+
+        <TextBlock Text="Senha" Margin="0,12,0,4" />
+        <PasswordBox x:Name="PasswordBox" Padding="6,4" />
+
+        <TextBlock x:Name="ErrorText" Foreground="#F48771" Margin="0,12,0,0"
+                   TextWrapping="Wrap" Visibility="Collapsed" />
+
+        <Button x:Name="LoginButton" Content="Entrar" Margin="0,16,0,0" Padding="8,6"
+                Background="#4EC9B0" Foreground="#101018" BorderThickness="0"
+                Click="OnLoginClick" IsDefault="True" />
+    </StackPanel>
+</Window>

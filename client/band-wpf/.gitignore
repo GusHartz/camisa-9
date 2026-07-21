@@ -1,0 +1,5 @@
+# Saída de build do .NET — nunca versionada (SPEC-042).
+bin/
+obj/
+publish/
+*.user

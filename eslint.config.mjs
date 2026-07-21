@@ -56,7 +56,7 @@ const RESTRICTED_PROPERTIES = [
 
 export default tseslint.config(
   // Ignores globais.
-  { ignores: ['**/dist/**', '**/coverage/**', '**/*.tsbuildinfo'] },
+  { ignores: ['**/dist/**', '**/coverage/**', '**/*.tsbuildinfo', 'client/**'] },
 
   js.configs.recommended,
   ...tseslint.configs.recommended,
