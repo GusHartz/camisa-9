@@ -7,11 +7,15 @@ import { eq } from 'drizzle-orm';
 import { migrate } from 'drizzle-orm/node-postgres/migrator';
 import { afterAll, beforeAll, beforeEach, describe, expect, it } from 'vitest';
 import { createAthlete, effectiveAbility, type Position } from '@camisa-9/player';
-import type { WorldState } from '@camisa-9/world-engine';
+import type { RoundResult, WorldState } from '@camisa-9/world-engine';
 import {
   createDb as createWorldDb,
+  readClubBrief,
   readOccupation,
+  readRound,
   readWorld,
+  runRoundForDay,
+  setSeasonAnchor,
   writeWorld,
   schema as worldSchema,
   type DbHandle as WorldHandle,
@@ -168,6 +172,71 @@ describe.skipIf(!DB_URL)('mood-modulator — Forma/Moral na partida contra Postg
 
     // a base CONGELADA (SPEC-020) não mudou — a modulação é só in-memory
     expect((await readOccupation(worldHandle.db, SEED, humanId))!.ability).toBe(BASE);
+  });
+
+  it('SPEC-047 re-bake: o overall VIVO dirige a ability/força; treinar fortalece o clube; o congelado NÃO muda', async () => {
+    const clubId = await entryClubId();
+    const humanId = await createStrongHuman('FWD'); // entra com focos 70 → congela ability 70
+    const res = await enterWorld(worldHandle.db, playerHandle.db, {
+      humanAthleteId: humanId,
+      worldSeed: SEED,
+      clubId,
+    });
+    const world = (await readWorld(worldHandle.db, SEED))!;
+    const mod = moodModulator(worldHandle.db, playerHandle.db, SEED);
+
+    // antes do treino: focos 70 → ability efetiva = effectiveAbility(70, 50, 50) (forma/moral neutras)
+    const before = await mod(world);
+    expect(findAthlete(before, res.worldAthleteId)!.ability).toBe(effectiveAbility(BASE, 50, 50));
+    const strBefore = findClub(before, clubId)!.strength;
+
+    // TREINA depois da entrada: focos sobem para 90 (o congelado `o.ability` segue 70)
+    await playerHandle.db
+      .update(playerSchema.athlete)
+      .set({ fisico: 90, tecnico: 90, tatico: 90, mental: 90 })
+      .where(eq(playerSchema.athlete.id, humanId));
+    const after = await mod(world);
+    // a ability reflete o overall VIVO (90), NÃO o congelado (70) → o re-bake funciona
+    expect(findAthlete(after, res.worldAthleteId)!.ability).toBe(effectiveAbility(90, 50, 50));
+    // o clube ficou MAIS FORTE com o treino (o payoff no placar)
+    expect(findClub(after, clubId)!.strength).toBeGreaterThan(strBefore);
+    // a base congelada (SPEC-020) NÃO foi reescrita — o re-bake é in-memory
+    expect((await readOccupation(worldHandle.db, SEED, humanId))!.ability).toBe(BASE);
+  });
+
+  it('SPEC-047 end-to-end: TREINAR muda o RESULTADO PUBLICADO (o modulador real chega ao placar)', async () => {
+    const clubId = await entryClubId();
+    const humanId = await createStrongHuman('FWD'); // focos 70 → congela 70
+    await enterWorld(worldHandle.db, playerHandle.db, {
+      humanAthleteId: humanId,
+      worldSeed: SEED,
+      clubId,
+    });
+    const occ = (await readOccupation(worldHandle.db, SEED, humanId))!;
+    const brief = (await readClubBrief(worldHandle.db, SEED, clubId))!;
+    const D = 30_000;
+    await setSeasonAnchor(worldHandle.db, SEED, occ.seasonId, D); // rodada 1 = dia D
+    const mod = moodModulator(worldHandle.db, playerHandle.db, SEED);
+    const myMatch = (r: RoundResult): [number, number] => {
+      const m = r.matches.find((x) => x.homeId === clubId || x.awayId === clubId)!;
+      return [m.homeGoals, m.awayGoals];
+    };
+
+    // baseline (focos 70): publica a rodada 1 com o modulador REAL
+    await runRoundForDay(worldHandle.db, SEED, D, mod);
+    const before = myMatch((await readRound(worldHandle.db, brief.leagueId, occ.seasonId, 1))!);
+
+    // TREINA para 99 + limpa a rodada publicada → republica a MESMA rodada com o overall vivo maior
+    await playerHandle.db
+      .update(playerSchema.athlete)
+      .set({ fisico: 99, tecnico: 99, tatico: 99, mental: 99 })
+      .where(eq(playerSchema.athlete.id, humanId));
+    await worldHandle.db.delete(worldSchema.publishedRound);
+    await runRoundForDay(worldHandle.db, SEED, D, mod);
+    const after = myMatch((await readRound(worldHandle.db, brief.leagueId, occ.seasonId, 1))!);
+
+    // o placar do clube do humano MUDOU: o treino (overall vivo) chegou ao RESULTADO publicado
+    expect(after).not.toEqual(before);
   });
 
   it('SPEC-046: injeta as afinidades de papel dos focos VIVOS (finishing/playmaking/durability distintos)', async () => {
