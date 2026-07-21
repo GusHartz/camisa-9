@@ -73,16 +73,23 @@ Os critérios de aceite são verificados à mão (sem C# na CI — precedente do
    **token NÃO aparece em texto plano** (busque a string do token no arquivo → ausente).
 5. **Pipe ao vivo** — a faixa mostra Forma/Moral, atleta (#nº, OVR, posição), fase, clube+placar
    (só quando `played=true`), elenco, decisões, fila; seções `null` ficam **escondidas**, sem crash.
-6. **Erro por code** — pare a API → "sem conexão"; deixe o token expirar (ou apague-o server-side) →
+6. **Replay da partida (SPEC-044)** — com uma rodada tickada com gols (rode o scheduler; a partida do
+   seu clube com placar > 0), abra a faixa: o replay **auto-toca 1×** — durante `replayWatchSeconds`
+   (default 240 = ~4 min, em `config.json`) o `MatchLine` vira `⏱ NN'  M–N`, o relógio corre 0'→90' e
+   o placar **sobe** nos minutos dos gols, com o flash ⚽ (verde=seu, laranja=deles). Ao fim, o placar
+   == o final. Clique **↻ re-assistir** → reinicia do 0'. Um novo poll (mesma rodada) NÃO re-dispara.
+7. **Erro por code** — pare a API → "sem conexão"; deixe o token expirar (ou apague-o server-side) →
    **401 volta ao login**; force o rate limit → respeita o `Retry-After`.
-7. **Orçamento SOB REDE** — deixe ≥10 min ocioso-com-poll e meça (reusa o script do spike):
+8. **Orçamento SOB REDE + DURANTE O REPLAY** — deixe ≥10 min ocioso-com-poll **e** meça também durante
+   uma janela de replay (~4 min); reusa o script do spike:
 
    ```powershell
    spikes/widget-taskbar/measure-usage.ps1 -ProcessName BandClient -Seconds 600
    ```
 
-   Alvo: **CPU média `<1%`** da máquina **E** RAM (working set) **`<150MB`**, sem drift ilimitado.
-8. **Saída graciosa** — duplo-clique fecha; o `Mutex` impede uma 2ª faixa.
+   Alvo: **CPU média `<1%`** da máquina **E** RAM (working set) **`<150MB`**, sem drift ilimitado —
+   inclusive com o replay rodando (o tick é coarse, a animação é leve).
+9. **Saída graciosa** — duplo-clique fecha; o `Mutex` impede uma 2ª faixa.
 
 ## Escopo deferido (fatias futuras)
 

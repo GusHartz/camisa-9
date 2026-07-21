@@ -124,11 +124,12 @@ public partial class MainWindow : Window
         _watcher.Dispose(); // o unhook nativo PRIMEIRO — precisa rodar mesmo no ProcessExit
         try
         {
+            _vm.StopReplay(); // para o replay (senão o timer segue tocando no reauth — MAJOR da revisão)
             _poller.Stop(); // DispatcherTimer é thread-afim: no ProcessExit (outra thread) pode lançar
         }
         catch
         {
-            // best-effort: o unhook já rodou; um timer que não para no teardown é inócuo
+            // best-effort: o unhook já rodou; timers que não param no teardown são inócuos
         }
     }
 
@@ -148,5 +149,13 @@ public partial class MainWindow : Window
         base.OnMouseDown(e);
         if (e.ChangedButton == MouseButton.Left && e.ClickCount == 2)
             Close();
+    }
+
+    // Re-assistir (SPEC-044): um clique simples no "↻" reproduz a última partida de novo. `Handled`
+    // impede o borbulhamento para o OnMouseDown (que fecha a faixa no duplo-clique).
+    private void OnReWatchClick(object sender, MouseButtonEventArgs e)
+    {
+        _vm.ReWatch();
+        e.Handled = true;
     }
 }

@@ -75,17 +75,28 @@
                 </StackPanel>
             </Grid>
 
-            <!-- Linha 3: clube + jogo do dia (ou fila quando sem clube) -->
+            <!-- Linha 3: clube + jogo do dia (durante o replay, o MatchLine vira o relógio+placar) -->
             <Grid Grid.Row="2" Margin="0,4,0,0">
                 <StackPanel Orientation="Horizontal">
                     <TextBlock Text="{Binding ClubLine}" FontSize="11" Foreground="#C7C7D2"
                                TextTrimming="CharacterEllipsis" />
                     <TextBlock Text="{Binding MatchLine}" FontSize="11" Foreground="#9AD0FF"
                                Margin="10,0,0,0" TextTrimming="CharacterEllipsis" />
+                    <!-- Flash do gol durante o replay (verde = seu, laranja = deles). Opacity 0/1 no
+                         RENDER thread — nunca layout por frame (§184). -->
+                    <TextBlock Text="⚽" FontSize="11" Foreground="#4EC9B0" Margin="6,0,0,0"
+                               Opacity="{Binding MyGoalFlashOpacity}" />
+                    <TextBlock Text="⚽" FontSize="11" Foreground="#F48771" Margin="6,0,0,0"
+                               Opacity="{Binding TheirGoalFlashOpacity}" />
                 </StackPanel>
                 <TextBlock Text="{Binding QueueLine}" FontSize="11" Foreground="#DDB86B"
                            HorizontalAlignment="Right"
                            Visibility="{Binding QueueVisible, Converter={StaticResource BoolToVis}}" />
+                <!-- Re-assistir (clique simples): reproduz a última partida liquidada de novo. -->
+                <TextBlock Text="↻ re-assistir" FontSize="10" Foreground="#9AD0FF"
+                           HorizontalAlignment="Right" VerticalAlignment="Center" Cursor="Hand"
+                           MouseLeftButtonDown="OnReWatchClick"
+                           Visibility="{Binding ReplayAvailable, Converter={StaticResource BoolToVis}}" />
             </Grid>
 
             <!-- Linha 4: treino/decisões/lesão + status -->
