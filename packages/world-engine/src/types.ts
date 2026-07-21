@@ -19,13 +19,24 @@ export interface Fixture {
   readonly awayId: string;
 }
 
-/** Um evento da PARTIDA RICA (SPEC-031). Fatia 1: a lesão (`kind:'injury'`); `kind` aberto p/
- *  `goal`/`choice` futuros. Puro/serializável (vai no `jsonb` do `RoundResult`). */
-export interface MatchEvent {
+/** Um evento da PARTIDA RICA — união discriminada por `kind`. Puro/serializável (vai no `jsonb` do
+ *  `RoundResult`). SPEC-031: a lesão. SPEC-043: o gol (a timeline). `choice` (3.2) entra depois. */
+export type MatchEvent = InjuryEvent | GoalEvent;
+
+/** Uma lesão na partida (SPEC-031). */
+export interface InjuryEvent {
   readonly kind: 'injury';
   readonly clubId: string;
   readonly athleteId: string;
   readonly severity: 'leve' | 'media' | 'grave';
+  readonly minute: number;
+}
+
+/** Um gol na timeline da partida (SPEC-043) — minuto + lado. O artilheiro (`athleteId?`) e a nota
+ *  do jogador entram ADITIVOS depois, sem quebrar o contrato. */
+export interface GoalEvent {
+  readonly kind: 'goal';
+  readonly clubId: string;
   readonly minute: number;
 }
 

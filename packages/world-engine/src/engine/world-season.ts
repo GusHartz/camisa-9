@@ -12,6 +12,7 @@ import type {
   Club,
   LeagueSeasonResult,
   LeagueState,
+  MatchEvent,
   MatchResult,
   Seed,
   SeasonResult,
@@ -20,7 +21,7 @@ import type {
   WorldState,
 } from '../types.js';
 import { createRng, deriveSeed } from './prng.js';
-import { matchInjuries } from './match-events.js';
+import { matchGoals, matchInjuries } from './match-events.js';
 import { simulateSeason } from './season.js';
 
 /** Projeta o clube rico do mundo no clube mínimo que o motor de partida consome. */
@@ -62,7 +63,11 @@ function enrichEvents(
   return { ...result, rounds };
 }
 
-/** Anexa `events` a UMA partida (ausente se nenhum) — RNG derivado com discriminador `'events'`. */
+/** Anexa `events` a UMA partida (ausente se nenhum) — a timeline unificada de lesões (SPEC-031) + gols
+ *  (SPEC-043). DOIS streams DISJUNTOS: `'events'` (lesão) e `'goals'` (gol). `deriveSeed` é injetivo
+ *  por prefixo de comprimento, então nenhum desloca o stream do placar (6 partes) nem o do outro →
+ *  `resolveMatch`/`simulateSeason` e os goldens ficam byte-idênticos. Os gols SOMAM o placar por
+ *  construção (a contagem vem de `m.homeGoals`/`m.awayGoals`, já fixados). */
 function enrichMatch(
   m: MatchResult,
   leagueId: string,
@@ -70,11 +75,40 @@ function enrichMatch(
   clubById: ReadonlyMap<string, WorldClub>,
   seed: Seed,
 ): MatchResult {
-  const rng = createRng(
+  const injuryRng = createRng(
     deriveSeed(seed, leagueId, seasonId, m.round, m.homeId, m.awayId, 'events'),
+  );
+  const goalRng = createRng(
+    deriveSeed(seed, leagueId, seasonId, m.round, m.homeId, m.awayId, 'goals'),
   );
   const home = clubById.get(m.homeId);
   const away = clubById.get(m.awayId);
-  const events = matchInjuries(m.homeId, home?.roster ?? [], m.awayId, away?.roster ?? [], rng);
+  const injuries = matchInjuries(
+    m.homeId,
+    home?.roster ?? [],
+    m.awayId,
+    away?.roster ?? [],
+    injuryRng,
+  );
+  const goals = matchGoals(m.homeId, m.homeGoals, m.awayId, m.awayGoals, goalRng);
+  const events = mergeChronological(injuries, goals, m.homeId);
   return events.length > 0 ? { ...m, events } : m;
+}
+
+/** Funde lesões + gols numa timeline com ordem TOTAL determinística (NÃO depende da estabilidade do
+ *  `Array.sort`): minuto asc → lado (casa antes de fora) → seq de geração estável. */
+function mergeChronological(
+  injuries: readonly MatchEvent[],
+  goals: readonly MatchEvent[],
+  homeId: string,
+): MatchEvent[] {
+  const tagged = [...injuries, ...goals].map((e, seq) => ({ e, seq }));
+  tagged.sort((a, b) => {
+    if (a.e.minute !== b.e.minute) return a.e.minute - b.e.minute;
+    const sideA = a.e.clubId === homeId ? 0 : 1;
+    const sideB = b.e.clubId === homeId ? 0 : 1;
+    if (sideA !== sideB) return sideA - sideB;
+    return a.seq - b.seq;
+  });
+  return tagged.map((t) => t.e);
 }
