@@ -546,6 +546,43 @@ describe.skipIf(!DB_URL)('readBandState — o agregador da faixa (SPEC-038)', ()
     });
   });
 
+  describe('SPEC-046 — artilheiro + nota na faixa', () => {
+    it('myRating no range [3,10] + determinística; byMe conta os meus gols do mundo', async () => {
+      const { athleteId, clubId, seasonId } = await seatHuman();
+      await runRoundForDay(worldHandle.db, SEED, D);
+      await advanceTickCursor(worldHandle.db, SEED, D);
+
+      const state = await readBandState(deps, athleteId, epochAt(D, 16));
+      const match = state.club!.todayMatch!;
+      expect(match.played).toBe(true);
+      expect(typeof match.myRating).toBe('number');
+      expect(match.myRating!).toBeGreaterThanOrEqual(3);
+      expect(match.myRating!).toBeLessThanOrEqual(10);
+      // determinística: reler dá a mesma nota
+      const again = await readBandState(deps, athleteId, epochAt(D, 16));
+      expect(again.club!.todayMatch!.myRating).toBe(match.myRating);
+
+      // byMe bate com os gols crus cujo artilheiro é o meu id do mundo
+      const occ = (await readOccupation(worldHandle.db, SEED, athleteId))!;
+      const brief = (await readClubBrief(worldHandle.db, SEED, clubId))!;
+      const raw = (await readRound(worldHandle.db, brief.leagueId, seasonId, 1))!.matches.find(
+        (m) => m.homeId === clubId || m.awayId === clubId,
+      )!;
+      const myWorldGoals = (raw.events ?? []).filter(
+        (e) => e.kind === 'goal' && e.athleteId === occ.athleteId,
+      ).length;
+      expect((match.goals ?? []).filter((g) => g.byMe).length).toBe(myWorldGoals);
+      // todo gol tem os campos SPEC-046; o artilheiro do MEU clube é nomeado (ou null), do adversário null
+      const myName = state.squad.find((s) => s.isMe)!.name;
+      for (const g of match.goals ?? []) {
+        expect(typeof g.byMe).toBe('boolean');
+        expect(g.scorer === null || typeof g.scorer === 'string').toBe(true);
+        if (g.byMe) expect(g.scorer).toBe(myName);
+        if (!g.isMine) expect(g.scorer).toBeNull(); // sem o elenco do adversário
+      }
+    });
+  });
+
   describe('grep-gates estruturais + teto de round-trips', () => {
     const bandFiles = [
       'band/band-state.ts',

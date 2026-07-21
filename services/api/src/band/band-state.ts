@@ -8,7 +8,13 @@
 // ⚠️ TRÊS RELÓGIOS, de propósito: `slot.hour` → a fase · `slot.dayIndex` (dia-calendário) →
 // `roundSettled` e `markActive` · `tickDay = dueDayIndex` → tudo que o tick carimba no player-store
 // (lesão, decisões, rodada do clube). Antes das 15h, `tickDay = slot.dayIndex − 1`.
-import { dueDayIndex, resolveSlot, type RoundSlot } from '@camisa-9/world-engine';
+import {
+  dueDayIndex,
+  resolveSlot,
+  type Position,
+  type RatingFocos,
+  type RoundSlot,
+} from '@camisa-9/world-engine';
 import { dayPhase, daysUntilRevert } from '@camisa-9/player';
 import {
   readAthleteIdentity,
@@ -49,6 +55,7 @@ import {
   buildSquad,
   buildTodayMatch,
   findTodayFixture,
+  type BandMatchCtx,
 } from './from-world.js';
 import type { BandClub, BandMatch, BandMate, BandQueue, BandState, BandTime } from './types.js';
 
@@ -103,11 +110,13 @@ export async function readBandState(
   // (hora<15) divergem: hoje ainda não jogou, mas a rodada de ONTEM (=tickDay) já tem placar — e é
   // ela que o `todayMatch` mostra, então o placar gateia no SEGUNDO (senão o jogo de ontem sumiria).
   const cursor = tickCursor ?? -1;
-  const world = await resolveWorldSlice(deps, occupation, athleteId, {
-    tickDay,
-    calendarDay: slot.dayIndex,
-    settled: cursor >= tickDay,
-  });
+  const world = await resolveWorldSlice(
+    deps,
+    occupation,
+    athleteId,
+    { tickDay, calendarDay: slot.dayIndex, settled: cursor >= tickDay },
+    progress.attributes, // os focos vivos → a ponderação/nota da partida (SPEC-046)
+  );
   const age = ageOfMe(world.squad);
   const canRegen = canRegenOf(world.club, age);
   const decisions = buildDecisions(pendingRows);
@@ -144,6 +153,7 @@ async function resolveWorldSlice(
   occupation: OccupationView | null,
   athleteId: string,
   clocks: ClubClocks,
+  focos: RatingFocos,
 ): Promise<WorldSlice> {
   if (!occupation) {
     return { club: null, squad: EMPTY_SQUAD, queue: await readQueueSlice(deps, athleteId) };
@@ -151,7 +161,7 @@ async function resolveWorldSlice(
   if (occupation.lastActiveDay !== clocks.calendarDay) {
     await markPresence(deps, athleteId, clocks.calendarDay);
   }
-  return readClubWorld(deps, occupation, clocks);
+  return readClubWorld(deps, occupation, clocks, focos);
 }
 
 function buildTime(slot: RoundSlot, epochMs: number, settled: boolean): BandTime {
@@ -189,6 +199,7 @@ async function readClubWorld(
   deps: BandDeps,
   occupation: OccupationView,
   clocks: ClubClocks,
+  focos: RatingFocos,
 ): Promise<WorldSlice> {
   const [brief, squadRows, startDayIndex] = await Promise.all([
     readClubBrief(deps.worldDb, deps.worldSeed, occupation.clubId),
@@ -199,17 +210,21 @@ async function readClubWorld(
   if (!brief) return { club: null, squad, queue: null };
   const leagueClubIds = await readLeagueClubIds(deps.worldDb, deps.worldSeed, brief.leagueId);
   const round = seasonRound(startDayIndex, clocks.tickDay, leagueClubIds.length);
+  // O contexto do humano p/ orientar a partida (SPEC-046): id do mundo + focos vivos + seed/liga/
+  // temporada + o mapa de nomes do MEU elenco (nomear autor/assistente dos meus gols).
+  const ctx: BandMatchCtx = {
+    meWorldId: occupation.athleteId,
+    position: occupation.position as Position,
+    focos,
+    seed: deps.worldSeed,
+    leagueId: brief.leagueId,
+    seasonId: occupation.seasonId,
+    nameByWorldId: new Map(squadRows.map((r) => [r.athleteId, r.name])),
+  };
   const todayMatch =
     round === null
       ? null
-      : await readTodayMatch(
-          deps,
-          occupation,
-          brief.leagueId,
-          leagueClubIds,
-          round,
-          clocks.settled,
-        );
+      : await readTodayMatch(deps, occupation, leagueClubIds, round, clocks.settled, ctx);
   const revert = daysUntilRevert(
     occupation.frozenSinceDay,
     clocks.calendarDay,
@@ -219,26 +234,30 @@ async function readClubWorld(
   return { club, squad, queue: null };
 }
 
-/** O jogo do dia: o fixture (puro) dá o adversário; PÓS-JOGO a rodada publicada dá o placar. */
+/** O jogo do dia: o fixture (puro) dá o adversário; PÓS-JOGO a rodada publicada dá o placar + a
+ *  timeline com autor/assistência/nota (SPEC-046, via o `ctx`). */
 async function readTodayMatch(
   deps: BandDeps,
   occupation: OccupationView,
-  leagueId: string,
   leagueClubIds: readonly string[],
   round: number,
   settled: boolean,
+  ctx: BandMatchCtx,
 ): Promise<BandMatch | null> {
   const fixture = findTodayFixture(occupation.clubId, round, leagueClubIds);
   if (!fixture) return null;
   const [oppBrief, roundResult] = await Promise.all([
     readClubBrief(deps.worldDb, deps.worldSeed, fixture.opponentClubId),
-    settled ? readRound(deps.worldDb, leagueId, occupation.seasonId, round) : Promise.resolve(null),
+    settled
+      ? readRound(deps.worldDb, ctx.leagueId, occupation.seasonId, round)
+      : Promise.resolve(null),
   ]);
   return buildTodayMatch(
     occupation.clubId,
     fixture,
     roundResult,
     oppBrief?.name ?? fixture.opponentClubId,
+    ctx,
   );
 }
 

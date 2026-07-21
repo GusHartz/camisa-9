@@ -32,12 +32,17 @@ export interface InjuryEvent {
   readonly minute: number;
 }
 
-/** Um gol na timeline da partida (SPEC-043) — minuto + lado. O artilheiro (`athleteId?`) e a nota
- *  do jogador entram ADITIVOS depois, sem quebrar o contrato. */
+/** Um gol na timeline da partida (SPEC-043) — minuto + lado. O artilheiro (`athleteId`) e o
+ *  assistente (`assistId`) são amostrados do elenco (SPEC-046), ponderados por atributo; opcionais
+ *  (ausentes se o elenco não existe / gol sem assistência). */
 export interface GoalEvent {
   readonly kind: 'goal';
   readonly clubId: string;
   readonly minute: number;
+  /** Quem marcou (SPEC-046) — id do atleta do elenco do `clubId`. */
+  readonly athleteId?: string;
+  /** Quem deu a assistência (SPEC-046) — id do elenco ≠ o artilheiro; ausente em gol sem assistência. */
+  readonly assistId?: string;
 }
 
 export interface MatchResult {
@@ -92,7 +97,10 @@ export type Position = 'GK' | 'DEF' | 'MID' | 'FWD';
  */
 export type Archetype = 'formador' | 'equilibrado' | 'comprador' | 'gastador';
 
-/** Atleta NPC mínimo: idade + habilidade + posição. */
+/** Atleta NPC mínimo: idade + habilidade + posição. As **afinidades de papel** (SPEC-046) são hints
+ *  OPCIONAIS injetados in-memory para o HUMANO (dos focos vivos: Técnico→finishing, Tático→playmaking,
+ *  Físico→durability); ausentes no NPC (o sorteio cai no default posição×habilidade). Não é o modelo de
+ *  12 atributos — só 3 hints de papel; o snapshot/schema não muda. */
 export interface Athlete {
   readonly id: string;
   readonly name: string;
@@ -101,6 +109,12 @@ export interface Athlete {
   /** Habilidade agregada 0..100 (base do `clubStrength`). */
   readonly ability: number;
   readonly position: Position;
+  /** Afinidade de finalização (peso p/ ser o artilheiro) — humano: Técnico; NPC: ausente. */
+  readonly finishing?: number;
+  /** Afinidade de criação (peso p/ dar a assistência) — humano: Tático; NPC: ausente. */
+  readonly playmaking?: number;
+  /** Resistência (menor chance de lesão) — humano: Físico; NPC: ausente. */
+  readonly durability?: number;
 }
 
 /** Clube do mundo: elenco NPC + força derivada + arquétipo/pesos seed-sorteados. */

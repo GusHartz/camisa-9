@@ -1,10 +1,32 @@
 // O lado MUNDO do agregador (SPEC-038): transforma as leituras estreitas do world-store nas fatias
 // do contrato. Puro — recebe valores já lidos. O kit e o fixture são DERIVADOS (fns puras), sem
 // tocar o snapshot nem os goldens. `generateFixtures` é reuso puro do engine (só consome `c.id`).
-import { generateFixtures, type GoalEvent, type RoundResult } from '@camisa-9/world-engine';
+import {
+  generateFixtures,
+  matchRating,
+  type GoalEvent,
+  type MatchOutcome,
+  type MatchResult,
+  type Position,
+  type RatingFocos,
+  type RoundResult,
+} from '@camisa-9/world-engine';
 import { kitFromClubId } from '@camisa-9/player';
 import type { ClubBrief, OccupationView, QueueEntry } from '@camisa-9/world-store';
 import type { BandClub, BandGoal, BandMatch, BandMate, BandQueue } from './types.js';
+
+/** O contexto do HUMANO para orientar a partida (SPEC-046): quem sou eu no mundo + os focos vivos +
+ *  as partes da seed p/ a nota + o mapa de nomes do MEU elenco (p/ nomear autor/assistente). `null`
+ *  pré-jogo / sem vaga. */
+export interface BandMatchCtx {
+  readonly meWorldId: string;
+  readonly position: Position;
+  readonly focos: RatingFocos;
+  readonly seed: string;
+  readonly leagueId: string;
+  readonly seasonId: string;
+  readonly nameByWorldId: ReadonlyMap<string, string>;
+}
 
 /** O elenco de 16 (11+5). `isMe` bate o id do MUNDO da minha ocupação; `avatarSeed` = o id do mundo. */
 export function buildSquad(
@@ -55,24 +77,26 @@ export function findTodayFixture(
 }
 
 /** O jogo do dia. PRÉ-JOGO: `played:false`, placar `null`. PÓS-JOGO: o placar da rodada publicada,
- *  orientado por mando (`isHome`). ⚠️ `homeGoals`/`awayGoals` — nunca `goalsFor`/`goalsAgainst`. */
+ *  orientado por mando (`isHome`), + a timeline (SPEC-043) com autor/assistência e a minha nota
+ *  (SPEC-046). ⚠️ `homeGoals`/`awayGoals` — nunca `goalsFor`/`goalsAgainst`. */
 export function buildTodayMatch(
   clubId: string,
   fixture: { readonly opponentClubId: string; readonly isHome: boolean },
   roundResult: RoundResult | null,
   opponentName: string,
+  ctx: BandMatchCtx | null,
 ): BandMatch {
   const match = roundResult?.matches.find((m) => m.homeId === clubId || m.awayId === clubId);
   const played = match !== undefined;
   const goalsFor = match ? (fixture.isHome ? match.homeGoals : match.awayGoals) : null;
   const goalsAgainst = match ? (fixture.isHome ? match.awayGoals : match.homeGoals) : null;
-  // A timeline de gols (SPEC-043) ria o MESMO gate que o placar: presente quando o `match` existe
-  // (rodada MOSTRADA liquidada, SPEC-038), omitida pré-jogo. `isMine` = o gol foi do clube do humano.
+  const goalEvents = match ? (match.events ?? []).filter(isGoal) : [];
+  // Timeline (SPEC-043) sob o MESMO gate do placar (rodada MOSTRADA liquidada, SPEC-038), omitida
+  // pré-jogo. Autor/assistência/nota (SPEC-046) orientados ao humano.
   const goals: readonly BandGoal[] | undefined = match
-    ? (match.events ?? [])
-        .filter((e): e is GoalEvent => e.kind === 'goal')
-        .map((e) => ({ minute: e.minute, isMine: e.clubId === clubId }))
+    ? goalEvents.map((e) => buildGoal(e, clubId, ctx))
     : undefined;
+  const myRating = match && ctx ? ratingFor(match, fixture.isHome, goalEvents, ctx) : null;
   return {
     opponentClubId: fixture.opponentClubId,
     opponentName,
@@ -81,7 +105,64 @@ export function buildTodayMatch(
     goalsFor,
     goalsAgainst,
     ...(goals !== undefined ? { goals } : {}),
+    myRating,
   };
+}
+
+function isGoal(e: { readonly kind: string }): e is GoalEvent {
+  return e.kind === 'goal';
+}
+
+/** Um gol → `BandGoal`, orientado ao humano. Os NOMES só p/ gols do MEU clube (tenho o elenco). */
+function buildGoal(e: GoalEvent, clubId: string, ctx: BandMatchCtx | null): BandGoal {
+  const isMine = e.clubId === clubId;
+  const nameOf = (id: string | undefined): string | null =>
+    isMine && id !== undefined ? (ctx?.nameByWorldId.get(id) ?? null) : null;
+  return {
+    minute: e.minute,
+    isMine,
+    byMe: ctx !== null && e.athleteId === ctx.meWorldId,
+    scorer: nameOf(e.athleteId),
+    assistByMe: ctx !== null && e.assistId === ctx.meWorldId,
+    assist: nameOf(e.assistId),
+  };
+}
+
+/** A minha nota (SPEC-046) = `matchRating(...)/10`. Conta os meus gols/assistências dos eventos.
+ *  ⚠️ DÉBITO (mesma classe do snapshot de mood da SPEC-029): a nota é recomputada dos focos VIVOS
+ *  (`ctx.focos`) a cada leitura, então uma partida já encerrada pode mudar a nota se o jogador
+ *  distribuir um ponto durante a janela ~24h em que o jogo fica visível. É determinística DADOS os
+ *  focos; snapshotar os focos por rodada = card de auditoria futuro (como o de mood). */
+function ratingFor(
+  match: MatchResult,
+  isHome: boolean,
+  goalEvents: readonly GoalEvent[],
+  ctx: BandMatchCtx,
+): number {
+  const goalsFor = isHome ? match.homeGoals : match.awayGoals;
+  const goalsAgainst = isHome ? match.awayGoals : match.homeGoals;
+  const tenths = matchRating({
+    seed: ctx.seed,
+    leagueId: ctx.leagueId,
+    seasonId: ctx.seasonId,
+    round: match.round,
+    homeId: match.homeId,
+    awayId: match.awayId,
+    athleteId: ctx.meWorldId,
+    position: ctx.position,
+    goalsScored: goalEvents.filter((e) => e.athleteId === ctx.meWorldId).length,
+    assists: goalEvents.filter((e) => e.assistId === ctx.meWorldId).length,
+    goalsAgainst,
+    result: outcomeOf(goalsFor, goalsAgainst),
+    focos: ctx.focos,
+  });
+  return tenths / 10;
+}
+
+function outcomeOf(goalsFor: number, goalsAgainst: number): MatchOutcome {
+  if (goalsFor > goalsAgainst) return 'win';
+  if (goalsFor < goalsAgainst) return 'loss';
+  return 'draw';
 }
 
 /** O clube do humano. O kit é DERIVADO do `clubId` (o mundo NPC não grava kit); os relógios de
