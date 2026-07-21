@@ -248,6 +248,28 @@ export async function countPendingDecisions(
   return rows[0]?.n ?? 0;
 }
 
+/** As decisões AINDA PENDENTES do atleta no `day`, como LINHAS (SPEC-045) — o que a faixa precisa
+ *  para o jogador RESPONDER (o `countPendingDecisions` só dá o badge). Mesmo filtro/ordem do count; a
+ *  borda hidrata `prompt`/`options` do catálogo por `templateId` (a fonte única). */
+export interface PendingDecision {
+  readonly id: string;
+  readonly templateId: string;
+}
+
+export async function readPendingDecisions(
+  db: Db,
+  athleteId: string,
+  day: number,
+): Promise<PendingDecision[]> {
+  return db
+    .select({ id: decision.id, templateId: decision.templateId })
+    .from(decision)
+    .where(
+      and(eq(decision.athleteId, athleteId), eq(decision.day, day), eq(decision.status, 'pending')),
+    )
+    .orderBy(decision.ord); // a ordem apresentada (rank de geração persistido)
+}
+
 function hydrate(templateId: string): Decision | null {
   const t = templateById(templateId);
   return t ? { templateId: t.id, type: t.type, prompt: t.prompt, options: t.options } : null;

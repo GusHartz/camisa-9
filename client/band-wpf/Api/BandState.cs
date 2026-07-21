@@ -17,7 +17,10 @@ public sealed record BandAthlete(
     int Overall,
     int? Age,
     bool Available,
-    int Number
+    int Number,
+    // SPEC-045: dica de elegibilidade do regen (tem vaga + idade >= mínima). Default false p/ o
+    // cliente/servidor sem o campo (tolerante). É só render; o servidor é a autoridade (409).
+    bool CanRegen = false
 );
 
 public sealed record BandBars(int Forma, int Moral);
@@ -38,7 +41,22 @@ public sealed record BandHome(
     long Balance,
     int LifestyleTier,
     bool HasMothersHouse,
-    IReadOnlyList<string> OwnedItemIds
+    IReadOnlyList<string> OwnedItemIds,
+    // SPEC-045: o catálogo de compras orientado ao atleta. Ausente/null num servidor antigo (tolerante).
+    IReadOnlyList<BandPurchase>? Catalog = null
+);
+
+/// <summary>Um item do catálogo de compras (SPEC-045) — já com o estado do atleta
+/// (owned/affordable/available). `available` = pode comprar agora; dica de render, o servidor revalida.</summary>
+public sealed record BandPurchase(
+    string Id,
+    string Name,
+    int Cost,
+    string Kind,
+    int? HousingTier,
+    bool Owned,
+    bool Affordable,
+    bool Available
 );
 
 public sealed record BandInjury(
@@ -94,6 +112,19 @@ public sealed record BandMate(
 
 public sealed record BandQueue(int Rank, int Total);
 
+/// <summary>Uma opção de uma decisão pendente (SPEC-045) — `Id` responde a decisão, `Label` é o texto.</summary>
+public sealed record BandDecisionOption(string Id, string Label);
+
+/// <summary>Uma decisão de carreira pendente (SPEC-045) — o jogador responde na faixa. `Id` (uuid) é o
+/// recurso; `TemplateId`/`Options[].Id` são localização-ready; `Prompt`/`Label` são o texto PT-BR.</summary>
+public sealed record BandDecision(
+    string Id,
+    string TemplateId,
+    string Type,
+    string Prompt,
+    IReadOnlyList<BandDecisionOption> Options
+);
+
 public sealed record BandState(
     string ContractVersion,
     BandTime ServerTime,
@@ -106,5 +137,7 @@ public sealed record BandState(
     BandClub? Club,
     IReadOnlyList<BandMate> Squad,
     int PendingDecisions,
-    BandQueue? Queue
+    BandQueue? Queue,
+    // SPEC-045: a lista de decisões pendentes p/ o jogador responder. Ausente/null num servidor antigo.
+    IReadOnlyList<BandDecision>? Decisions = null
 );

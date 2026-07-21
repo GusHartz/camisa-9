@@ -1,5 +1,6 @@
 using System.ComponentModel;
 using System.Globalization;
+using System.Linq;
 using System.Runtime.CompilerServices;
 using System.Windows.Media;
 using BandClient.Api;
@@ -47,6 +48,25 @@ public sealed class BandViewModel : INotifyPropertyChanged
     private double _theirGoalFlashOpacity;
     private BandClub? _lastClub; // o último clube do poll — p/ restaurar o MatchLine ao fim do replay
 
+    // Affordances de ESCRITA (SPEC-045): o estado que gateia os gestos + o feedback transitório.
+    private int _freePoints;
+    private bool _trainingActionable;
+    private int _fisico,
+        _tecnico,
+        _tatico,
+        _mental;
+    private BandDecision? _currentDecision;
+    private bool _hasDecisions;
+    private bool _decisionOpen;
+    private IReadOnlyList<ShopRow> _shopItems = Array.Empty<ShopRow>();
+    private bool _hasCatalog;
+    private bool _shopOpen;
+    private bool _canRegen;
+    private bool _regenArmed; // 2 passos: o 1º clique arma, o 2º confirma (ação destrutiva)
+    private bool _regenAvailable;
+    private bool _regenConfirming;
+    private string _actionFeedback = "";
+
     public string StatusLine { get => _statusLine; private set => Set(ref _statusLine, value); }
     public string Phase { get => _phase; private set => Set(ref _phase, value); }
     public Brush PhaseBrush { get => _phaseBrush; private set => Set(ref _phaseBrush, value); }
@@ -63,6 +83,67 @@ public sealed class BandViewModel : INotifyPropertyChanged
     public string DecisionsLine { get => _decisionsLine; private set => Set(ref _decisionsLine, value); }
     public bool QueueVisible { get => _queueVisible; private set => Set(ref _queueVisible, value); }
     public string QueueLine { get => _queueLine; private set => Set(ref _queueLine, value); }
+
+    // --- Affordances de escrita (SPEC-045) ---
+    public int FreePoints { get => _freePoints; private set => Set(ref _freePoints, value); }
+    public bool TrainingActionable { get => _trainingActionable; private set => Set(ref _trainingActionable, value); }
+    public int Fisico { get => _fisico; private set => Set(ref _fisico, value); }
+    public int Tecnico { get => _tecnico; private set => Set(ref _tecnico, value); }
+    public int Tatico { get => _tatico; private set => Set(ref _tatico, value); }
+    public int Mental { get => _mental; private set => Set(ref _mental, value); }
+    public BandDecision? CurrentDecision { get => _currentDecision; private set => Set(ref _currentDecision, value); }
+    public bool HasDecisions { get => _hasDecisions; private set => Set(ref _hasDecisions, value); }
+    public bool DecisionOpen { get => _decisionOpen; private set => Set(ref _decisionOpen, value); }
+    public IReadOnlyList<ShopRow> ShopItems { get => _shopItems; private set => Set(ref _shopItems, value); }
+    public bool HasCatalog { get => _hasCatalog; private set => Set(ref _hasCatalog, value); }
+    public bool ShopOpen { get => _shopOpen; private set => Set(ref _shopOpen, value); }
+
+    public bool CanRegen
+    {
+        get => _canRegen;
+        private set
+        {
+            if (Set(ref _canRegen, value))
+                UpdateRegenAffordance();
+        }
+    }
+    public bool RegenArmed
+    {
+        get => _regenArmed;
+        private set
+        {
+            if (Set(ref _regenArmed, value))
+                UpdateRegenAffordance();
+        }
+    }
+
+    // As duas faces da affordance de regen (evita compound-binding no XAML): "renascer carreira"
+    // (elegível, não armado) e "confirmar? sim/não" (armado). Derivadas de CanRegen × RegenArmed.
+    public bool RegenAvailable { get => _regenAvailable; private set => Set(ref _regenAvailable, value); }
+    public bool RegenConfirming { get => _regenConfirming; private set => Set(ref _regenConfirming, value); }
+
+    public string ActionFeedback { get => _actionFeedback; private set => Set(ref _actionFeedback, value); }
+
+    /// <summary>Feedback transitório de uma ação (o BandActions chama). Persiste até a próxima ação.</summary>
+    public void SetActionFeedback(string msg) => ActionFeedback = msg;
+
+    /// <summary>Abre/fecha o painel de decisões (só abre se há decisão pendente).</summary>
+    public void ToggleDecision() => DecisionOpen = !_decisionOpen && _hasDecisions;
+
+    /// <summary>Abre/fecha a loja (só abre se há catálogo — i.e., o atleta tem clube/estado).</summary>
+    public void ToggleShop() => ShopOpen = !_shopOpen && _hasCatalog;
+
+    /// <summary>1º passo do regen (ação destrutiva): arma a confirmação — NÃO posta ainda.</summary>
+    public void ArmRegen() => RegenArmed = true;
+
+    /// <summary>Cancela/consome a confirmação de regen.</summary>
+    public void DisarmRegen() => RegenArmed = false;
+
+    private void UpdateRegenAffordance()
+    {
+        RegenAvailable = _canRegen && !_regenArmed;
+        RegenConfirming = _canRegen && _regenArmed;
+    }
 
     // Avatar/kit em blocos de cor procedurais derivados dos índices (o escopo D da SPEC-042; a arte
     // real — avatar em camadas por paleta indexada — é fatia futura).
@@ -94,6 +175,14 @@ public sealed class BandViewModel : INotifyPropertyChanged
                 : t.FreePoints > 0
                     ? $"Treino: {t.FreePoints} ponto(s) para distribuir  ·  XP {t.TrainingXp}/{t.NextThreshold}"
                     : $"Treino: XP {t.TrainingXp}/{t.NextThreshold}";
+        // affordance de treino (SPEC-045): os 4 botões aparecem quando há ponto para distribuir.
+        FreePoints = t?.FreePoints ?? 0;
+        TrainingActionable = FreePoints > 0;
+        BandAttributes? attrs = t?.Attributes;
+        Fisico = attrs?.Fisico ?? 0;
+        Tecnico = attrs?.Tecnico ?? 0;
+        Tatico = attrs?.Tatico ?? 0;
+        Mental = attrs?.Mental ?? 0;
 
         BandHome? h = s.Home;
         HomeLine =
@@ -115,6 +204,34 @@ public sealed class BandViewModel : INotifyPropertyChanged
 
         int pending = s.PendingDecisions;
         DecisionsLine = pending > 0 ? $"Decisões pendentes: {pending}" : "";
+
+        // affordances de decisão/loja/regen (SPEC-045). A lista é a autoridade; se esvazia, fecha o
+        // painel. Filtra elementos null (JSON hostil) antes de mapear — o mesmo rigor que MeOf aplica
+        // ao Squad; senão uma lista com um null aborta o Apply no meio (render parcial).
+        IReadOnlyList<BandDecision> decisions = (s.Decisions ?? Array.Empty<BandDecision>())
+            .Where(d => d is not null)
+            .ToList();
+        HasDecisions = decisions.Count > 0;
+        BandDecision? next = HasDecisions ? decisions[0] : null;
+        // Diff por IDENTIDADE (Id): o record BandDecision compara Options por REFERÊNCIA, então cada
+        // poll criaria uma decisão "diferente" e regeneraria os chips de opção (churn — um clique sob o
+        // cursor se perderia). Só re-atribui quando o Id muda (a próxima decisão / fim).
+        if (next?.Id != _currentDecision?.Id)
+            CurrentDecision = next;
+        if (!HasDecisions)
+            DecisionOpen = false;
+
+        IReadOnlyList<BandPurchase> catalog = (s.Home?.Catalog ?? Array.Empty<BandPurchase>())
+            .Where(p => p is not null)
+            .ToList();
+        HasCatalog = catalog.Count > 0;
+        ShopItems = catalog.Count == 0 ? Array.Empty<ShopRow>() : catalog.Select(ToShopRow).ToList();
+        if (!HasCatalog)
+            ShopOpen = false;
+
+        CanRegen = s.Athlete?.CanRegen ?? false;
+        if (!CanRegen)
+            RegenArmed = false; // deixou de ser elegível → desarma qualquer confirmação pendente
 
         // Blocos de cor do avatar/kit (índices → paleta estrutural).
         BandAppearance? ap = a?.Appearance;
@@ -254,6 +371,27 @@ public sealed class BandViewModel : INotifyPropertyChanged
         }
     }
 
+    // Um item do catálogo → linha de render (SPEC-045). `CanBuy` (= available: não possuído, moradia
+    // em ordem, com saldo) gateia o clique/opacidade; o status distingue os motivos de bloqueio.
+    private static ShopRow ToShopRow(BandPurchase p)
+    {
+        string status = p.Owned
+            ? "adquirido"
+            : p.Available
+                ? "comprar"
+                : p.Affordable
+                    ? "bloqueado"
+                    : "sem saldo";
+        // custo formatado como o saldo (N0/Culture) — consistência de moeda na faixa.
+        return new ShopRow(
+            p.Id,
+            $"{p.Name} · R$ {p.Cost.ToString("N0", Culture)}",
+            status,
+            p.Available,
+            p.Available ? 1.0 : 0.45
+        );
+    }
+
     private static string MeOf(BandState s)
     {
         BandMate? me = null;
@@ -314,11 +452,16 @@ public sealed class BandViewModel : INotifyPropertyChanged
 
     private static int Clamp(int v) => v < 0 ? 0 : v > 100 ? 100 : v;
 
-    private void Set<T>(ref T field, T value, [CallerMemberName] string? name = null)
+    private bool Set<T>(ref T field, T value, [CallerMemberName] string? name = null)
     {
         if (EqualityComparer<T>.Default.Equals(field, value))
-            return; // diff-update: nada muda → nenhum PropertyChanged, nenhum re-render
+            return false; // diff-update: nada muda → nenhum PropertyChanged, nenhum re-render
         field = value;
         PropertyChanged?.Invoke(this, new PropertyChangedEventArgs(name));
+        return true;
     }
 }
+
+/// <summary>Uma linha do catálogo pronta p/ render (SPEC-045): rótulo, status (comprar/adquirido/
+/// bloqueado/sem saldo), `CanBuy` (gateia o clique) e `Dim` (opacidade quando indisponível).</summary>
+public sealed record ShopRow(string Id, string Label, string Status, bool CanBuy, double Dim);

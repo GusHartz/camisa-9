@@ -35,6 +35,9 @@ export interface BandAthlete {
   readonly available: boolean;
   /** Número da camisa DERIVADO da posição (SPEC-040) — 1..99, no pool da posição. Aditivo ao /v1. */
   readonly number: number;
+  /** Dica de elegibilidade do regen voluntário (SPEC-045): tem vaga + idade ≥ `REGEN_AGE.voluntary`.
+   *  É DICA de render (o cliente gateia o botão); a autoridade é o servidor (409 `regen_ineligible`). */
+  readonly canRegen: boolean;
 }
 
 /** As DUAS barras persistentes do R4. ⚠️ Exatamente estas duas — nunca fôlego (cortado no R4 FINAL). */
@@ -61,11 +64,29 @@ export interface BandTraining {
   readonly nextFocusPenaltyPct: number;
 }
 
+/** Um item do catálogo de compras (SPEC-045), já orientado ao atleta. `available` = pode comprar
+ *  AGORA (`validatePurchase.ok`: não possuído, moradia no próximo degrau, com saldo); `affordable` =
+ *  só o saldo cobre (`canAfford`). O cliente usa como DICA de render; a compra revalida no servidor. */
+export interface BandPurchase {
+  readonly id: string;
+  readonly name: string;
+  readonly cost: number;
+  readonly kind: string;
+  /** O degrau da escada de moradia (1..N); `null` p/ itens que não são moradia. */
+  readonly housingTier: number | null;
+  readonly owned: boolean;
+  readonly affordable: boolean;
+  readonly available: boolean;
+}
+
 export interface BandHome {
   readonly balance: number;
   readonly lifestyleTier: number;
   readonly hasMothersHouse: boolean;
   readonly ownedItemIds: readonly string[];
+  /** O catálogo ABERTO de compras (SPEC-045) — todo `PURCHASES`, cada um com o estado do atleta.
+   *  Aditivo `/v1`. O `name` é conteúdo de gameplay PT-BR (o `id` viaja junto = localização-ready). */
+  readonly catalog: readonly BandPurchase[];
 }
 
 export interface BandInjury {
@@ -87,6 +108,23 @@ export interface BandKit {
 export interface BandGoal {
   readonly minute: number;
   readonly isMine: boolean;
+}
+
+/** Uma opção de uma decisão pendente (SPEC-045). O `id` responde a decisão (`optionId`); o `label`
+ *  é o texto PT-BR (conteúdo de gameplay; o `id` viaja junto = localização-ready). */
+export interface BandDecisionOption {
+  readonly id: string;
+  readonly label: string;
+}
+
+/** Uma decisão de carreira PENDENTE (SPEC-045) — o jogador responde na faixa. O `id` (uuid) é o
+ *  recurso a responder; `templateId`/`options[].id` são localização-ready; `prompt`/`label` PT-BR. */
+export interface BandDecision {
+  readonly id: string;
+  readonly templateId: string;
+  readonly type: string;
+  readonly prompt: string;
+  readonly options: readonly BandDecisionOption[];
 }
 
 /** O jogo do dia. PRÉ-JOGO: só o adversário (do fixture). PÓS-JOGO: `played` + o placar. */
@@ -149,8 +187,10 @@ export interface BandState {
   readonly club: BandClub | null;
   /** `[]` quando `club === null`. */
   readonly squad: readonly BandMate[];
-  /** CONTAGEM (i18n: zero prosa na API). */
+  /** CONTAGEM das decisões pendentes = `decisions.length` (mantido aditivo-only p/ o cliente antigo). */
   readonly pendingDecisions: number;
+  /** As decisões pendentes do dia (SPEC-045), para o jogador RESPONDER na faixa. `[]` = nenhuma. */
+  readonly decisions: readonly BandDecision[];
   /** Só quando `club === null` e o atleta está na fila. */
   readonly queue: BandQueue | null;
 }

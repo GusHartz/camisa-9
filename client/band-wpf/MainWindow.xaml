@@ -10,6 +10,16 @@
         FontFamily="Segoe UI" Foreground="#E4E4EC">
     <!-- AllowsTransparency=False: composição por-pixel custa CPU (orçamento SPEC-003/042).
          Topmost=False no XAML: o topmost é setado no nível Win32 (TopmostStrip.Apply). -->
+    <Window.Resources>
+        <!-- Chip clicável (SPEC-045): um bloco de texto acionável, estrutural (sem arte). -->
+        <Style x:Key="Chip" TargetType="Border">
+            <Setter Property="Background" Value="#24303E" />
+            <Setter Property="CornerRadius" Value="3" />
+            <Setter Property="Padding" Value="6,2" />
+            <Setter Property="Margin" Value="3,0,0,0" />
+            <Setter Property="Cursor" Value="Hand" />
+        </Style>
+    </Window.Resources>
     <Border Background="{Binding PhaseBrush}" Padding="12,6">
         <!-- ClipToBounds só aqui, NUNCA no <Window> (crash de startup 0xE0434352). -->
         <Grid ClipToBounds="True">
@@ -99,21 +109,124 @@
                            Visibility="{Binding ReplayAvailable, Converter={StaticResource BoolToVis}}" />
             </Grid>
 
-            <!-- Linha 4: treino/decisões/lesão + status -->
+            <!-- Linha 4: treino (com os botões de distribuir) · decisões · loja · regen · lesão + feedback/status -->
             <Grid Grid.Row="3" Margin="0,4,0,0">
                 <StackPanel Orientation="Horizontal">
                     <TextBlock Text="{Binding TrainingLine}" FontSize="10" Foreground="#9A9AA5"
-                               TextTrimming="CharacterEllipsis" />
-                    <TextBlock Text="{Binding DecisionsLine}" FontSize="10" Foreground="#B7E4C7"
-                               Margin="10,0,0,0" />
+                               VerticalAlignment="Center" TextTrimming="CharacterEllipsis" />
+                    <!-- Distribuir 1 ponto (SPEC-045): os 4 chips aparecem quando há ponto livre. -->
+                    <StackPanel Orientation="Horizontal" Margin="6,0,0,0" VerticalAlignment="Center"
+                                Visibility="{Binding TrainingActionable, Converter={StaticResource BoolToVis}}">
+                        <Border Style="{StaticResource Chip}" Tag="fisico" MouseLeftButtonDown="OnSpendClick">
+                            <TextBlock Text="+Fís" FontSize="10" Foreground="#E4E4EC" />
+                        </Border>
+                        <Border Style="{StaticResource Chip}" Tag="tecnico" MouseLeftButtonDown="OnSpendClick">
+                            <TextBlock Text="+Téc" FontSize="10" Foreground="#E4E4EC" />
+                        </Border>
+                        <Border Style="{StaticResource Chip}" Tag="tatico" MouseLeftButtonDown="OnSpendClick">
+                            <TextBlock Text="+Tát" FontSize="10" Foreground="#E4E4EC" />
+                        </Border>
+                        <Border Style="{StaticResource Chip}" Tag="mental" MouseLeftButtonDown="OnSpendClick">
+                            <TextBlock Text="+Men" FontSize="10" Foreground="#E4E4EC" />
+                        </Border>
+                    </StackPanel>
+                    <!-- Decisões ▸ (abre o painel de decisão) -->
+                    <TextBlock x:Name="DecisionTrigger" Text="{Binding DecisionsLine}" FontSize="10"
+                               Foreground="#B7E4C7" Margin="10,0,0,0" VerticalAlignment="Center" Cursor="Hand"
+                               MouseLeftButtonDown="OnDecisionsClick"
+                               Visibility="{Binding HasDecisions, Converter={StaticResource BoolToVis}}" />
+                    <!-- Loja ▸ -->
+                    <TextBlock x:Name="ShopTrigger" Text="🛒 Loja" FontSize="10" Foreground="#9AD0FF"
+                               Margin="10,0,0,0" VerticalAlignment="Center" Cursor="Hand"
+                               MouseLeftButtonDown="OnShopClick"
+                               Visibility="{Binding HasCatalog, Converter={StaticResource BoolToVis}}" />
+                    <!-- Renascer carreira (raro): AÇÃO DESTRUTIVA (encerra a carreira na virada) →
+                         confirmação em 2 passos + glifo próprio (⚑, não o ↻ do re-assistir). -->
+                    <TextBlock Text="⚑ renascer carreira" FontSize="10" Foreground="#DDB86B"
+                               Margin="10,0,0,0" VerticalAlignment="Center" Cursor="Hand"
+                               MouseLeftButtonDown="OnRegenArmClick"
+                               Visibility="{Binding RegenAvailable, Converter={StaticResource BoolToVis}}" />
+                    <StackPanel Orientation="Horizontal" Margin="10,0,0,0" VerticalAlignment="Center"
+                                Visibility="{Binding RegenConfirming, Converter={StaticResource BoolToVis}}">
+                        <TextBlock Text="confirmar renascer?" FontSize="10" Foreground="#F48771"
+                                   VerticalAlignment="Center" />
+                        <Border Style="{StaticResource Chip}" MouseLeftButtonDown="OnRegenConfirmClick">
+                            <TextBlock Text="sim" FontSize="10" Foreground="#E4E4EC" />
+                        </Border>
+                        <Border Style="{StaticResource Chip}" MouseLeftButtonDown="OnRegenCancelClick">
+                            <TextBlock Text="não" FontSize="10" Foreground="#E4E4EC" />
+                        </Border>
+                    </StackPanel>
                     <TextBlock Text="{Binding InjuryLine}" FontSize="10" Foreground="#F48771"
-                               Margin="10,0,0,0"
+                               Margin="10,0,0,0" VerticalAlignment="Center"
                                Visibility="{Binding InjuryVisible, Converter={StaticResource BoolToVis}}" />
                 </StackPanel>
-                <TextBlock Text="{Binding StatusLine}" FontSize="9" Foreground="#6A6A75"
-                           HorizontalAlignment="Right" VerticalAlignment="Center" />
+                <StackPanel Orientation="Horizontal" HorizontalAlignment="Right" VerticalAlignment="Center">
+                    <TextBlock Text="{Binding ActionFeedback}" FontSize="10" Foreground="#B7E4C7"
+                               Margin="0,0,8,0" />
+                    <TextBlock Text="{Binding StatusLine}" FontSize="9" Foreground="#6A6A75" />
+                </StackPanel>
             </Grid>
             </Grid>
+
+            <!-- Painel de DECISÃO (SPEC-045): flutua acima da faixa; toggle no gatilho (StaysOpen). O
+                 clique numa opção → POST /v1/decisions/answer → reconcilia → a próxima decisão aparece. -->
+            <Popup IsOpen="{Binding DecisionOpen}" PlacementTarget="{Binding ElementName=DecisionTrigger}"
+                   Placement="Top" VerticalOffset="-6" StaysOpen="True">
+                <Border Background="#181820" BorderBrush="#2E2E3A" BorderThickness="1" Padding="10"
+                        MaxWidth="380">
+                    <StackPanel>
+                        <TextBlock Text="{Binding CurrentDecision.Prompt}" Foreground="#E4E4EC"
+                                   FontSize="12" TextWrapping="Wrap" Margin="0,0,0,8" />
+                        <ItemsControl ItemsSource="{Binding CurrentDecision.Options}">
+                            <ItemsControl.ItemsPanel>
+                                <ItemsPanelTemplate>
+                                    <WrapPanel Orientation="Horizontal" />
+                                </ItemsPanelTemplate>
+                            </ItemsControl.ItemsPanel>
+                            <ItemsControl.ItemTemplate>
+                                <DataTemplate>
+                                    <Border Style="{StaticResource Chip}" Padding="8,4" Margin="0,0,6,0"
+                                            MouseLeftButtonDown="OnDecisionOptionClick">
+                                        <TextBlock Text="{Binding Label}" FontSize="11" Foreground="#E4E4EC" />
+                                    </Border>
+                                </DataTemplate>
+                            </ItemsControl.ItemTemplate>
+                        </ItemsControl>
+                    </StackPanel>
+                </Border>
+            </Popup>
+
+            <!-- LOJA (SPEC-045): o catálogo; clicar "comprar" (só linhas disponíveis) → POST /v1/purchases. -->
+            <Popup IsOpen="{Binding ShopOpen}" PlacementTarget="{Binding ElementName=ShopTrigger}"
+                   Placement="Top" VerticalOffset="-6" StaysOpen="True">
+                <Border Background="#181820" BorderBrush="#2E2E3A" BorderThickness="1" Padding="10"
+                        MaxWidth="320" MaxHeight="220">
+                    <ScrollViewer VerticalScrollBarVisibility="Auto">
+                        <ItemsControl ItemsSource="{Binding ShopItems}">
+                            <ItemsControl.ItemTemplate>
+                                <DataTemplate>
+                                    <Grid Margin="0,3" Opacity="{Binding Dim}">
+                                        <Grid.ColumnDefinitions>
+                                            <ColumnDefinition Width="*" />
+                                            <ColumnDefinition Width="Auto" />
+                                        </Grid.ColumnDefinitions>
+                                        <TextBlock Grid.Column="0" Text="{Binding Label}" FontSize="11"
+                                                   Foreground="#E4E4EC" VerticalAlignment="Center"
+                                                   Margin="0,0,10,0" />
+                                        <Border Grid.Column="1" Style="{StaticResource Chip}"
+                                                IsHitTestVisible="{Binding CanBuy}"
+                                                MouseLeftButtonDown="OnBuyClick">
+                                            <TextBlock Text="{Binding Status}" FontSize="10"
+                                                       Foreground="#E4E4EC" />
+                                        </Border>
+                                    </Grid>
+                                </DataTemplate>
+                            </ItemsControl.ItemTemplate>
+                        </ItemsControl>
+                    </ScrollViewer>
+                </Border>
+            </Popup>
         </Grid>
     </Border>
 </Window>

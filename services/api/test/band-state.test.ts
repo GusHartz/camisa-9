@@ -14,6 +14,8 @@ import {
   injuryPhase,
   kitFromClubId,
   shirtNumber,
+  PURCHASES,
+  templateById,
   SHIRT,
   type Position,
 } from '@camisa-9/player';
@@ -24,9 +26,11 @@ import {
   createDb as createPlayerDb,
   generateForDay,
   injureFromMatch,
+  purchaseItem,
   readAthleteProgress,
   readInjuryState,
   readMood,
+  readPendingDecisions,
   readWallet,
   schema as playerSchema,
   type DbHandle as PlayerHandle,
@@ -425,10 +429,120 @@ describe.skipIf(!DB_URL)('readBandState — o agregador da faixa (SPEC-038)', ()
       expect(typeof s.training.trainingXp).toBe('number');
       expect(typeof s.home.balance).toBe('number');
       expect(typeof s.pendingDecisions).toBe('number');
+      // SPEC-045: campos novos aditivos
+      expect(typeof s.athlete.canRegen).toBe('boolean');
+      expect(Array.isArray(s.home.catalog)).toBe(true);
+      expect(Array.isArray(s.decisions)).toBe(true);
+      expect(s.pendingDecisions).toBe(s.decisions.length);
       expect(Array.isArray(s.squad)).toBe(true);
       // nulos-explícitos: injury pode ser null; club presente aqui
       expect(s.club === null || typeof s.club.clubId === 'string').toBe(true);
       expect(s.queue === null || typeof s.queue.rank === 'number').toBe(true);
+    });
+  });
+
+  // ---- SPEC-045: o read-model de escrita (lista de decisões · catálogo · canRegen) ----
+  describe('SPEC-045 — decisões pendentes (lista para responder)', () => {
+    it('decisions == as pendentes (contagem) e cada uma hidratada do catálogo (prompt/opções)', async () => {
+      const { athleteId } = await seatHuman();
+      await generateForDay(playerHandle.db, athleteId, D, SEED, {});
+      const state = await readBandState(deps, athleteId, epochAt(D, 18));
+
+      const rows = await readPendingDecisions(playerHandle.db, athleteId, D);
+      expect(state.decisions.length).toBe(rows.length);
+      expect(state.pendingDecisions).toBe(state.decisions.length);
+      expect(state.decisions.length).toBeGreaterThanOrEqual(3); // DECISIONS_PER_DAY.min
+
+      // ordem preservada (ord) + hidratação fiel à fonte única (templateById)
+      expect(state.decisions.map((d) => d.templateId)).toEqual(rows.map((r) => r.templateId));
+      for (const d of state.decisions) {
+        const t = templateById(d.templateId)!;
+        expect(d.prompt).toBe(t.prompt);
+        expect(d.type).toBe(t.type);
+        expect(d.options.map((o) => o.id)).toEqual(t.options.map((o) => o.id));
+        expect(d.options.map((o) => o.label)).toEqual(t.options.map((o) => o.label));
+        expect(d.options.length).toBeGreaterThan(0);
+        // o id é o uuid da LINHA (o recurso a responder), não o templateId
+        expect(d.id).toMatch(/^[0-9a-f-]{36}$/i);
+        expect(d.id).not.toBe(d.templateId);
+      }
+    });
+
+    it('sem decisões geradas → lista vazia (nunca null)', async () => {
+      const { athleteId } = await seatHuman();
+      const state = await readBandState(deps, athleteId, epochAt(D, 18));
+      expect(state.decisions).toEqual([]);
+      expect(state.pendingDecisions).toBe(0);
+    });
+  });
+
+  describe('SPEC-045 — catálogo de compras orientado ao atleta', () => {
+    it('lista todo PURCHASES com owned/affordable/available corretos vs saldo/posse', async () => {
+      const { athleteId } = await seatHuman();
+      await playerHandle.db
+        .update(playerSchema.athlete)
+        .set({ balance: 2500 }) // cobre videogame(500)/academia(1500)/quitinete(2000); não carro(3000)
+        .where(eq(playerSchema.athlete.id, athleteId));
+      const state = await readBandState(deps, athleteId, epochAt(D, 18));
+
+      expect(state.home.catalog.length).toBe(PURCHASES.length);
+      const byId = new Map(state.home.catalog.map((c) => [c.id, c]));
+      expect(byId.get('videogame')).toMatchObject({
+        affordable: true,
+        available: true,
+        owned: false,
+      });
+      expect(byId.get('carro')).toMatchObject({ affordable: false, available: false }); // 3000 > 2500
+      // moradia em ORDEM: quitinete (tier1) é o próximo degrau → available; casa (tier2) fora de ordem
+      expect(byId.get('quitinete')).toMatchObject({ affordable: true, available: true });
+      expect(byId.get('casa')!.available).toBe(false); // out-of-order (precisa quitinete antes)
+      // custo/nome/kind vêm da fonte (localização-ready: id junto do texto)
+      expect(byId.get('videogame')!.cost).toBe(500);
+      expect(byId.get('videogame')!.name).toBe('Videogame');
+    });
+
+    it('comprar muda o estado: owned=true/available=false, e destrava o próximo degrau de moradia', async () => {
+      const { athleteId } = await seatHuman();
+      await playerHandle.db
+        .update(playerSchema.athlete)
+        .set({ balance: 100_000 }) // saldo alto → isola a regra de ORDEM da de affordability
+        .where(eq(playerSchema.athlete.id, athleteId));
+      await purchaseItem(playerHandle.db, athleteId, 'quitinete');
+      const state = await readBandState(deps, athleteId, epochAt(D, 18));
+      const byId = new Map(state.home.catalog.map((c) => [c.id, c]));
+      expect(byId.get('quitinete')).toMatchObject({ owned: true, available: false }); // já possui
+      expect(byId.get('casa')).toMatchObject({ owned: false, available: true }); // agora é o próximo
+      // cobertura (tier3) é affordable a 100k mas FORA de ordem (precisa casa antes) → pina a regra de
+      // ORDEM isolada da affordability (senão um `available` sem a checagem de próximo-degrau passa verde).
+      expect(byId.get('cobertura')).toMatchObject({ affordable: true, available: false });
+      expect(state.home.ownedItemIds).toContain('quitinete');
+    });
+  });
+
+  describe('SPEC-045 — canRegen (dica de elegibilidade)', () => {
+    it('entra aos 17 → false; idade ≥ 25 no mundo → true', async () => {
+      const { athleteId } = await seatHuman();
+      const occ = (await readOccupation(worldHandle.db, SEED, athleteId))!;
+
+      const young = await readBandState(deps, athleteId, epochAt(D, 18));
+      expect(young.athlete.age).toBe(17);
+      expect(young.athlete.canRegen).toBe(false);
+
+      await worldHandle.db
+        .update(worldSchema.athlete)
+        .set({ age: 25 })
+        .where(eq(worldSchema.athlete.id, occ.athleteId));
+      const veteran = await readBandState(deps, athleteId, epochAt(D, 18));
+      expect(veteran.athlete.age).toBe(25);
+      expect(veteran.athlete.canRegen).toBe(true);
+    });
+
+    it('sem clube (na fila) → canRegen false (não há vaga p/ regenerar)', async () => {
+      const athleteId = await createHuman('MID');
+      await enqueue(worldHandle.db, SEED, athleteId, 'MID');
+      const state = await readBandState(deps, athleteId, epochAt(D, 18));
+      expect(state.club).toBeNull();
+      expect(state.athlete.canRegen).toBe(false);
     });
   });
 
