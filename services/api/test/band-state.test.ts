@@ -583,6 +583,31 @@ describe.skipIf(!DB_URL)('readBandState — o agregador da faixa (SPEC-038)', ()
     });
   });
 
+  describe('SPEC-048 — escolhas na partida na faixa', () => {
+    it('jogo publicado → todayMatch.choices (1-5, oferta sem effect); determinístico', async () => {
+      const { athleteId } = await seatHuman();
+      await runRoundForDay(worldHandle.db, SEED, D);
+      await advanceTickCursor(worldHandle.db, SEED, D);
+
+      const state = await readBandState(deps, athleteId, epochAt(D, 16));
+      const match = state.club!.todayMatch!;
+      expect(match.played).toBe(true);
+      expect(match.choices).toBeDefined();
+      expect(match.choices!.length).toBeGreaterThanOrEqual(1);
+      expect(match.choices!.length).toBeLessThanOrEqual(5);
+      for (const c of match.choices!) {
+        expect(typeof c.prompt).toBe('string');
+        expect(c.minute).toBeGreaterThanOrEqual(1);
+        expect(c.minute).toBeLessThanOrEqual(90);
+        expect(c.options.length).toBeGreaterThan(0);
+        for (const o of c.options) expect(Object.keys(o).sort()).toEqual(['id', 'label']); // sem effect
+      }
+      // determinístico: reler dá as mesmas escolhas
+      const again = await readBandState(deps, athleteId, epochAt(D, 16));
+      expect(again.club!.todayMatch!.choices).toEqual(match.choices);
+    });
+  });
+
   describe('grep-gates estruturais + teto de round-trips', () => {
     const bandFiles = [
       'band/band-state.ts',

@@ -3,8 +3,11 @@
 // tocar o snapshot nem os goldens. `generateFixtures` é reuso puro do engine (só consome `c.id`).
 import {
   generateFixtures,
+  matchChoices,
   matchRating,
   type GoalEvent,
+  type InjuryEvent,
+  type MatchChoiceContext,
   type MatchOutcome,
   type MatchResult,
   type Position,
@@ -13,7 +16,14 @@ import {
 } from '@camisa-9/world-engine';
 import { kitFromClubId } from '@camisa-9/player';
 import type { ClubBrief, OccupationView, QueueEntry } from '@camisa-9/world-store';
-import type { BandClub, BandGoal, BandMatch, BandMate, BandQueue } from './types.js';
+import type {
+  BandClub,
+  BandGoal,
+  BandMatch,
+  BandMatchChoice,
+  BandMate,
+  BandQueue,
+} from './types.js';
 
 /** O contexto do HUMANO para orientar a partida (SPEC-046): quem sou eu no mundo + os focos vivos +
  *  as partes da seed p/ a nota + o mapa de nomes do MEU elenco (p/ nomear autor/assistente). `null`
@@ -97,6 +107,8 @@ export function buildTodayMatch(
     ? goalEvents.map((e) => buildGoal(e, clubId, ctx))
     : undefined;
   const myRating = match && ctx ? ratingFor(match, fixture.isHome, goalEvents, ctx) : null;
+  const choices =
+    match && ctx ? buildChoices(match, clubId, fixture.isHome, goalEvents, ctx) : undefined;
   return {
     opponentClubId: fixture.opponentClubId,
     opponentName,
@@ -106,7 +118,46 @@ export function buildTodayMatch(
     goalsAgainst,
     ...(goals !== undefined ? { goals } : {}),
     myRating,
+    ...(choices !== undefined ? { choices } : {}),
   };
+}
+
+/** As escolhas da partida (SPEC-048): deriva a participação do humano dos eventos publicados (gols
+ *  `byMe`, gols sofridos, lesão no clube) e chama o motor puro. Expõe a OFERTA (sem o `effect`). */
+function buildChoices(
+  match: MatchResult,
+  clubId: string,
+  isHome: boolean,
+  goalEvents: readonly GoalEvent[],
+  ctx: BandMatchCtx,
+): BandMatchChoice[] {
+  const injuries = (match.events ?? []).filter((e): e is InjuryEvent => e.kind === 'injury');
+  const goalsFor = isHome ? match.homeGoals : match.awayGoals;
+  const goalsAgainst = isHome ? match.awayGoals : match.homeGoals;
+  const mcx: MatchChoiceContext = {
+    goalMinutes: goalEvents.filter((e) => e.athleteId === ctx.meWorldId).map((e) => e.minute),
+    concededMinutes: goalEvents.filter((e) => e.clubId !== clubId).map((e) => e.minute),
+    // "um COMPANHEIRO caiu" — exclui a lesão do PRÓPRIO humano (senão o `lesao-colega` dispara nela).
+    clubInjuredMinute:
+      injuries.find((i) => i.clubId === clubId && i.athleteId !== ctx.meWorldId)?.minute ?? null,
+    result: outcomeOf(goalsFor, goalsAgainst),
+  };
+  return matchChoices(
+    ctx.seed,
+    ctx.leagueId,
+    ctx.seasonId,
+    match.round,
+    match.homeId,
+    match.awayId,
+    ctx.meWorldId,
+    mcx,
+  ).map((c) => ({
+    minute: c.minute,
+    templateId: c.templateId,
+    type: c.type,
+    prompt: c.prompt,
+    options: c.options.map((o) => ({ id: o.id, label: o.label })),
+  }));
 }
 
 function isGoal(e: { readonly kind: string }): e is GoalEvent {
