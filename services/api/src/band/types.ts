@@ -33,6 +33,8 @@ export interface BandAthlete {
   /** `null` sem vaga no mundo (a idade é o relógio de carreira, vive no overlay do mundo). */
   readonly age: number | null;
   readonly available: boolean;
+  /** Número da camisa DERIVADO da posição (SPEC-040) — 1..99, no pool da posição. Aditivo ao /v1. */
+  readonly number: number;
 }
 
 /** As DUAS barras persistentes do R4. ⚠️ Exatamente estas duas — nunca fôlego (cortado no R4 FINAL). */

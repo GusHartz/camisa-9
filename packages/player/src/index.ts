@@ -80,6 +80,7 @@ export {
 export { dayPhase, type DayPhase } from './day-phase.js';
 export { daysUntilRevert } from './vacancy.js';
 export { kitFromClubId, type Kit } from './kit.js';
+export { shirtNumber, SHIRT } from './shirt-number.js';
 export {
   MOOD,
   clampBar,

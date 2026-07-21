@@ -49,7 +49,7 @@
 ### Arte e assets (dois níveis de pixel art — lei)
 - **Nível JOGO (canônico):** grid de pixel fixo; escala apenas por múltiplos inteiros (nearest-neighbor; nunca densidades misturadas); paleta limitada (~24-32 cores em tokens); contornos grossos; sprites de personagem 32-48px. É o nível da faixa, do modo mini e de toda screenshot (Steam exige gameplay real).
 - **Nível KEY ART:** pixel de ilustração (alta densidade) — exclusivo de capsule, library hero e cards compartilháveis.
-- **Regra-ponte (gate de arte):** o mascote (bode coroado camisa 10) deve ser inconfundivelmente o mesmo personagem no sprite de 48px e na key art; o sprite é o canônico — em conflito, a key art recua. Anti-over-promise: a distância entre capa e jogo é de densidade, nunca de identidade. **Avatar ≠ mascote (SPEC-038):** o mascote é MARCA (key art, ícone, loja); o avatar do ATLETA na faixa é composição de camadas com paleta indexada, nunca o mascote.
+- **Regra-ponte (gate de arte):** o mascote (bode coroado camisa 10) deve ser inconfundivelmente o mesmo personagem no sprite de 48px e na key art; o sprite é o canônico — em conflito, a key art recua. Anti-over-promise: a distância entre capa e jogo é de densidade, nunca de identidade. **Avatar ≠ mascote (SPEC-038):** o mascote é MARCA (key art, ícone, loja); o avatar do ATLETA na faixa é composição de camadas com paleta indexada, nunca o mascote. **O NÚMERO da camisa é DERIVADO da posição (SPEC-040, fn pura `shirtNumber`), NÃO escolhido** — reverte o seletor 1–99 do design handoff e a decisão da SPEC-038 ("o jogador escolhe").
 
 ---
 

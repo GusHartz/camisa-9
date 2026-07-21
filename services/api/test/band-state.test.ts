@@ -13,6 +13,8 @@ import {
   daysLeftOf,
   injuryPhase,
   kitFromClubId,
+  shirtNumber,
+  SHIRT,
   type Position,
 } from '@camisa-9/player';
 import {
@@ -183,6 +185,9 @@ describe.skipIf(!DB_URL)('readBandState — o agregador da faixa (SPEC-038)', ()
     expect(state.athlete.overall).toBe(progress.overall);
     expect(state.athlete.overall).not.toBe(34); // prova: não é a ability CONGELADA
     expect(state.athlete.appearance).toEqual({ skinTone: 2, hairStyle: 3, hairColor: 1 });
+    // número DERIVADO da posição (FWD, SPEC-040) — determinístico, no pool da posição
+    expect(state.athlete.number).toBe(shirtNumber('FWD', athleteId));
+    expect(SHIRT.pools.FWD).toContain(state.athlete.number);
     const injState = await readInjuryState(playerHandle.db, athleteId, D);
     expect(state.athlete.available).toBe(injState.available);
 
@@ -409,6 +414,7 @@ describe.skipIf(!DB_URL)('readBandState — o agregador da faixa (SPEC-038)', ()
       expect(typeof s.athlete.id).toBe('string');
       expect(typeof s.athlete.overall).toBe('number');
       expect(typeof s.athlete.available).toBe('boolean');
+      expect(typeof s.athlete.number).toBe('number');
       expect(typeof s.bars.forma).toBe('number');
       expect(typeof s.training.trainingXp).toBe('number');
       expect(typeof s.home.balance).toBe('number');
