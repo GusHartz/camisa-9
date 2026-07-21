@@ -1,6 +1,6 @@
 // O lado PLAYER do agregador (SPEC-038): transforma as leituras do player-store nas fatias do
 // contrato. Puro — recebe valores já lidos (a orquestração das queries mora em `band-state.ts`).
-import { injuryPhase, daysLeftOf } from '@camisa-9/player';
+import { injuryPhase, daysLeftOf, shirtNumber } from '@camisa-9/player';
 import type { AthleteIdentity, InjuryState, Mood, Progress, Wallet } from '@camisa-9/player-store';
 import type { BandAthlete, BandBars, BandHome, BandInjury, BandTraining } from './types.js';
 
@@ -24,6 +24,8 @@ export function buildAthlete(
     overall: progress.overall,
     age,
     available,
+    // Número da camisa DERIVADO da posição (SPEC-040) — sem escolha, sem coluna; fn pura.
+    number: shirtNumber(identity.position, id),
   };
 }
 

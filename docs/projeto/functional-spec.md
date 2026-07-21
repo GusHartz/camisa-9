@@ -20,7 +20,7 @@ O produto é um jogo de carreira de futebol de baixa atenção, onde um mundo si
 - **RESOLVIDO (SPEC-038):** a camada de sessão apenas CARIMBA atividade (`markActive` em `GET /v1/band` — a faixa aberta é o sinal de presença); o estado da vaga (`humano | congelada | npc`) e o relógio de abandono continuam propriedade do motor, não da sessão. Sessão nunca é posse de vaga — uma sessão viva e ociosa congela normalmente.
 
 ### 3. Presença em 3 níveis
-- **Faixa** acima da taskbar (vida do atleta: CT, casa, pré-jogo).
+- **Faixa** acima da taskbar (vida do atleta: CT, casa, pré-jogo). O avatar mostra o **número da camisa DERIVADO da posição** (SPEC-040, fn pura — não escolhido pelo jogador; reverte a suposição do design/SPEC-038).
 - **Modo mini** — faixa compacta ancorada à taskbar (postura A/topmost, validada na SPEC-006; render dentro da shell é inviável no Win11).
 - **Notificações nativas com botões** (decidir do meio do Outlook).
 - **Regras de silêncio**: nunca em tela cheia/apresentação; horário configurável.
