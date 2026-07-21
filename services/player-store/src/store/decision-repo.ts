@@ -241,11 +241,7 @@ export async function countPendingDecisions(
     .select({ n: sql<number>`count(*)::int` })
     .from(decision)
     .where(
-      and(
-        eq(decision.athleteId, athleteId),
-        eq(decision.day, day),
-        eq(decision.status, 'pending'),
-      ),
+      and(eq(decision.athleteId, athleteId), eq(decision.day, day), eq(decision.status, 'pending')),
     );
   return rows[0]?.n ?? 0;
 }

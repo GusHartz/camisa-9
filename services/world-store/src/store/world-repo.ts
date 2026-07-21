@@ -120,11 +120,7 @@ export async function readClubSquad(
 
 /** Os ids dos clubes de uma liga, em ordem canônica (`ord`) — o insumo do `generateFixtures`
  *  para achar o adversário da rodada na cena de véspera. */
-export async function readLeagueClubIds(
-  db: Db,
-  seed: string,
-  leagueId: string,
-): Promise<string[]> {
+export async function readLeagueClubIds(db: Db, seed: string, leagueId: string): Promise<string[]> {
   const rows = await db
     .select({ id: club.id, ord: club.ord })
     .from(club)
