@@ -137,6 +137,23 @@ export interface BandDecision {
   readonly options: readonly BandDecisionOption[];
 }
 
+/** Uma opção de uma escolha da partida (SPEC-048) — `id` responde, `label` é o texto. O EFEITO NÃO é
+ *  exposto (seam server-side, aplicado numa fatia futura). */
+export interface BandChoiceOption {
+  readonly id: string;
+  readonly label: string;
+}
+
+/** Uma escolha da partida (SPEC-048) — ancorada num minuto da timeline. A OFERTA; a resposta/aplicação
+ *  são fatias futuras. `templateId`/`option.id` localização-ready; `prompt`/`label` PT-BR. */
+export interface BandMatchChoice {
+  readonly minute: number;
+  readonly templateId: string;
+  readonly type: string;
+  readonly prompt: string;
+  readonly options: readonly BandChoiceOption[];
+}
+
 /** O jogo do dia. PRÉ-JOGO: só o adversário (do fixture). PÓS-JOGO: `played` + o placar. */
 export interface BandMatch {
   readonly opponentClubId: string;
@@ -150,6 +167,9 @@ export interface BandMatch {
   readonly goals?: readonly BandGoal[];
   /** A minha NOTA na partida (SPEC-046), 3.0..10.0. Presente quando `played`; `null` pré-jogo. */
   readonly myRating: number | null;
+  /** As escolhas da partida (SPEC-048), ancoradas na timeline. Presente (possivelmente `[]`) quando
+   *  `played`; OMITIDA pré-jogo. A OFERTA — a resposta/aplicação são fatias futuras. */
+  readonly choices?: readonly BandMatchChoice[];
 }
 
 export interface BandClub {

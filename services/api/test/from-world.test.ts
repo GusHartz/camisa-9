@@ -152,3 +152,75 @@ describe('buildTodayMatch — artilheiro/assistência/nota (SPEC-046, puro)', ()
     expect(clean).toBeGreaterThan(leaky); // mesma seed → variância igual; difere o defensivo + resultado
   });
 });
+
+describe('buildTodayMatch — escolhas na partida (SPEC-048, puro)', () => {
+  const CTX: BandMatchCtx = {
+    meWorldId: 'A-me',
+    position: 'FWD',
+    focos: { fisico: 50, tecnico: 70, tatico: 60, mental: 50 },
+    seed: 'seed-048',
+    leagueId: 'L1',
+    seasonId: 'S1',
+    nameByWorldId: new Map([['A-me', 'Eu']]),
+  };
+  const EVENTS: MatchEvent[] = [
+    { kind: 'goal', clubId: 'A', minute: 23, athleteId: 'A-me' }, // meu gol
+    { kind: 'goal', clubId: 'B', minute: 40 }, // sofrido
+  ];
+
+  it('jogo publicado → choices (1-5), OFERTA sem effect; determinístico', () => {
+    const m = buildTodayMatch('A', FIX, round(EVENTS, 1, 1), 'Rival', CTX);
+    expect(m.choices).toBeDefined();
+    expect(m.choices!.length).toBeGreaterThanOrEqual(1);
+    expect(m.choices!.length).toBeLessThanOrEqual(5);
+    for (const c of m.choices!) {
+      expect(typeof c.prompt).toBe('string');
+      expect(c.options.length).toBeGreaterThan(0);
+      for (const o of c.options) expect(Object.keys(o).sort()).toEqual(['id', 'label']); // effect NÃO exposto
+    }
+    // determinístico (mesma entrada → mesmas escolhas)
+    expect(m.choices).toEqual(buildTodayMatch('A', FIX, round(EVENTS, 1, 1), 'Rival', CTX).choices);
+  });
+
+  it('pré-jogo / sem ctx → choices OMITIDO', () => {
+    expect('choices' in buildTodayMatch('A', FIX, null, 'Rival', CTX)).toBe(false); // pré-jogo
+    const played = buildTodayMatch(
+      'A',
+      FIX,
+      round([{ kind: 'goal', clubId: 'A', minute: 10 }], 1, 0),
+      'Rival',
+      null,
+    );
+    expect('choices' in played).toBe(false); // played mas sem ctx
+  });
+
+  it('ancorada nos MEUS eventos: comemoração no minuto do meu gol, provocação no minuto sofrido', () => {
+    for (const c of buildTodayMatch('A', FIX, round(EVENTS, 1, 1), 'Rival', CTX).choices!) {
+      if (c.templateId === 'comemoracao') expect(c.minute).toBe(23); // meu gol
+      if (c.templateId === 'provocacao') expect(c.minute).toBe(40); // gol sofrido
+    }
+  });
+
+  it('sem participação (0-0, sem eventos): comemoração/provocação/lesão-colega NÃO aparecem', () => {
+    const m = buildTodayMatch('A', FIX, round(undefined, 0, 0), 'Rival', CTX);
+    for (const c of m.choices ?? []) {
+      expect(['comemoracao', 'provocacao', 'lesao-colega']).not.toContain(c.templateId);
+    }
+  });
+
+  it('lesão-colega EXCLUI a lesão do próprio humano; dispara na de um colega', () => {
+    // lesão do PRÓPRIO humano (A-me) → não é "colega", não gera lesao-colega
+    const mine: MatchEvent[] = [
+      { kind: 'injury', clubId: 'A', athleteId: 'A-me', severity: 'leve', minute: 55 },
+    ];
+    const self = buildTodayMatch('A', FIX, round(mine, 1, 0), 'Rival', CTX);
+    expect((self.choices ?? []).some((c) => c.templateId === 'lesao-colega')).toBe(false);
+    // lesão de um COLEGA (≠ A-me) → pode gerar; se gerar, cai no minuto da lesão (30')
+    const mate: MatchEvent[] = [
+      { kind: 'injury', clubId: 'A', athleteId: 'A-mate', severity: 'leve', minute: 30 },
+    ];
+    for (const c of buildTodayMatch('A', FIX, round(mate, 1, 0), 'Rival', CTX).choices ?? []) {
+      if (c.templateId === 'lesao-colega') expect(c.minute).toBe(30);
+    }
+  });
+});

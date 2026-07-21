@@ -26,6 +26,16 @@ export {
   type RatingFocos,
   type RatingInput,
 } from './engine/match-rating.js';
+export {
+  matchChoices,
+  choiceTemplateById,
+  MATCH_CHOICES,
+  CHOICES_PER_MATCH,
+  type MatchChoice,
+  type MatchChoiceOption,
+  type MatchChoiceContext,
+  type ChoiceEffect,
+} from './engine/match-choices.js';
 export { computeStandings } from './engine/standings.js';
 export { simulateSeason } from './engine/season.js';
 export { DEMO_LEAGUE } from './data/league-seed.js';
