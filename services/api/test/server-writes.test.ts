@@ -534,6 +534,42 @@ describe.skipIf(!DB_URL)('escritas de gameplay — servidor real (SPEC-041)', ()
       expect(r4.status).toBe(401); // OP-09: sessão primeiro — a rota é inalcançável sem ela
     });
 
+    it('a janela vai até o tick de D+1: às 09h da manhã seguinte a resposta ainda entra (200)', async () => {
+      const { email } = await playedSeat();
+      clock = (D050 + 1) * 86_400_000 + 9 * 3_600_000 + 3 * 3_600_000; // 09h BRT de D+1 → tickDay = D
+      const tok = await token(email);
+      const offer = await getChoices(tok);
+      expect(offer.length).toBeGreaterThanOrEqual(1); // a rodada de ONTEM ainda é a mostrada
+      const target = offer[0]!;
+      const r = await post('/v1/matches/choices/answer', tok, {
+        round: 1,
+        templateId: target.templateId,
+        optionId: target.options[0]!.id,
+      });
+      expect(r.status).toBe(200);
+    });
+
+    it('balde por conta: a 31ª resposta no minuto → 429 com Retry-After (IP `matches` 40 não morde antes)', async () => {
+      const { email } = await playedSeat();
+      const tok = await token(email);
+      // As 30 primeiras passam o balde (o teto morde ANTES da lógica — respostas viram 400 aqui).
+      for (let i = 0; i < 30; i++) {
+        const r = await post('/v1/matches/choices/answer', tok, {
+          round: 1,
+          templateId: 'nao-existe',
+          optionId: 'x',
+        });
+        expect(r.status).toBe(400);
+      }
+      const limited = await post('/v1/matches/choices/answer', tok, {
+        round: 1,
+        templateId: 'nao-existe',
+        optionId: 'x',
+      });
+      expect(limited.status).toBe(429);
+      expect(limited.headers.get('retry-after')).toBeTruthy();
+    });
+
     it('rodada NÃO liquidada (sem cursor) → 409 choice_not_available', async () => {
       const { email } = await seat();
       clock = atDay(16); // 16h do dia da rodada 1, mas nada publicado/cursor

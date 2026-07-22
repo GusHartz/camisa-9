@@ -81,7 +81,10 @@ public sealed class BandViewModel : INotifyPropertyChanged
     private int _nextChoiceIdx;
     private IReadOnlyList<BandMatchChoice>? _lastChoices; // a oferta fresca da última partida — p/ o ReWatch
     private readonly HashSet<string> _answeredLocal = new(); // respondidas AQUI (otimista, até o Apply anotar)
-    private int _lastRound; // o round mostrado (ApplyClub) — o contexto do POST de resposta
+    private readonly HashSet<string> _pendingOutcome = new(); // respondidas aguardando o Result anotado (feedback)
+    private int _lastRound; // o round mostrado (ApplyClub)
+    private int _choicesRound; // o round da OFERTA apresentada (capturado na apresentação, NÃO no clique —
+    // um poll que avance _lastRound com o overlay aberto responderia a oferta errada; MAJOR da revisão)
 
     public string StatusLine { get => _statusLine; private set => Set(ref _statusLine, value); }
     public string Phase { get => _phase; private set => Set(ref _phase, value); }
@@ -182,17 +185,28 @@ public sealed class BandViewModel : INotifyPropertyChanged
         private set => Set(ref _choiceOptions, value);
     }
 
-    /// <summary>O contexto do POST de resposta (round mostrado + templateId corrente); null = sem momento.</summary>
+    /// <summary>O contexto do POST de resposta (o round da OFERTA apresentada + templateId corrente);
+    /// null = sem momento. O round é o capturado na apresentação — nunca o vivo do poll.</summary>
     public (int Round, string TemplateId)? ChoiceContext() =>
-        _currentMatchChoice is { } ch ? (_lastRound, ch.TemplateId) : null;
+        _currentMatchChoice is { } ch ? (_choicesRound, ch.TemplateId) : null;
 
-    /// <summary>Marca o momento como respondido LOCALMENTE (otimista): fecha o overlay e impede a
-    /// re-oferta num ReWatch antes da reconciliação chegar. O CurrentMatchChoice FICA — é por ele que
-    /// o Apply casa o `Result` anotado do servidor e mostra o feedback do desfecho.</summary>
+    /// <summary>Marca o momento como respondido LOCALMENTE (otimista): fecha o overlay, impede a
+    /// re-oferta num ReWatch antes da reconciliação chegar e agenda o feedback do desfecho (o Apply
+    /// casa o `Result` anotado pelo conjunto de pendentes — sobrevive à troca do momento corrente).</summary>
     public void MarkChoiceAnswered(string templateId)
     {
         _answeredLocal.Add(templateId);
+        _pendingOutcome.Add(templateId);
         ChoiceOpen = false;
+    }
+
+    /// <summary>Desfaz o otimista quando o POST falhou LOCALMENTE (rede/429/5xx): a escolha volta a
+    /// ser re-oferecível num ReWatch — senão um blip de rede mataria a agência do momento até a
+    /// conservadora de D+1. Conflito (409) NÃO desfaz: o servidor decidiu.</summary>
+    public void UnmarkChoice(string templateId)
+    {
+        _answeredLocal.Remove(templateId);
+        _pendingOutcome.Remove(templateId);
     }
 
     /// <summary>Abre/fecha o painel de decisões (só abre se há decisão pendente).</summary>
@@ -383,9 +397,11 @@ public sealed class BandViewModel : INotifyPropertyChanged
         MatchLine = $"⏱ {f.Minute}'  {f.MyGoals}–{f.TheirGoals}";
         MyGoalFlashOpacity = f.GoalNow && f.GoalIsMine ? 1 : 0;
         TheirGoalFlashOpacity = f.GoalNow && !f.GoalIsMine ? 1 : 0;
-        // Escolhas (SPEC-050): o momento abre NO MINUTO dele. `>=` porque o relógio PULA minutos; o
-        // `while` faz a PRÓXIMA substituir uma anterior não-respondida (o momento passou).
-        while (_nextChoiceIdx < _replayChoices.Count && f.Minute >= _replayChoices[_nextChoiceIdx].Minute)
+        // Escolhas (SPEC-050): o momento abre NO MINUTO dele. `>=` porque o relógio PULA minutos; a
+        // PRÓXIMA substitui uma anterior não-respondida (o momento passou). UMA por frame (`if`, não
+        // `while`): duas no MESMO minuto abrem em frames consecutivos — a primeira ganha ~2,7s de
+        // tela em vez de ser substituída irrespondível no mesmo frame (MINOR da revisão).
+        if (_nextChoiceIdx < _replayChoices.Count && f.Minute >= _replayChoices[_nextChoiceIdx].Minute)
         {
             CurrentMatchChoice = _replayChoices[_nextChoiceIdx];
             ChoiceOpen = true;
@@ -426,14 +442,18 @@ public sealed class BandViewModel : INotifyPropertyChanged
         // Partida NOVA: o otimista local da anterior expira (os templateIds repetem entre rodadas —
         // catálogo fixo; um _answeredLocal velho suprimiria um momento fresco desta rodada).
         _answeredLocal.Clear();
+        _pendingOutcome.Clear();
         BeginChoicePresentation(m.Choices);
         _replay.Play(goals);
     }
 
     // Prepara a fila de escolhas de UMA sessão de replay (SPEC-050): só as não-respondidas (nem no
     // servidor — ChosenOptionId — nem localmente), em ordem de minuto; overlay fechado até o Frame abrir.
+    // O round da oferta é CAPTURADO aqui (não no clique) — um poll que avance o `_lastRound` com o
+    // overlay aberto não muda o alvo do POST (o servidor 409aria a oferta errada; MAJOR da revisão).
     private void BeginChoicePresentation(IReadOnlyList<BandMatchChoice>? choices)
     {
+        _choicesRound = _lastRound;
         _replayChoices = (choices ?? Array.Empty<BandMatchChoice>())
             .Where(ch => ch is not null && ch.ChosenOptionId is null && !_answeredLocal.Contains(ch.TemplateId))
             .OrderBy(ch => ch.Minute)
@@ -443,24 +463,27 @@ public sealed class BandViewModel : INotifyPropertyChanged
         CurrentMatchChoice = null;
     }
 
-    // Reconciliação do poll (SPEC-050): NUNCA reseta um overlay em curso — só reage quando a escolha
-    // corrente chegou ANOTADA do servidor (mesmo TemplateId com Result): fecha e dá o feedback do
-    // desfecho, roteado SEMPRE pelo valor de `result` (nunca por frase do servidor — OP-11).
+    // Reconciliação do poll (SPEC-050): NUNCA reseta um overlay em curso — reage pelo CONJUNTO de
+    // respondidas aguardando desfecho (não só a corrente: o feedback sobrevive à PRÓXIMA escolha
+    // abrir ou ao replay terminar antes do poll voltar). Feedback roteado SEMPRE pelo valor de
+    // `result` (nunca por frase do servidor — OP-11).
     private void ReconcileMatchChoice(BandClub? club)
     {
-        if (_currentMatchChoice is not { } current)
+        if (_pendingOutcome.Count == 0)
             return;
         IReadOnlyList<BandMatchChoice>? choices = club?.TodayMatch?.Choices;
         if (choices is null)
             return;
         foreach (BandMatchChoice? ch in choices)
         {
-            if (ch is null || ch.TemplateId != current.TemplateId || ch.Result is not { } result)
+            if (ch is null || ch.Result is not { } result || !_pendingOutcome.Remove(ch.TemplateId))
                 continue; // elemento null (JSON hostil) não derruba o Apply
-            ChoiceOpen = false;
-            CurrentMatchChoice = null;
             ActionFeedback = ResultFeedback(result);
-            return;
+            if (_currentMatchChoice?.TemplateId == ch.TemplateId)
+            {
+                ChoiceOpen = false;
+                CurrentMatchChoice = null;
+            }
         }
     }
 

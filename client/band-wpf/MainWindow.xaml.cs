@@ -244,8 +244,25 @@ public partial class MainWindow : Window
             && (sender as FrameworkElement)?.DataContext is ChoiceOptionRow opt
         )
         {
-            _ = _actions.AnswerMatchChoiceAsync(ctx.Round, ctx.TemplateId, opt.Id);
             _vm.MarkChoiceAnswered(ctx.TemplateId);
+            _ = AnswerChoiceAsync(ctx.Round, ctx.TemplateId, opt.Id);
+        }
+    }
+
+    // Fire-and-forget SEGURO (nunca lança — lição SPEC-042): em falha LOCAL (rede/429/5xx) o
+    // otimista é DESFEITO — a escolha volta a ser re-oferecível num ReWatch (senão um blip de rede
+    // mataria a agência do momento até a conservadora de D+1). Conflito (409) mantém: o servidor decidiu.
+    private async Task AnswerChoiceAsync(int round, string templateId, string optionId)
+    {
+        try
+        {
+            WriteResult r = await _actions.AnswerMatchChoiceAsync(round, templateId, optionId);
+            if (r is WriteResult.Network or WriteResult.RateLimited or WriteResult.ServerError)
+                _vm.UnmarkChoice(templateId);
+        }
+        catch
+        {
+            // BandActions nunca lança; o catch é o cinto do fire-and-forget.
         }
     }
 }

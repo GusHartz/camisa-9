@@ -4,8 +4,8 @@
 import {
   choiceContextFrom,
   conservativeChoiceOption,
+  dueDayIndex,
   matchChoices,
-  resolveSlot,
 } from '@camisa-9/world-engine';
 import {
   accrueRound,
@@ -116,8 +116,11 @@ async function tryTrain(playerDb: PlayerDb, athleteId: string, day: number): Pro
  * NUNCA impede a conservadora dos demais. Sem punição por catálogo (toda conservadora tem moral ≥ 0);
  * o focusBias NÃO aplica (resolvedBy='agent' — viés de treino é agência do jogador, gate no repo).
  *
- * Gate de ENTRADA (lição SPEC-034): ocupação gravada DEPOIS de day−1 (admitido mid-season no fim do
- * dia) → pula — senão o admitido herdaria escolhas-fantasma (+ moral) de uma partida que não jogou.
+ * Gate de ENTRADA (lição SPEC-034): compara no espaço "que rodada já tinha VENCIDO quando entrou"
+ * (`dueDayIndex(occupiedAt)`), não em dia-calendário — a admissão acontece às ~15h de day−1, DEPOIS
+ * da rodada publicada, e um `resolveSlot` de dia-calendário não distingue antes/depois das 15h (o
+ * off-by-one pego na revisão): se a rodada de day−1 já tinha vencido na entrada, o humano NÃO a
+ * jogou → pula (senão herdaria escolhas-fantasma + moral de uma partida do NPC).
  * ISOLADO (molde tryInjure): um erro aqui não starva os demais passes do humano.
  */
 async function tryResolveChoices(
@@ -129,7 +132,7 @@ async function tryResolveChoices(
 ): Promise<void> {
   if (yesterday === undefined) return; // sem partida publicada ontem (sem fixture/gênese) → nada
   try {
-    if (resolveSlot(occ.occupiedAt.getTime()).dayIndex > day - 1) return; // entrou DEPOIS de ontem
+    if (dueDayIndex(occ.occupiedAt.getTime()) >= day - 1) return; // a rodada de ontem já tinha vencido na entrada → não a jogou
     const ctx = choiceContextFrom(yesterday.match, occ.clubId, occ.athleteId);
     const offer = matchChoices(
       seed,

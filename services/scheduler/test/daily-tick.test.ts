@@ -591,6 +591,9 @@ describe.skipIf(!DB_URL)('daily-tick — o tick de produção contra Postgres re
     expect(await readRound(worldHandle.db, league.leagueId, world.seasonId, 38)).not.toBeNull();
     // o humano SOBREVIVE à virada (imune) — a ocupação segue existindo no mundo virado
     expect(await readOccupation(worldHandle.db, SEED, humanId)).not.toBeNull();
+    // SPEC-050: na janela de GÊNESE o resolver de escolhas PULA sem erro — as escolhas do último
+    // dia da temporada expiram sem conservadora (limitação documentada; o tick acima não lançou).
+    expect(await readMatchChoices(playerHandle.db, humanId, world.seasonId, 38)).toHaveLength(0);
   });
 
   it('backfill do 1º tick: âncora no passado (cursor nulo) NÃO pula rodadas — publica 1..N (fix MINOR)', async () => {
@@ -766,10 +769,10 @@ describe.skipIf(!DB_URL)('daily-tick — o tick de produção contra Postgres re
   describe('timeout das escolhas de partida (SPEC-050)', () => {
     /** Retrocede o `occupied_at` para o espaço de dias sintéticos do teste — sem isso o gate de
      *  ENTRADA (occupiedAt = agora REAL >> START) pula o resolver, como pularia um admitido novo. */
-    async function backdateEntry(humanId: string, dayIndex: number): Promise<void> {
+    async function backdateEntry(humanId: string, dayIndex: number, hour = 12): Promise<void> {
       await worldHandle.db
         .update(worldSchema.worldOccupation)
-        .set({ occupiedAt: new Date(epochAt(dayIndex, 12)) })
+        .set({ occupiedAt: new Date(epochAt(dayIndex, hour)) })
         .where(eq(worldSchema.worldOccupation.humanAthleteId, humanId));
     }
 
@@ -854,15 +857,44 @@ describe.skipIf(!DB_URL)('daily-tick — o tick de produção contra Postgres re
       expect(rows.filter((r) => r.resolvedBy === 'agent')).toHaveLength(offer.length - 1);
     });
 
-    it('gate de ENTRADA (lição SPEC-034): admitido DEPOIS da partida NÃO ganha escolhas-fantasma', async () => {
+    it('gate de ENTRADA (lição SPEC-034), na FRONTEIRA: admitido às 16h de day-1 (pós-rodada) pula; solo das 10h (jogou) resolve', async () => {
       const world = (await readWorld(worldHandle.db, SEED))!;
       await setSeasonAnchor(worldHandle.db, SEED, world.seasonId, START);
       const league = world.tiers[world.tiers.length - 1]!.leagues[0]!;
-      const humanId = await seatHuman(league.clubs[0]!.id); // occupiedAt = AGORA real (>> START−1)
+      // O caso de PRODUÇÃO do bug pego na revisão: a admissão acontece ~15h de day-1, DEPOIS da
+      // rodada publicada — a rodada de day-1 JÁ TINHA VENCIDO na entrada (dueDayIndex == day-1).
+      const late = await seatHuman(league.clubs[0]!.id);
+      const early = await seatHuman(league.clubs[1]!.id);
+      await backdateEntry(late, START, 16); // pós-rodada de START → NÃO jogou a rodada 1
+      await backdateEntry(early, START, 10); // manhã de START → jogou a rodada 1 das 15h
       await runDailyTick(worldHandle.db, playerHandle.db, SEED, epochAt(START));
       await runDailyTick(worldHandle.db, playerHandle.db, SEED, epochAt(START + 1));
-      // o resolver PULOU a ocupação: zero linhas da partida que ele não jogou
-      expect(await readMatchChoices(playerHandle.db, humanId, world.seasonId, 1)).toHaveLength(0);
+      // o admitido pós-rodada: ZERO linhas da partida que o NPC jogou (nenhuma moral fantasma)
+      expect(await readMatchChoices(playerHandle.db, late, world.seasonId, 1)).toHaveLength(0);
+      // o solo da manhã jogou → o resolver cobre com a conservadora normalmente
+      const earlyRows = await readMatchChoices(playerHandle.db, early, world.seasonId, 1);
+      expect(earlyRows.length).toBeGreaterThanOrEqual(1);
+      // e o occupiedAt REAL (sem backdate) também pula — o análogo do admitido de hoje
+      const fresh = await seatHuman(league.clubs[2]!.id);
+      await runDailyTick(worldHandle.db, playerHandle.db, SEED, epochAt(START + 1));
+      expect(await readMatchChoices(playerHandle.db, fresh, world.seasonId, 1)).toHaveLength(0);
+    });
+
+    it('o viés da escolha guia o TREINO IDLE do tick seguinte (seam ponta-a-ponta, lição 029→046→047)', async () => {
+      const { humanId } = await seatBackdated();
+      await runDailyTick(worldHandle.db, playerHandle.db, SEED, epochAt(START)); // treinou START (coach)
+      await playerHandle.db
+        .update(playerSchema.athlete)
+        .set({ nextTrainFocus: 'tatico' })
+        .where(eq(playerSchema.athlete.id, humanId));
+      await runDailyTick(worldHandle.db, playerHandle.db, SEED, epochAt(START + 1)); // consome o viés
+      const p = (await readAthleteProgress(playerHandle.db, humanId))!;
+      expect(p.lastFocus).toBe('tatico'); // o técnico treinaria o mais baixo (fisico) — o viés mandou
+      const [row] = await playerHandle.db
+        .select({ bias: playerSchema.athlete.nextTrainFocus })
+        .from(playerSchema.athlete)
+        .where(eq(playerSchema.athlete.id, humanId));
+      expect(row!.bias).toBeNull(); // one-shot: consumido e limpo
     });
   });
 });

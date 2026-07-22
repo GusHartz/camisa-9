@@ -207,6 +207,23 @@ describe.skipIf(!DB_URL)('match-choice-repo — escolhas de partida contra Postg
     expect(await readMatchChoices(handle.db, id, '2026', 3)).toHaveLength(1);
   });
 
+  it('corrida REAL responder×resolver (Promise.all): exatamente 1 linha, 1 bump, consistente com o vencedor', async () => {
+    const id = await newAthlete();
+    await Promise.all([
+      answerMatchChoice(handle.db, id, answer({ effect: { moral: 6 } })).catch(() => undefined),
+      resolveConservative(
+        handle.db,
+        id,
+        answer({ chosenOption: 'poupar', effect: { moral: 3 }, resolvedBy: 'agent' }),
+      ),
+    ]);
+    const rows = await readMatchChoices(handle.db, id, '2026', 3);
+    expect(rows).toHaveLength(1); // a PK decidiu — nunca 2 linhas
+    const moral = (await readMood(handle.db, id))!.moral;
+    // o bump aplicado é EXATAMENTE o do vencedor do INSERT (nenhum duplo, nenhum do perdedor)
+    expect(moral).toBe(rows[0]!.resolvedBy === 'player' ? 56 : 53);
+  });
+
   it('chaves distintas da PK convivem: outra rodada/temporada/template = linhas independentes', async () => {
     const id = await newAthlete();
     await answerMatchChoice(handle.db, id, answer());
