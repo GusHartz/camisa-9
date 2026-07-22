@@ -61,19 +61,16 @@ efeito real** (ex.: `MORAL +6`), preservando a intenção visual do design sem i
 
 ---
 
-## Decisões que o founder precisa travar
+## Decisões do founder (TRAVADAS — 2026-07-22)
 
-1. **Qual tratamento da aposta** — o designer recomenda **1a** ("aposta acesa": botão laranja
-   sólido + chip `⚡ TEC` + micro-texto *"sua Habilidade decide"*), e desenhou os 6 estados com
-   ele. Alternativas: **1b** (dois pesos iguais, ícone de dado vs ✓ — a arriscada não parece "a
-   recomendada") e **1c** ("O TÉCNICO PEDE", laranja suave). **Recomendo 1a**, que é o que está
-   desenhado por inteiro.
-2. **Fidelidade dos estados de desfecho** — **(A)** narrativa no catálogo (fatia de servidor,
-   fiel ao design) ou **(B)** só a moldura (ouro "GLÓRIA" / slate "FOI ASSIM" + sprite) com texto
-   genérico, sem prosa por opção. **Recomendo (A)**: é aditivo, barato e é o que dá alma ao
-   momento — sem a prosa, o estado ③/④ vira uma caixa colorida.
-3. **O delta na nota** — substituir por `MORAL +N` (recomendado) ou criar a mecânica de nota
-   (fora desta SPEC).
+1. **Tratamento 1a — "aposta acesa"**: botão laranja sólido + chip `⚡ TEC` branco + micro-texto
+   *"sua Habilidade decide"*; a segura fica neutra com o selo `GARANTIDO`. É o recomendado pelo
+   designer e o único com os 6 estados desenhados por inteiro. **1b e 1c ficam fora.**
+2. **Narrativa NO CATÁLOGO (opção A)**: cada opção declara a prosa de sucesso/fracasso na lib
+   pura; o servidor hidrata na anotação e o cliente só renderiza. Fiel ao design, e o texto de
+   gameplay continua com fonte única (nunca no renderizador).
+3. **`MORAL +N` no lugar do delta de nota**: mostra o efeito REAL que a escolha já aplica (a
+   `moral` gravada no `effect`). Nenhuma regra de jogo é criada nesta SPEC de arte.
 
 ---
 
@@ -221,12 +218,13 @@ byte-idênticos**; sem migration; gates TS verdes.
 
 ## Checklist de aprovação
 
-- [ ] **Card criado no board** e esta SPEC publicada nele
-- [ ] Decisão 1 — tratamento **1a** (recomendado) / 1b / 1c
-- [ ] Decisão 2 — narrativa no catálogo **(A, recomendado)** / só moldura (B)
-- [ ] Decisão 3 — `MORAL +N` (recomendado) / criar mecânica de nota (fora) / omitir
+- [x] **Card criado no board** e esta SPEC publicada nele
+- [x] Decisão 1 — tratamento **1a** (aposta acesa)
+- [x] Decisão 2 — **narrativa no catálogo** (opção A)
+- [x] Decisão 3 — **`MORAL +N`** (sem criar mecânica de nota)
 - [ ] Objetivo, escopo dentro/fora e arquivos conferidos
 - [ ] Critérios de aceitação testáveis
+- [ ] **Aprovação no card (`spec → dev`)** — gate do arquiteto; o código não começa antes
 
 ---
 
