@@ -270,16 +270,29 @@ async function readTodayMatch(
   );
 }
 
-/** As respostas da rodada mostrada, por `templateId` (SPEC-050) — best-effort do lado player. */
+/** As respostas da rodada mostrada, por `templateId` (SPEC-050) — best-effort do lado player. O
+ *  `effect` gravado viaja junto para a SPEC-051 derivar o `moralDelta` do desfecho. */
 async function readAnswersMap(
   db: Db,
   athleteId: string,
   seasonId: string,
   round: number,
-): Promise<ReadonlyMap<string, { readonly chosenOption: string; readonly result: string }>> {
+): Promise<
+  ReadonlyMap<
+    string,
+    {
+      readonly chosenOption: string;
+      readonly result: string;
+      readonly effect?: Readonly<Record<string, number | string>>;
+    }
+  >
+> {
   const rows = await readMatchChoices(db, athleteId, seasonId, round);
   return new Map(
-    rows.map((r) => [r.templateId, { chosenOption: r.chosenOption, result: r.result }]),
+    rows.map((r) => [
+      r.templateId,
+      { chosenOption: r.chosenOption, result: r.result, effect: r.effect },
+    ]),
   );
 }
 

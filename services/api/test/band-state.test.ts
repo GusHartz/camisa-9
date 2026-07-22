@@ -36,6 +36,7 @@ import {
   schema as playerSchema,
   type DbHandle as PlayerHandle,
 } from '@camisa-9/player-store';
+import { choiceOutcomeText } from '@camisa-9/world-engine';
 import * as worldStore from '@camisa-9/world-store';
 import {
   advanceTickCursor,
@@ -648,6 +649,67 @@ describe.skipIf(!DB_URL)('readBandState — o agregador da faixa (SPEC-038)', ()
         expect(tm.played).toBe(false);
         expect('choices' in tm).toBe(false);
       }
+    });
+
+    it('SPEC-051 — a anotação traz a NARRATIVA do catálogo + o moralDelta do effect gravado', async () => {
+      const { athleteId, seasonId } = await seatHuman();
+      await runRoundForDay(worldHandle.db, SEED, D);
+      await advanceTickCursor(worldHandle.db, SEED, D);
+      const offer = (await readBandState(deps, athleteId, epochAt(D, 16))).club!.todayMatch!
+        .choices!;
+      const target = offer[0]!;
+      const opt = target.options[0]!;
+      // O desfecho que o servidor gravaria: para uma arriscada, 'success'; senão 'na'.
+      const result = opt.risky === true ? 'success' : 'na';
+      const expected = choiceOutcomeText(target.templateId, opt.id, result)!;
+      await answerMatchChoice(playerHandle.db, athleteId, {
+        seasonId,
+        round: 1,
+        templateId: target.templateId,
+        chosenOption: opt.id,
+        result,
+        effect: { moral: 6 },
+        day: D,
+        resolvedBy: 'player',
+      });
+
+      const annotated = (
+        await readBandState(deps, athleteId, epochAt(D, 16))
+      ).club!.todayMatch!.choices!.find((c) => c.templateId === target.templateId)!;
+      expect(annotated.resultTitle).toBe(expected.title); // a prosa vem do CATÁLOGO, não do cliente
+      expect(annotated.resultBody).toBe(expected.body);
+      expect(annotated.moralDelta).toBe(6); // o efeito REAL aplicado (o "MORAL +6" do desfecho)
+      // a chance do roll e o effect BRUTO nunca atravessam
+      expect(JSON.stringify(annotated)).not.toContain('chance');
+      expect('effect' in annotated).toBe(false);
+    });
+
+    it('SPEC-051 — pendente e sem-moral omitem os campos (aditivo-only, nunca string vazia)', async () => {
+      const { athleteId, seasonId } = await seatHuman();
+      await runRoundForDay(worldHandle.db, SEED, D);
+      await advanceTickCursor(worldHandle.db, SEED, D);
+      const offer = (await readBandState(deps, athleteId, epochAt(D, 16))).club!.todayMatch!
+        .choices!;
+      for (const c of offer) {
+        expect('resultTitle' in c).toBe(false); // pendente → nada de desfecho
+        expect('moralDelta' in c).toBe(false);
+      }
+      const target = offer[0]!;
+      await answerMatchChoice(playerHandle.db, athleteId, {
+        seasonId,
+        round: 1,
+        templateId: target.templateId,
+        chosenOption: target.options[0]!.id,
+        result: target.options[0]!.risky === true ? 'success' : 'na',
+        effect: { focusBias: 'tatico' }, // opção que NÃO mexe na moral
+        day: D,
+        resolvedBy: 'player',
+      });
+      const annotated = (
+        await readBandState(deps, athleteId, epochAt(D, 16))
+      ).club!.todayMatch!.choices!.find((c) => c.templateId === target.templateId)!;
+      expect(annotated.resultTitle).toBeDefined(); // a narrativa continua
+      expect('moralDelta' in annotated).toBe(false); // mas sem moral, sem o campo
     });
   });
 

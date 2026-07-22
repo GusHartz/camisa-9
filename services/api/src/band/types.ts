@@ -159,6 +159,14 @@ export interface BandMatchChoice {
   readonly chosenOptionId?: string;
   /** 'success' | 'fail' (arriscada, roll) | 'na' (determinística). Presente junto de `chosenOptionId`. */
   readonly result?: 'success' | 'fail' | 'na';
+  /** A narrativa do DESFECHO (SPEC-051), hidratada do catálogo pelo `result` — headline + corpo.
+   *  Presentes só com a escolha resolvida; OMITIDOS se o catálogo não declara prosa p/ o desfecho
+   *  (o cliente cai no feedback genérico). O `effect` bruto e a chance do roll seguem server-side. */
+  readonly resultTitle?: string;
+  readonly resultBody?: string;
+  /** O moral APLICADO pela escolha (o `effect.moral` gravado) — o "MORAL +6" do desfecho. Pode ser
+   *  negativo (fracasso de arriscada). Omitido quando a opção não mexe na moral. */
+  readonly moralDelta?: number;
 }
 
 /** O jogo do dia. PRÉ-JOGO: só o adversário (do fixture). PÓS-JOGO: `played` + o placar. */

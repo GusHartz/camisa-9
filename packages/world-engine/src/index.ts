@@ -47,6 +47,12 @@ export {
   type RollInput,
 } from './engine/match-choice-roll.js';
 export { choiceContextFrom } from './engine/match-choice-context.js';
+export {
+  choiceOutcomeText,
+  outcomesOf,
+  type ChoiceOutcome,
+  type ChoiceOutcomeText,
+} from './engine/match-choice-copy.js';
 export { computeStandings } from './engine/standings.js';
 export { simulateSeason } from './engine/season.js';
 export { DEMO_LEAGUE } from './data/league-seed.js';

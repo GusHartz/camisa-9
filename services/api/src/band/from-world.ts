@@ -3,6 +3,7 @@
 // tocar o snapshot nem os goldens. `generateFixtures` é reuso puro do engine (só consome `c.id`).
 import {
   choiceContextFrom,
+  choiceOutcomeText,
   generateFixtures,
   matchChoices,
   matchRating,
@@ -38,10 +39,15 @@ export interface BandMatchCtx {
   readonly seasonId: string;
   readonly nameByWorldId: ReadonlyMap<string, string>;
   /** As respostas já persistidas da rodada mostrada (SPEC-050), por `templateId` — anota a oferta
-   *  (`chosenOptionId`/`result`). Ausente/vazio = tudo pendente. */
+   *  (`chosenOptionId`/`result`) e, na SPEC-051, hidrata a narrativa do desfecho + o `moralDelta`
+   *  a partir do `effect` gravado. Ausente/vazio = tudo pendente. */
   readonly answers?: ReadonlyMap<
     string,
-    { readonly chosenOption: string; readonly result: string }
+    {
+      readonly chosenOption: string;
+      readonly result: string;
+      readonly effect?: Readonly<Record<string, number | string>>;
+    }
   >;
 }
 
@@ -154,10 +160,33 @@ function buildChoices(match: MatchResult, clubId: string, ctx: BandMatchCtx): Ba
         ? {
             chosenOptionId: a.chosenOption,
             ...(isChoiceResult(a.result) ? { result: a.result } : {}),
+            ...outcomeFields(c.templateId, a),
           }
         : {}),
     };
   });
+}
+
+/** A narrativa do desfecho (SPEC-051) + o moral aplicado, hidratados da resposta persistida. O
+ *  texto vem do CATÁLOGO (fonte única — o cliente nunca tem tabela de prosa); o `moralDelta` vem do
+ *  `effect` gravado. Campos ausentes quando o catálogo não declara prosa / a opção não mexe na
+ *  moral — a política aditiva-only manda omitir, nunca mandar string vazia. */
+function outcomeFields(
+  templateId: string,
+  a: {
+    readonly chosenOption: string;
+    readonly result: string;
+    readonly effect?: Readonly<Record<string, number | string>>;
+  },
+): { resultTitle?: string; resultBody?: string; moralDelta?: number } {
+  const text = isChoiceResult(a.result)
+    ? choiceOutcomeText(templateId, a.chosenOption, a.result)
+    : undefined;
+  const moral = a.effect?.['moral'];
+  return {
+    ...(text !== undefined ? { resultTitle: text.title, resultBody: text.body } : {}),
+    ...(typeof moral === 'number' && moral !== 0 ? { moralDelta: moral } : {}),
+  };
 }
 
 function toBandChoiceOption(o: MatchChoiceOption): BandChoiceOption {

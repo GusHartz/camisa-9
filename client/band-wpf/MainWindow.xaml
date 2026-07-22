@@ -241,30 +241,11 @@
             <!-- ESCOLHA NA PARTIDA (SPEC-050): o momento aparece NO MINUTO dele durante o replay
                  (dirigido pelo Frame — fora do replay não há affordance). Clicar numa opção →
                  POST /v1/matches/choices/answer → reconcilia; a arriscada leva o ⚡ATTR no rótulo. -->
+            <!-- SPEC-051: o conteúdo é DESENHADO em `View/ChoiceCard.cs` (fiel ao handoff do Claude
+                 Design, tratamento 1a) e injetado aqui pelo code-behind — o popup em si só ancora. -->
             <Popup IsOpen="{Binding ChoiceOpen}" PlacementTarget="{Binding ElementName=MatchLineText}"
-                   Placement="Top" VerticalOffset="-6" StaysOpen="True">
-                <Border Background="#181820" BorderBrush="#2E2E3A" BorderThickness="1" Padding="10"
-                        MaxWidth="380">
-                    <StackPanel>
-                        <TextBlock Text="{Binding CurrentMatchChoice.Prompt}" Foreground="#E4E4EC"
-                                   FontSize="12" TextWrapping="Wrap" Margin="0,0,0,8" />
-                        <ItemsControl ItemsSource="{Binding ChoiceOptions}">
-                            <ItemsControl.ItemsPanel>
-                                <ItemsPanelTemplate>
-                                    <WrapPanel Orientation="Horizontal" />
-                                </ItemsPanelTemplate>
-                            </ItemsControl.ItemsPanel>
-                            <ItemsControl.ItemTemplate>
-                                <DataTemplate>
-                                    <Border Style="{StaticResource Chip}" Padding="8,4" Margin="0,0,6,0"
-                                            MouseLeftButtonDown="OnMatchChoiceOptionClick">
-                                        <TextBlock Text="{Binding Display}" FontSize="11" Foreground="#E4E4EC" />
-                                    </Border>
-                                </DataTemplate>
-                            </ItemsControl.ItemTemplate>
-                        </ItemsControl>
-                    </StackPanel>
-                </Border>
+                   Placement="Top" VerticalOffset="-4" StaysOpen="True" AllowsTransparency="True">
+                <ContentControl x:Name="ChoiceHost" />
             </Popup>
         </Grid>
     </Border>
