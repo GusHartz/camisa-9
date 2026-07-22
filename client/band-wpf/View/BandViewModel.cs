@@ -67,6 +67,11 @@ public sealed class BandViewModel : INotifyPropertyChanged
     private bool _regenConfirming;
     private string _actionFeedback = "";
 
+    // Card de partida (SPEC-049): o modelo projetado do jogo do dia (null = sem jogo com nota) + a dica
+    // de render do affordance "compartilhar". O modelo é montado no Apply e consumido no gesto.
+    private MatchCardModel? _cardModel;
+    private bool _cardAvailable;
+
     public string StatusLine { get => _statusLine; private set => Set(ref _statusLine, value); }
     public string Phase { get => _phase; private set => Set(ref _phase, value); }
     public Brush PhaseBrush { get => _phaseBrush; private set => Set(ref _phaseBrush, value); }
@@ -124,8 +129,19 @@ public sealed class BandViewModel : INotifyPropertyChanged
 
     public string ActionFeedback { get => _actionFeedback; private set => Set(ref _actionFeedback, value); }
 
+    /// <summary>Dica de render (SPEC-049): há um jogo publicado COM nota → mostrar o "compartilhar card".</summary>
+    public bool CardAvailable { get => _cardAvailable; private set => Set(ref _cardAvailable, value); }
+
     /// <summary>Feedback transitório de uma ação (o BandActions chama). Persiste até a próxima ação.</summary>
     public void SetActionFeedback(string msg) => ActionFeedback = msg;
+
+    /// <summary>Gera o card do jogo do dia, copia p/ o clipboard e salva o PNG (SPEC-049). No-op se não
+    /// há jogo com nota (o affordance é gateado por CardAvailable, mas o guard é defensivo).</summary>
+    public void ShareMatchCard()
+    {
+        if (_cardModel is { } model)
+            ActionFeedback = MatchCardShare.Share(model);
+    }
 
     /// <summary>Abre/fecha o painel de decisões (só abre se há decisão pendente).</summary>
     public void ToggleDecision() => DecisionOpen = !_decisionOpen && _hasDecisions;
@@ -197,6 +213,11 @@ public sealed class BandViewModel : INotifyPropertyChanged
         ApplyClub(s.Club);
         ApplyQueue(s.Queue, s.Club);
         MaybeAutoPlay(s.Club);
+
+        // Card de partida (SPEC-049): projeta o jogo do dia (null = pré-jogo / sem nota) → gateia o
+        // affordance "compartilhar". O modelo fica guardado p/ o gesto (ShareMatchCard).
+        _cardModel = MatchCardModel.From(s);
+        CardAvailable = _cardModel is not null;
 
         int squad = s.Squad?.Count ?? 0;
         string me = MeOf(s);

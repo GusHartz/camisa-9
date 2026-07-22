@@ -164,6 +164,14 @@ public partial class MainWindow : Window
         e.Handled = true;
     }
 
+    // Compartilhar o card de partida (SPEC-049): gera a imagem, copia p/ o clipboard e salva o PNG.
+    // `Handled` impede o borbulhamento p/ o OnMouseDown (o duplo-clique que fecha a faixa).
+    private void OnShareCardClick(object sender, MouseButtonEventArgs e)
+    {
+        _vm.ShareMatchCard();
+        e.Handled = true;
+    }
+
     // --- Escritas de gameplay (SPEC-045): cada gesto dispara uma POST via o BandActions, que reconcilia.
     //     `e.Handled` impede o borbulhamento p/ o OnMouseDown (o duplo-clique que fecha a faixa). ---
 
