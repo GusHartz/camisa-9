@@ -26,6 +26,15 @@ describe('mapDomainError — erro tipado → RouteResult (SPEC-041)', () => {
       status: 400,
       body: { code: 'invalid_input' },
     });
+    // SPEC-050 — escolhas de partida
+    expect(mapDomainError(new GameplayError('choice_resolved', 'x'))).toMatchObject({
+      status: 409,
+      body: { code: 'choice_resolved' },
+    });
+    expect(mapDomainError(new GameplayError('choice_not_available', 'x'))).toMatchObject({
+      status: 409,
+      body: { code: 'choice_not_available' },
+    });
   });
 
   it('OccupyError (regen) → 409 regen_ineligible', () => {

@@ -52,6 +52,8 @@ export type ErrorCode =
   | 'not_found'
   | 'no_free_points'
   | 'decision_resolved'
+  | 'choice_resolved'
+  | 'choice_not_available'
   | 'invalid_option'
   | 'insufficient_balance'
   | 'already_owned'

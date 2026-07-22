@@ -82,3 +82,39 @@ function injuryFor(m: MatchRecord, athleteId: string): string | undefined {
   return m.events?.find((e): e is InjuryEvent => e.kind === 'injury' && e.athleteId === athleteId)
     ?.severity;
 }
+
+/** A partida PUBLICADA de ONTEM de um humano (SPEC-050) — o insumo do resolver de escolhas. */
+export interface YesterdayMatch {
+  readonly match: MatchRecord;
+  readonly leagueId: string;
+  readonly seasonId: string;
+  readonly round: number;
+}
+
+/** As partidas publicadas de ONTEM, por `athleteId` (id do mundo) — o `RoundOutcomes` descarta o
+ *  `MatchRecord`, e o resolver de escolhas (SPEC-050) precisa dele INTEIRO (eventos → ctx → oferta
+ *  recomputada). Lê cada liga UMA vez; humano sem jogo na rodada fica fora do mapa (o resolver pula). */
+export async function yesterdayMatches(
+  worldDb: WorldDb,
+  seed: string,
+  seasonId: string,
+  round: number,
+  occupations: readonly OccupationView[],
+): Promise<ReadonlyMap<string, YesterdayMatch>> {
+  const map = new Map<string, YesterdayMatch>();
+  const world = await readWorld(worldDb, seed);
+  if (!world) return map;
+  const clubLeague = buildClubLeagueMap(world);
+  const roundByLeague = new Map<string, RoundResult | null>();
+  for (const occ of occupations) {
+    const leagueId = clubLeague.get(occ.clubId);
+    if (leagueId === undefined) continue;
+    if (!roundByLeague.has(leagueId)) {
+      roundByLeague.set(leagueId, await readRound(worldDb, leagueId, seasonId, round));
+    }
+    const match = matchOf(roundByLeague.get(leagueId), occ.clubId);
+    if (!match) continue;
+    map.set(occ.athleteId, { match, leagueId, seasonId, round });
+  }
+  return map;
+}

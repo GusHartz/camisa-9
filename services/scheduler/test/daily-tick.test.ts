@@ -12,6 +12,7 @@ import {
   matchPrize,
   salaryPerRound,
 } from '@camisa-9/player';
+import { choiceContextFrom, matchChoices } from '@camisa-9/world-engine';
 import {
   advanceTickCursor,
   createDb as createWorldDb,
@@ -26,6 +27,7 @@ import {
   type DbHandle as WorldHandle,
 } from '@camisa-9/world-store';
 import {
+  answerMatchChoice,
   createAccountWithAthlete,
   createDb as createPlayerDb,
   createSession,
@@ -34,6 +36,7 @@ import {
   readDecisionLog,
   readAthleteProgress,
   readInjuryState,
+  readMatchChoices,
   readMood,
   readWallet,
   schema as playerSchema,
@@ -100,6 +103,7 @@ describe.skipIf(!DB_URL)('daily-tick — o tick de produção contra Postgres re
     await playerHandle.db.delete(playerSchema.injury);
     await playerHandle.db.delete(playerSchema.decision);
     await playerHandle.db.delete(playerSchema.purchase);
+    await playerHandle.db.delete(playerSchema.matchChoice); // FK→athlete (SPEC-050) — antes do atleta
     await playerHandle.db.delete(playerSchema.athlete);
     await playerHandle.db.delete(playerSchema.team);
     await playerHandle.db.delete(playerSchema.session); // SPEC-037: filha de account (FK)
@@ -587,6 +591,9 @@ describe.skipIf(!DB_URL)('daily-tick — o tick de produção contra Postgres re
     expect(await readRound(worldHandle.db, league.leagueId, world.seasonId, 38)).not.toBeNull();
     // o humano SOBREVIVE à virada (imune) — a ocupação segue existindo no mundo virado
     expect(await readOccupation(worldHandle.db, SEED, humanId)).not.toBeNull();
+    // SPEC-050: na janela de GÊNESE o resolver de escolhas PULA sem erro — as escolhas do último
+    // dia da temporada expiram sem conservadora (limitação documentada; o tick acima não lançou).
+    expect(await readMatchChoices(playerHandle.db, humanId, world.seasonId, 38)).toHaveLength(0);
   });
 
   it('backfill do 1º tick: âncora no passado (cursor nulo) NÃO pula rodadas — publica 1..N (fix MINOR)', async () => {
@@ -756,6 +763,138 @@ describe.skipIf(!DB_URL)('daily-tick — o tick de produção contra Postgres re
       const rep = await runDailyTick(worldHandle.db, playerHandle.db, SEED, epochAt(START));
       expect(rep.roundStatus).toBe('sem_ancora');
       expect(await readSessionByHash(playerHandle.db, vencida, epochAt(START))).toBeNull();
+    });
+  });
+
+  describe('timeout das escolhas de partida (SPEC-050)', () => {
+    /** Retrocede o `occupied_at` para o espaço de dias sintéticos do teste — sem isso o gate de
+     *  ENTRADA (occupiedAt = agora REAL >> START) pula o resolver, como pularia um admitido novo. */
+    async function backdateEntry(humanId: string, dayIndex: number, hour = 12): Promise<void> {
+      await worldHandle.db
+        .update(worldSchema.worldOccupation)
+        .set({ occupiedAt: new Date(epochAt(dayIndex, hour)) })
+        .where(eq(worldSchema.worldOccupation.humanAthleteId, humanId));
+    }
+
+    async function seatBackdated(): Promise<{
+      humanId: string;
+      seasonId: string;
+      leagueId: string;
+    }> {
+      const world = (await readWorld(worldHandle.db, SEED))!;
+      await setSeasonAnchor(worldHandle.db, SEED, world.seasonId, START);
+      const league = world.tiers[world.tiers.length - 1]!.leagues[0]!;
+      const humanId = await seatHuman(league.clubs[0]!.id);
+      await backdateEntry(humanId, START - 1);
+      return { humanId, seasonId: world.seasonId, leagueId: league.leagueId };
+    }
+
+    it('o tick de D+1 resolve as escolhas de ONTEM com a conservadora (agent, sem punição, sem viés) — idempotente', async () => {
+      const { humanId, seasonId } = await seatBackdated();
+      await runDailyTick(worldHandle.db, playerHandle.db, SEED, epochAt(START)); // rodada 1
+      // no DIA da partida nada resolve (a janela do jogador vai até o tick de D+1)
+      expect(await readMatchChoices(playerHandle.db, humanId, seasonId, 1)).toHaveLength(0);
+      await runDailyTick(worldHandle.db, playerHandle.db, SEED, epochAt(START + 1)); // resolve ONTEM
+      const rows = await readMatchChoices(playerHandle.db, humanId, seasonId, 1);
+      expect(rows.length).toBeGreaterThanOrEqual(1);
+      for (const r of rows) {
+        expect(r.resolvedBy).toBe('agent');
+        expect(r.result).toBe('na'); // a conservadora nunca rola
+        expect(r.day).toBe(START); // o day-index da PARTIDA, não do processamento
+        const m = r.effect['moral'];
+        if (m !== undefined) expect(m as number).toBeGreaterThanOrEqual(0); // sem punição
+      }
+      expect((await readMood(playerHandle.db, humanId))!.moral).toBeGreaterThanOrEqual(50);
+      const [a] = await playerHandle.db
+        .select({ bias: playerSchema.athlete.nextTrainFocus })
+        .from(playerSchema.athlete)
+        .where(eq(playerSchema.athlete.id, humanId));
+      expect(a!.bias).toBeNull(); // o agente NUNCA seta o viés de treino
+      // idempotência: re-rodar o tick não duplica nem re-bumpa (conflitos benignos)
+      const moralBefore = (await readMood(playerHandle.db, humanId))!.moral;
+      await runDailyTick(worldHandle.db, playerHandle.db, SEED, epochAt(START + 1));
+      expect(await readMatchChoices(playerHandle.db, humanId, seasonId, 1)).toHaveLength(
+        rows.length,
+      );
+      expect((await readMood(playerHandle.db, humanId))!.moral).toBe(moralBefore);
+    });
+
+    it('resolução PARCIAL: a resposta do jogador fica intacta; o resolver cobre SÓ o resto', async () => {
+      const { humanId, seasonId, leagueId } = await seatBackdated();
+      await runDailyTick(worldHandle.db, playerHandle.db, SEED, epochAt(START));
+      // recomputa a oferta da rodada 1 como o servidor faz (fn pura + rodada publicada)
+      const occ = (await readOccupation(worldHandle.db, SEED, humanId))!;
+      const round1 = (await readRound(worldHandle.db, leagueId, seasonId, 1))!;
+      const match = round1.matches.find((m) => m.homeId === occ.clubId || m.awayId === occ.clubId)!;
+      const ctx = choiceContextFrom(match, occ.clubId, occ.athleteId);
+      const offer = matchChoices(
+        SEED,
+        leagueId,
+        seasonId,
+        1,
+        match.homeId,
+        match.awayId,
+        occ.athleteId,
+        ctx,
+      );
+      const mine = offer[0]!;
+      await answerMatchChoice(playerHandle.db, humanId, {
+        seasonId,
+        round: 1,
+        templateId: mine.templateId,
+        chosenOption: mine.options[0]!.id,
+        result: 'na',
+        effect: {},
+        day: START,
+        resolvedBy: 'player',
+      });
+      await runDailyTick(worldHandle.db, playerHandle.db, SEED, epochAt(START + 1));
+      const rows = await readMatchChoices(playerHandle.db, humanId, seasonId, 1);
+      expect(rows).toHaveLength(offer.length); // TODAS cobertas (a minha + as conservadoras)
+      const mineRow = rows.find((r) => r.templateId === mine.templateId)!;
+      expect(mineRow.resolvedBy).toBe('player'); // intacta — o conflito benigno não sobrescreve
+      expect(mineRow.chosenOption).toBe(mine.options[0]!.id);
+      expect(rows.filter((r) => r.resolvedBy === 'agent')).toHaveLength(offer.length - 1);
+    });
+
+    it('gate de ENTRADA (lição SPEC-034), na FRONTEIRA: admitido às 16h de day-1 (pós-rodada) pula; solo das 10h (jogou) resolve', async () => {
+      const world = (await readWorld(worldHandle.db, SEED))!;
+      await setSeasonAnchor(worldHandle.db, SEED, world.seasonId, START);
+      const league = world.tiers[world.tiers.length - 1]!.leagues[0]!;
+      // O caso de PRODUÇÃO do bug pego na revisão: a admissão acontece ~15h de day-1, DEPOIS da
+      // rodada publicada — a rodada de day-1 JÁ TINHA VENCIDO na entrada (dueDayIndex == day-1).
+      const late = await seatHuman(league.clubs[0]!.id);
+      const early = await seatHuman(league.clubs[1]!.id);
+      await backdateEntry(late, START, 16); // pós-rodada de START → NÃO jogou a rodada 1
+      await backdateEntry(early, START, 10); // manhã de START → jogou a rodada 1 das 15h
+      await runDailyTick(worldHandle.db, playerHandle.db, SEED, epochAt(START));
+      await runDailyTick(worldHandle.db, playerHandle.db, SEED, epochAt(START + 1));
+      // o admitido pós-rodada: ZERO linhas da partida que o NPC jogou (nenhuma moral fantasma)
+      expect(await readMatchChoices(playerHandle.db, late, world.seasonId, 1)).toHaveLength(0);
+      // o solo da manhã jogou → o resolver cobre com a conservadora normalmente
+      const earlyRows = await readMatchChoices(playerHandle.db, early, world.seasonId, 1);
+      expect(earlyRows.length).toBeGreaterThanOrEqual(1);
+      // e o occupiedAt REAL (sem backdate) também pula — o análogo do admitido de hoje
+      const fresh = await seatHuman(league.clubs[2]!.id);
+      await runDailyTick(worldHandle.db, playerHandle.db, SEED, epochAt(START + 1));
+      expect(await readMatchChoices(playerHandle.db, fresh, world.seasonId, 1)).toHaveLength(0);
+    });
+
+    it('o viés da escolha guia o TREINO IDLE do tick seguinte (seam ponta-a-ponta, lição 029→046→047)', async () => {
+      const { humanId } = await seatBackdated();
+      await runDailyTick(worldHandle.db, playerHandle.db, SEED, epochAt(START)); // treinou START (coach)
+      await playerHandle.db
+        .update(playerSchema.athlete)
+        .set({ nextTrainFocus: 'tatico' })
+        .where(eq(playerSchema.athlete.id, humanId));
+      await runDailyTick(worldHandle.db, playerHandle.db, SEED, epochAt(START + 1)); // consome o viés
+      const p = (await readAthleteProgress(playerHandle.db, humanId))!;
+      expect(p.lastFocus).toBe('tatico'); // o técnico treinaria o mais baixo (fisico) — o viés mandou
+      const [row] = await playerHandle.db
+        .select({ bias: playerSchema.athlete.nextTrainFocus })
+        .from(playerSchema.athlete)
+        .where(eq(playerSchema.athlete.id, humanId));
+      expect(row!.bias).toBeNull(); // one-shot: consumido e limpo
     });
   });
 });

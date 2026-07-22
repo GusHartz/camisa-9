@@ -16,6 +16,7 @@ import {
   runVacancyPass,
   type Db as WorldDb,
   type DailyRoundStatus,
+  type OccupationView,
   type VacancyReport,
   type WorldModulator,
 } from '@camisa-9/world-store';
@@ -24,7 +25,12 @@ import { moodModulator, runAdmissionPass } from '@camisa-9/world-entry';
 import { runRegenPass } from '@camisa-9/regen';
 import { runTransferPass } from '@camisa-9/transfer';
 import type { WorldState } from '@camisa-9/world-engine';
-import { EMPTY_OUTCOMES, roundOutcomes } from './round-outcomes.js';
+import {
+  EMPTY_OUTCOMES,
+  roundOutcomes,
+  yesterdayMatches,
+  type YesterdayMatch,
+} from './round-outcomes.js';
 import { safeHumanPasses } from './human-passes.js';
 
 export interface DailyTickReport {
@@ -179,6 +185,7 @@ async function processDay(
     paid && round.seasonId !== null && round.targetRound !== null
       ? await roundOutcomes(worldDb, seed, round.seasonId, round.targetRound, occupations)
       : EMPTY_OUTCOMES;
+  const yesterday = await yesterdayFor(worldDb, seed, round, paid, occupations);
   const totals = zeroTotals();
   totals.humans = occupations.length;
   totals.regenerated = regenerated;
@@ -195,6 +202,7 @@ async function processDay(
       outcomes.injuries.get(occ.athleteId),
       paid,
       clubTier.get(occ.clubId),
+      yesterday.get(occ.athleteId),
     );
     totals.accrued += d.accrued;
     totals.decisions += d.decisions;
@@ -207,6 +215,23 @@ async function processDay(
   // O vacancy já rodou → as vagas revertidas HOJE já contam e são herdadas pelo próximo da fila.
   totals.admitted = await runAdmissionPass(worldDb, playerDb, seed);
   return { ...totals, settled: true, status: round.status };
+}
+
+/** As partidas de ONTEM (SPEC-050) — o insumo do resolver de escolhas (timeout → conservadora),
+ *  pré-computado AQUI (o passe por-humano não abre leituras próprias do mundo). Gates: dia normal
+ *  (`paid`) com rodada > 1 na MESMA temporada — na janela de gênese a liga antiga não é derivável
+ *  da ocupação atual (as escolhas do último dia da temporada expiram: limitação documentada). */
+async function yesterdayFor(
+  worldDb: WorldDb,
+  seed: string,
+  round: { seasonId: string | null; targetRound: number | null },
+  paid: boolean,
+  occupations: readonly OccupationView[],
+): Promise<ReadonlyMap<string, YesterdayMatch>> {
+  if (!paid || round.seasonId === null || round.targetRound === null || round.targetRound <= 1) {
+    return new Map<string, YesterdayMatch>();
+  }
+  return yesterdayMatches(worldDb, seed, round.seasonId, round.targetRound - 1, occupations);
 }
 
 /** clubId → tier (a divisão do clube), de `readWorld` — o seam do MUNDO p/ a proposta (SPEC-033). */

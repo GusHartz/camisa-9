@@ -12,6 +12,8 @@ const DOMAIN_MAP: Readonly<Record<string, { status: number; code: ErrorCode }>> 
   attribute_maxed: { status: 409, code: 'conflict' },
   decision_not_found: { status: 404, code: 'not_found' },
   decision_resolved: { status: 409, code: 'decision_resolved' },
+  choice_resolved: { status: 409, code: 'choice_resolved' },
+  choice_not_available: { status: 409, code: 'choice_not_available' },
   invalid_option: { status: 400, code: 'invalid_option' },
   item_invalid: { status: 400, code: 'invalid_input' },
   insufficient_balance: { status: 409, code: 'insufficient_balance' },

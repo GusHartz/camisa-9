@@ -11,12 +11,18 @@ import type { Seed } from '../types.js';
  *  risco) ou rótulos (`focusBias: 'tatico'`). NÃO é aplicado aqui. */
 export type ChoiceEffect = Readonly<Record<string, number | string>>;
 
+/** O foco que pondera o roll de uma opção arriscada (SPEC-050). */
+export type ChoiceAttr = 'fisico' | 'tecnico' | 'tatico' | 'mental';
+
 export interface MatchChoiceOption {
   readonly id: string;
   readonly label: string;
   readonly effect: ChoiceEffect;
   /** A opção de baixo risco/status-quo — o fallback se o jogador não escolher (a fatia de resposta usa). */
   readonly conservative?: boolean;
+  /** Opção ARRISCADA (SPEC-050): resolvida por roll (atributo+moral) — sucesso → `effect`, falha →
+   *  `fail`. Ausente = determinística. Nunca coexiste com `conservative` (invariante testada). */
+  readonly risky?: { readonly attr: ChoiceAttr; readonly fail: ChoiceEffect };
 }
 
 /** Uma escolha GERADA para a partida: o minuto (na timeline) + o tempo + o template + as opções. */
@@ -46,7 +52,7 @@ export interface MatchChoiceContext {
 export const CHOICES_PER_MATCH = { min: 1, max: 5 } as const;
 const MATCH_MINUTES = 90;
 
-interface ChoiceTemplate {
+export interface ChoiceTemplate {
   readonly id: string;
   readonly type: string;
   readonly prompt: string;
@@ -91,6 +97,7 @@ export const MATCH_CHOICES: readonly ChoiceTemplate[] = [
         id: 'provocar',
         label: 'Provocar a torcida rival',
         effect: { moral: 5, fama: 8, risco: 3 },
+        risky: { attr: 'mental', fail: { moral: -3 } },
       },
       {
         id: 'humilde',
@@ -115,7 +122,12 @@ export const MATCH_CHOICES: readonly ChoiceTemplate[] = [
         effect: { focusBias: 'tatico' },
         conservative: true,
       },
-      { id: 'meu-jeito', label: 'Jogar do meu jeito', effect: { moral: 4, risco: 4 } },
+      {
+        id: 'meu-jeito',
+        label: 'Jogar do meu jeito',
+        effect: { moral: 4, risco: 4 },
+        risky: { attr: 'tatico', fail: { moral: -4 } },
+      },
     ],
   },
   {
@@ -145,7 +157,12 @@ export const MATCH_CHOICES: readonly ChoiceTemplate[] = [
     trigger: (c) => c.concededMinutes.length > 0,
     minuteOf: (c, rng) => pickMinute(c.concededMinutes, 46, MATCH_MINUTES, rng),
     options: [
-      { id: 'revidar', label: 'Revidar na cara dele', effect: { risco: 5, moral: 3 } },
+      {
+        id: 'revidar',
+        label: 'Revidar na cara dele',
+        effect: { risco: 5, moral: 3 },
+        risky: { attr: 'mental', fail: { moral: -5 } },
+      },
       { id: 'ignorar', label: 'Ignorar e focar no jogo', effect: { moral: 4 }, conservative: true },
     ],
   },
@@ -176,7 +193,12 @@ export const MATCH_CHOICES: readonly ChoiceTemplate[] = [
     trigger: () => true,
     minuteOf: (_c, rng) => 1 + nextInt(rng, MATCH_MINUTES),
     options: [
-      { id: 'arriscar', label: 'Chutar de primeira', effect: { risco: 4, focusBias: 'tecnico' } },
+      {
+        id: 'arriscar',
+        label: 'Chutar de primeira',
+        effect: { risco: 4, focusBias: 'tecnico' },
+        risky: { attr: 'tecnico', fail: { moral: -4 } },
+      },
       {
         id: 'seguro',
         label: 'Dominar e jogar seguro',

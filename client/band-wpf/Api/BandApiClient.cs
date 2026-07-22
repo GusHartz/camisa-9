@@ -127,6 +127,10 @@ public sealed class BandApiClient
     public Task<WriteOutcome> AnswerDecisionAsync(string decisionId, string optionId, CancellationToken ct = default) =>
         WriteAsync("/v1/decisions/answer", new { decisionId, optionId }, ct);
 
+    // SPEC-050: responde um momento de escolha da partida (a rota nova da fatia servidor).
+    public Task<WriteOutcome> AnswerMatchChoiceAsync(int round, string templateId, string optionId, CancellationToken ct = default) =>
+        WriteAsync("/v1/matches/choices/answer", new { round, templateId, optionId }, ct);
+
     public Task<WriteOutcome> PurchaseAsync(string itemId, CancellationToken ct = default) =>
         WriteAsync("/v1/purchases", new { itemId }, ct);
 

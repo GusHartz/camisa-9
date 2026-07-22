@@ -13,6 +13,7 @@ export default defineConfig({
     './src/schema/decision.ts',
     './src/schema/injury.ts',
     './src/schema/daily-ledger.ts',
+    './src/schema/match-choice.ts',
   ],
   out: './src/migrations',
   dialect: 'postgresql',

@@ -137,21 +137,28 @@ export interface BandDecision {
   readonly options: readonly BandDecisionOption[];
 }
 
-/** Uma opção de uma escolha da partida (SPEC-048) — `id` responde, `label` é o texto. O EFEITO NÃO é
- *  exposto (seam server-side, aplicado numa fatia futura). */
+/** Uma opção de uma escolha da partida (SPEC-048/050) — `id` responde, `label` é o texto. O EFEITO
+ *  (e a chance/`fail` do roll) NUNCA viajam — seam server-side. `risky`/`attr` (SPEC-050, aditivos)
+ *  telegrafam o loop treino→chance: a opção é resolvida por roll ponderado pelo foco `attr`. */
 export interface BandChoiceOption {
   readonly id: string;
   readonly label: string;
+  readonly risky?: boolean;
+  readonly attr?: string;
 }
 
-/** Uma escolha da partida (SPEC-048) — ancorada num minuto da timeline. A OFERTA; a resposta/aplicação
- *  são fatias futuras. `templateId`/`option.id` localização-ready; `prompt`/`label` PT-BR. */
+/** Uma escolha da partida (SPEC-048/050) — ancorada num minuto da timeline. A OFERTA, anotada com a
+ *  RESPOSTA quando já resolvida (`chosenOptionId`/`result`, aditivos — ausentes = pendente).
+ *  `templateId`/`option.id` localização-ready; `prompt`/`label` PT-BR. */
 export interface BandMatchChoice {
   readonly minute: number;
   readonly templateId: string;
   readonly type: string;
   readonly prompt: string;
   readonly options: readonly BandChoiceOption[];
+  readonly chosenOptionId?: string;
+  /** 'success' | 'fail' (arriscada, roll) | 'na' (determinística). Presente junto de `chosenOptionId`. */
+  readonly result?: 'success' | 'fail' | 'na';
 }
 
 /** O jogo do dia. PRÉ-JOGO: só o adversário (do fixture). PÓS-JOGO: `played` + o placar. */

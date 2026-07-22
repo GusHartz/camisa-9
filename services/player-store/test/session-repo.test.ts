@@ -15,6 +15,7 @@ import {
   dailyLedger,
   decision,
   injury,
+  matchChoice,
   purchase,
   session,
 } from '../src/schema/index.js';
@@ -83,6 +84,7 @@ describe.skipIf(!DB_URL)('session-repo — sessão contra Postgres real', () => 
     await handle.db.delete(decision);
     await handle.db.delete(purchase);
     await handle.db.delete(dailyLedger);
+    await handle.db.delete(matchChoice); // FK→athlete (SPEC-050) — antes do atleta
     await handle.db.delete(athlete);
     await handle.db.delete(session); // filha de account (FK)
     await handle.db.delete(account);

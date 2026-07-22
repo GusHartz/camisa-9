@@ -233,4 +233,36 @@ public partial class MainWindow : Window
         if ((sender as FrameworkElement)?.DataContext is ShopRow row && row.CanBuy)
             _ = _actions.PurchaseAsync(row.Id);
     }
+
+    // Uma opção do momento de escolha da partida (SPEC-050). O contexto (round + templateId) vem do
+    // VM; otimista: fecha o overlay já (MarkChoiceAnswered) e a reconciliação confirma com o Result.
+    private void OnMatchChoiceOptionClick(object sender, MouseButtonEventArgs e)
+    {
+        e.Handled = true;
+        if (
+            _vm.ChoiceContext() is { } ctx
+            && (sender as FrameworkElement)?.DataContext is ChoiceOptionRow opt
+        )
+        {
+            _vm.MarkChoiceAnswered(ctx.TemplateId);
+            _ = AnswerChoiceAsync(ctx.Round, ctx.TemplateId, opt.Id);
+        }
+    }
+
+    // Fire-and-forget SEGURO (nunca lança — lição SPEC-042): em falha LOCAL (rede/429/5xx) o
+    // otimista é DESFEITO — a escolha volta a ser re-oferecível num ReWatch (senão um blip de rede
+    // mataria a agência do momento até a conservadora de D+1). Conflito (409) mantém: o servidor decidiu.
+    private async Task AnswerChoiceAsync(int round, string templateId, string optionId)
+    {
+        try
+        {
+            WriteResult r = await _actions.AnswerMatchChoiceAsync(round, templateId, optionId);
+            if (r is WriteResult.Network or WriteResult.RateLimited or WriteResult.ServerError)
+                _vm.UnmarkChoice(templateId);
+        }
+        catch
+        {
+            // BandActions nunca lança; o catch é o cinto do fire-and-forget.
+        }
+    }
 }

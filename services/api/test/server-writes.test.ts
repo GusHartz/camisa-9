@@ -8,21 +8,26 @@ import { eq } from 'drizzle-orm';
 import { migrate } from 'drizzle-orm/node-postgres/migrator';
 import { afterAll, afterEach, beforeAll, beforeEach, describe, expect, it, vi } from 'vitest';
 import { createAthlete, templateById, type Position } from '@camisa-9/player';
+import { choiceOptionById } from '@camisa-9/world-engine';
 import {
   createAccountWithAthlete,
   createDb as createPlayerDb,
   generateForDay,
   readAthleteProgress,
   readDecisionLog,
+  readMatchChoices,
+  readMood,
   readWallet,
   schema as playerSchema,
   type DbHandle as PlayerHandle,
 } from '@camisa-9/player-store';
 import {
+  advanceTickCursor,
   createDb as createWorldDb,
   occupyNpcSlot,
   readOccupation,
   readWorld,
+  runRoundForDay,
   schema as worldSchema,
   setSeasonAnchor,
   writeWorld,
@@ -110,6 +115,7 @@ describe.skipIf(!DB_URL)('escritas de gameplay — servidor real (SPEC-041)', ()
     await playerHandle.db.delete(playerSchema.decision);
     await playerHandle.db.delete(playerSchema.purchase);
     await playerHandle.db.delete(playerSchema.dailyLedger);
+    await playerHandle.db.delete(playerSchema.matchChoice); // FK→athlete (SPEC-050) — antes do atleta
     await playerHandle.db.delete(playerSchema.athlete);
     await playerHandle.db.delete(playerSchema.team);
     await playerHandle.db.delete(playerSchema.session);
@@ -396,6 +402,186 @@ describe.skipIf(!DB_URL)('escritas de gameplay — servidor real (SPEC-041)', ()
       }
       const limited = await post('/v1/purchases', 'lixo-invalido', { itemId: 'videogame' });
       expect(limited.status).toBe(429);
+    });
+  });
+
+  describe('POST /v1/matches/choices/answer (SPEC-050)', () => {
+    const D050 = 20_000; // = o startDay que o seat() ancora → a rodada mostrada é a 1
+    const atDay = (hour: number): number => D050 * 86_400_000 + hour * 3_600_000 + 3 * 3_600_000;
+
+    interface BandChoiceJson {
+      readonly minute: number;
+      readonly templateId: string;
+      readonly options: readonly { id: string; label: string; risky?: boolean; attr?: string }[];
+      readonly chosenOptionId?: string;
+      readonly result?: string;
+    }
+
+    async function getChoices(tok: string): Promise<BandChoiceJson[]> {
+      const r = await fetch(`${base}/v1/band`, { headers: { authorization: `Bearer ${tok}` } });
+      const body = (await r.json()) as {
+        club: { todayMatch: { choices?: BandChoiceJson[] } | null } | null;
+      };
+      return body.club?.todayMatch?.choices ?? [];
+    }
+
+    /** seat + rodada 1 publicada + cursor liquidado + relógio às 16h do dia da partida. */
+    async function playedSeat(): Promise<{ email: string; athleteId: string }> {
+      const s = await seat();
+      clock = atDay(16);
+      await runRoundForDay(worldHandle.db, SEED, D050);
+      await advanceTickCursor(worldHandle.db, SEED, D050);
+      reset();
+      return s;
+    }
+
+    it('responde uma escolha da oferta → 200; o band ANOTA; 2ª resposta → 409 choice_resolved', async () => {
+      const { email } = await playedSeat();
+      const tok = await token(email);
+      const offer = await getChoices(tok);
+      expect(offer.length).toBeGreaterThanOrEqual(1);
+      const target = offer[0]!;
+      const opt = target.options[0]!;
+      const r = await post('/v1/matches/choices/answer', tok, {
+        round: 1,
+        templateId: target.templateId,
+        optionId: opt.id,
+      });
+      expect(r.status).toBe(200);
+      expect((await r.json()) as unknown).toEqual({ ok: true });
+      const annotated = (await getChoices(tok)).find((c) => c.templateId === target.templateId)!;
+      expect(annotated.chosenOptionId).toBe(opt.id);
+      expect(['success', 'fail', 'na']).toContain(annotated.result);
+      const r2 = await post('/v1/matches/choices/answer', tok, {
+        round: 1,
+        templateId: target.templateId,
+        optionId: opt.id,
+      });
+      expect(r2.status).toBe(409);
+      expect((await r2.json()) as unknown).toMatchObject({ code: 'choice_resolved' });
+    });
+
+    it('opção ARRISCADA → roll server-side: o efeito do RESULT (nunca o do cliente) é o aplicado', async () => {
+      // A oferta é determinística por atleta; procura um seat cuja oferta tenha opção risky (≤4
+      // FWDs no clube de entrada). Com 2 templates arriscados sempre-elegíveis, acha rápido.
+      for (let attempt = 0; attempt < 4; attempt += 1) {
+        const { email, athleteId } = await playedSeat();
+        await playerHandle.db
+          .update(playerSchema.athlete)
+          .set({ fisico: 20, tecnico: 90, tatico: 25, mental: 80 }) // focos ASSIMÉTRICOS (lição 029→046→047)
+          .where(eq(playerSchema.athlete.id, athleteId));
+        const tok = await token(email);
+        const offer = await getChoices(tok);
+        const target = offer.find((c) => c.options.some((o) => o.risky === true));
+        if (!target) continue;
+        const opt = target.options.find((o) => o.risky === true)!;
+        expect(typeof opt.attr).toBe('string'); // o contrato telegrafa o foco do roll
+        const r = await post('/v1/matches/choices/answer', tok, {
+          round: 1,
+          templateId: target.templateId,
+          optionId: opt.id,
+        });
+        expect(r.status).toBe(200);
+        const annotated = (await getChoices(tok)).find((c) => c.templateId === target.templateId)!;
+        expect(['success', 'fail']).toContain(annotated.result); // arriscada NUNCA é 'na'
+        // O efeito persistido é o DECLARADO do catálogo para o result — hidratado server-side.
+        const catOpt = choiceOptionById(target.templateId, opt.id)!;
+        const occ = (await readOccupation(worldHandle.db, SEED, athleteId))!;
+        const rows = await readMatchChoices(playerHandle.db, athleteId, occ.seasonId, 1);
+        const row = rows.find((x) => x.templateId === target.templateId)!;
+        expect(row.result).toBe(annotated.result);
+        expect(row.effect).toEqual(
+          annotated.result === 'success' ? catOpt.effect : catOpt.risky!.fail,
+        );
+        const m = row.effect['moral'];
+        expect((await readMood(playerHandle.db, athleteId))!.moral).toBe(
+          50 + (typeof m === 'number' ? m : 0),
+        );
+        return;
+      }
+      throw new Error('nenhuma oferta com opção arriscada em 4 seats — ajustar o fixture');
+    });
+
+    it('gates: round errado → 409; template fora da oferta → 400; body inválido → 400; sem auth → 401', async () => {
+      const { email } = await playedSeat();
+      const tok = await token(email);
+      const r1 = await post('/v1/matches/choices/answer', tok, {
+        round: 2,
+        templateId: 'chance-clara',
+        optionId: 'seguro',
+      });
+      expect(r1.status).toBe(409);
+      expect((await r1.json()) as unknown).toMatchObject({ code: 'choice_not_available' });
+      const r2 = await post('/v1/matches/choices/answer', tok, {
+        round: 1,
+        templateId: 'nao-existe',
+        optionId: 'x',
+      });
+      expect(r2.status).toBe(400);
+      expect((await r2.json()) as unknown).toMatchObject({ code: 'invalid_option' });
+      const r3 = await post('/v1/matches/choices/answer', tok, {
+        round: 1.5,
+        templateId: 'a',
+        optionId: 'b',
+      });
+      expect(r3.status).toBe(400);
+      expect((await r3.json()) as unknown).toMatchObject({ code: 'invalid_input' });
+      const r4 = await fetch(`${base}/v1/matches/choices/answer`, {
+        method: 'POST',
+        headers: { 'content-type': 'application/json' },
+        body: '{}',
+      });
+      expect(r4.status).toBe(401); // OP-09: sessão primeiro — a rota é inalcançável sem ela
+    });
+
+    it('a janela vai até o tick de D+1: às 09h da manhã seguinte a resposta ainda entra (200)', async () => {
+      const { email } = await playedSeat();
+      clock = (D050 + 1) * 86_400_000 + 9 * 3_600_000 + 3 * 3_600_000; // 09h BRT de D+1 → tickDay = D
+      const tok = await token(email);
+      const offer = await getChoices(tok);
+      expect(offer.length).toBeGreaterThanOrEqual(1); // a rodada de ONTEM ainda é a mostrada
+      const target = offer[0]!;
+      const r = await post('/v1/matches/choices/answer', tok, {
+        round: 1,
+        templateId: target.templateId,
+        optionId: target.options[0]!.id,
+      });
+      expect(r.status).toBe(200);
+    });
+
+    it('balde por conta: a 31ª resposta no minuto → 429 com Retry-After (IP `matches` 40 não morde antes)', async () => {
+      const { email } = await playedSeat();
+      const tok = await token(email);
+      // As 30 primeiras passam o balde (o teto morde ANTES da lógica — respostas viram 400 aqui).
+      for (let i = 0; i < 30; i++) {
+        const r = await post('/v1/matches/choices/answer', tok, {
+          round: 1,
+          templateId: 'nao-existe',
+          optionId: 'x',
+        });
+        expect(r.status).toBe(400);
+      }
+      const limited = await post('/v1/matches/choices/answer', tok, {
+        round: 1,
+        templateId: 'nao-existe',
+        optionId: 'x',
+      });
+      expect(limited.status).toBe(429);
+      expect(limited.headers.get('retry-after')).toBeTruthy();
+    });
+
+    it('rodada NÃO liquidada (sem cursor) → 409 choice_not_available', async () => {
+      const { email } = await seat();
+      clock = atDay(16); // 16h do dia da rodada 1, mas nada publicado/cursor
+      reset();
+      const tok = await token(email);
+      const r = await post('/v1/matches/choices/answer', tok, {
+        round: 1,
+        templateId: 'chance-clara',
+        optionId: 'seguro',
+      });
+      expect(r.status).toBe(409);
+      expect((await r.json()) as unknown).toMatchObject({ code: 'choice_not_available' });
     });
   });
 });

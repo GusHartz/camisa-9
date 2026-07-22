@@ -47,6 +47,7 @@ describe.skipIf(!DB_URL)('mood-repo — Forma & Moral contra Postgres real', () 
     await handle.db.delete(schema.decision);
     await handle.db.delete(schema.purchase);
     await handle.db.delete(schema.dailyLedger);
+    await handle.db.delete(schema.matchChoice); // FK→athlete (SPEC-050) — antes do atleta
     await handle.db.delete(schema.athlete);
     await handle.db.delete(schema.team);
     await handle.db.delete(schema.account);

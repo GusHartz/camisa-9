@@ -35,7 +35,18 @@ export {
   type MatchChoiceOption,
   type MatchChoiceContext,
   type ChoiceEffect,
+  type ChoiceAttr,
+  type ChoiceTemplate,
 } from './engine/match-choices.js';
+export {
+  resolveChoiceRoll,
+  rollChance,
+  choiceOptionById,
+  conservativeChoiceOption,
+  CHOICE_ROLL,
+  type RollInput,
+} from './engine/match-choice-roll.js';
+export { choiceContextFrom } from './engine/match-choice-context.js';
 export { computeStandings } from './engine/standings.js';
 export { simulateSeason } from './engine/season.js';
 export { DEMO_LEAGUE } from './data/league-seed.js';

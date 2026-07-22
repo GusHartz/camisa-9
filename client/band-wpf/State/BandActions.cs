@@ -35,6 +35,12 @@ public sealed class BandActions
     public Task AnswerDecisionAsync(string decisionId, string optionId) =>
         Run(ct => _api.AnswerDecisionAsync(decisionId, optionId, ct), "decisão registrada");
 
+    // SPEC-050: responde um momento de escolha da partida (apresentado no replay, SPEC-044). Devolve
+    // o DESFECHO para o chamador desfazer o otimista local em falha (rede/429/5xx) — só esta escrita
+    // precisa; as demais ignoram o retorno (Task<T> é Task).
+    public Task<WriteResult> AnswerMatchChoiceAsync(int round, string templateId, string optionId) =>
+        Run(ct => _api.AnswerMatchChoiceAsync(round, templateId, optionId, ct), "resposta enviada");
+
     public Task PurchaseAsync(string itemId) => Run(ct => _api.PurchaseAsync(itemId, ct), "comprado!");
 
     public Task RegenAsync() => Run(ct => _api.RegenAsync(ct), "renascimento solicitado");
@@ -46,10 +52,10 @@ public sealed class BandActions
         _cts.Cancel();
     }
 
-    private async Task Run(Func<CancellationToken, Task<WriteOutcome>> call, string okMsg)
+    private async Task<WriteResult> Run(Func<CancellationToken, Task<WriteOutcome>> call, string okMsg)
     {
         if (_stopped)
-            return;
+            return WriteResult.Network; // teardown: ninguém coordena (o retorno vira irrelevante)
         WriteOutcome o;
         try
         {
@@ -57,10 +63,10 @@ public sealed class BandActions
         }
         catch
         {
-            return; // o ApiClient não lança, mas nunca deixamos escapar p/ o async void do handler
+            return WriteResult.Network; // o ApiClient não lança; cinto p/ o fire-and-forget do handler
         }
         if (_stopped)
-            return; // fechou/deslogou enquanto o request voava → não coordena mais
+            return WriteResult.Network; // fechou/deslogou enquanto o request voava → não coordena mais
         switch (o.Result)
         {
             case WriteResult.Ok:
@@ -84,6 +90,7 @@ public sealed class BandActions
                 Feedback?.Invoke("erro; tente de novo");
                 break;
         }
+        return o.Result;
     }
 
     // O `code` estável do servidor → feedback PT-BR (nunca a frase do servidor, OP-11).
@@ -94,6 +101,8 @@ public sealed class BandActions
             "insufficient_balance" => "saldo insuficiente",
             "already_owned" => "você já tem esse item",
             "decision_resolved" => "essa decisão já foi resolvida",
+            "choice_resolved" => "momento já resolvido", // SPEC-050
+            "choice_not_available" => "o momento passou", // SPEC-050
             "not_found" => "decisão indisponível",
             "invalid_option" => "opção inválida",
             "regen_ineligible" => "regen ainda não disponível",
