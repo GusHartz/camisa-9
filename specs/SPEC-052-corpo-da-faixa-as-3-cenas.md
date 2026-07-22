@@ -19,7 +19,7 @@
 | **Criada em** | 2026-07-22 |
 | **Aprovada em** | {preencher na aprovação} |
 | **Aprovada por** | {preencher na aprovação} |
-| **Status** | Rascunho (aguardando card + aprovação no board) |
+| **Status** | Rascunho (card criado; aguardando aprovação `spec → dev`) |
 
 ---
 
@@ -77,18 +77,16 @@ o designer ainda não produziu (ver §Ativos que faltam): o contrato entrega o k
 
 ---
 
-## Decisões que o founder precisa travar
+## Decisões do founder (TRAVADAS — 2026-07-22)
 
-1. **Fatiar em 3** (recomendado) — esta SPEC entrega **as cenas + as alturas**; o **avatar** vira a
-   fatia 2 (destravada quando o designer mandar a paleta de kit e os escudos); os **micro-momentos**
-   (frame de gol/lesão/contrato) viram a fatia 3. Alternativa: esperar os ativos e fazer tudo junto
-   — atrasa o payoff visual sem reduzir o trabalho.
-2. **Altura "cena": 112 DIP em vez de 110** (recomendado) — fecha as três alturas em escala inteira
-   **4×** (16·4=64 · 22·4=88 · 28·4=112), o que mantém o pixel art nítido em 100/125/150/175/200%
-   de DPI. Manter 110 significa aceitar 3,93× e borrão vertical.
-3. **Mapa provisório da casa** — o contrato tem 4 degraus (`lifestyleTier` 0..3) e o design
-   entregou **2 cenas** (pensão, cobertura). Recomendado: `0-1 → pensão`, `2-3 → cobertura`, até a
-   arte dos degraus 1 e 2 chegar (assim quem comprou a "casa" não vê a cobertura antes da hora).
+1. **Fatiar em 3** — esta SPEC entrega **as cenas + as alturas**. O **avatar** é a fatia 2
+   (destravada quando o designer mandar a paleta de kit indexada e os 16 escudos); os
+   **micro-momentos** (frame de gol/lesão/contrato) são a fatia 3. Nada de avatar improvisado: kit
+   errado em metade dos clubes viraria retrabalho quando a paleta certa chegar.
+2. **Altura "cena" = 112 DIP** (não 110): fecha as três alturas em escala inteira **4×**
+   (16·4=64 · 22·4=88 · 28·4=112) e mantém o pixel art nítido em 100/125/150/175/200% de DPI.
+3. **Mapa da casa:** `lifestyleTier 0-1 → pensão`, `2-3 → cobertura` — provisório, some quando a
+   arte dos degraus 1 e 2 (quitinete, apê) chegar.
 
 ---
 
@@ -353,10 +351,11 @@ o `GET /v1/band` já entrega ao dono da sessão.
 - [ ] Riscos e superfície de segurança foram avaliados
 - [ ] Appetite é razoável para o escopo definido
 - [ ] Não há conflito com SPECs abertas em paralelo
-- [ ] **Card criado no board** e esta SPEC publicada nele
-- [ ] Decisão 1 — fatiar em 3 (cenas agora · avatar quando os ativos chegarem · micro-momentos)
-- [ ] Decisão 2 — altura "cena" **112 DIP** (escala inteira 4×) em vez de 110
-- [ ] Decisão 3 — mapa provisório da casa (`tier 0-1 → pensão`, `2-3 → cobertura`)
+- [x] **Card criado no board** e esta SPEC publicada nele — 2026-07-22
+- [x] Decisão 1 — **fatiar em 3** (cenas agora · avatar quando os ativos chegarem · micro-momentos)
+- [x] Decisão 2 — altura "cena" **112 DIP** (escala inteira 4×)
+- [x] Decisão 3 — mapa da casa (`tier 0-1 → pensão`, `2-3 → cobertura`)
+- [ ] **Aprovação no card (`spec → dev`)** — gate do arquiteto; o código não começa antes
 
 ---
 
