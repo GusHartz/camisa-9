@@ -94,11 +94,14 @@ decisão + `BandActions` (SPEC-045) e o `Frame` do replay (SPEC-044).
   `chance = clamp(50 + trunc((attr−50)·3/5) + trunc((moral−50)·2/5), 15, 85)` (peso 60/40
   atributo/moral, eco do `effectiveAbility`; clamp [15,85] = nunca certo, nunca sem esperança;
   inteiro/guardrail-safe); `success = nextUint32(rng) % 100 < chance`.
-- **Helpers puros** (em `match-choices.ts`, aditivos): `choiceOptionById(templateId, optionId)`,
+- **Helpers puros** (aditivos; ⚠️ atualização pós-implementação — o `match-choices.ts` está a 287
+  linhas e os helpers ali estourariam o OP-16, então os destinos canônicos são): em
+  **`match-choice-roll.ts`** (a resolução da resposta): `choiceOptionById(templateId, optionId)` e
   `conservativeChoiceOption(templateId)` (a marcada `conservative`, fallback `options[0]` — molde
-  `conservativeOption` das decisions) e **`choiceContextFrom(match: MatchResult, clubId: string,
-  meWorldId: string): MatchChoiceContext`** — a derivação events→ctx EXTRAÍDA do `buildChoices`
-  do agregador (self-exclusion da lesão incluída) para ser a **fonte única** de api E scheduler.
+  `conservativeOption` das decisions); em **`match-choice-context.ts`** (arquivo novo):
+  **`choiceContextFrom(match: MatchResult, clubId: string, meWorldId: string):
+  MatchChoiceContext`** — a derivação events→ctx EXTRAÍDA do `buildChoices` do agregador
+  (self-exclusion da lesão incluída) para ser a **fonte única** de api E scheduler.
 - **Barrel**: exportar `ChoiceTemplate` (tipo), `ChoiceAttr`, `resolveChoiceRoll`,
   `choiceOptionById`, `conservativeChoiceOption`, `choiceContextFrom` (tudo aditivo).
 - **Selo golden**: `resolveMatch`/`simulateSeason`/`world-season` **INTOCADOS**; os 5 goldens
@@ -272,8 +275,9 @@ decisão + `BandActions` (SPEC-045) e o `Frame` do replay (SPEC-044).
 
 | Arquivo | Ação | Descrição |
 |---|---|---|
-| `packages/world-engine/src/engine/match-choices.ts` | modificar | `risky?` no tipo/catálogo; `choiceOptionById`/`conservativeChoiceOption`/`choiceContextFrom`. |
-| `packages/world-engine/src/engine/match-choice-roll.ts` | criar | `resolveChoiceRoll` (stream `'choice-roll'`, 60/40, clamp [15,85]). |
+| `packages/world-engine/src/engine/match-choices.ts` | modificar | `risky?` no tipo/catálogo; `ChoiceAttr`; `ChoiceTemplate` exportado. |
+| `packages/world-engine/src/engine/match-choice-roll.ts` | criar | `resolveChoiceRoll` (stream `'choice-roll'`, 60/40, clamp [15,85]) + `choiceOptionById`/`conservativeChoiceOption` (OP-16). |
+| `packages/world-engine/src/engine/match-choice-context.ts` | criar | `choiceContextFrom` — a fonte única events→ctx (OP-16). |
 | `packages/world-engine/src/engine/match-choice*.test.ts` | modificar/criar | Regressão da oferta byte-idêntica; propriedades do roll; invariantes do catálogo. |
 | `packages/world-engine/src/index.ts` | modificar | Exports aditivos. |
 | `services/player-store/src/schema/match-choice.ts` (+`index.ts`, `athlete.ts`) | criar/modificar | Tabela `match_choice` + `athlete.next_train_focus`. |
