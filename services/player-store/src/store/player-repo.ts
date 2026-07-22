@@ -100,6 +100,9 @@ export interface AthleteIdentity {
   readonly position: string;
   readonly attributes: Attributes;
   readonly active: boolean;
+  /** A conta dona (SPEC-053): a CARREIRA é da conta, não do atleta — o regen desativa este e cria
+   *  outro, então a campanha da temporada anterior só é alcançável por aqui. */
+  readonly accountId: string;
   /** A aparência escolhida na criação (SPEC-016) — a faixa monta o avatar em camadas a partir dela
    *  (SPEC-038). Aditivo: a coluna sempre existiu; só o SELECT passou a puxá-la. */
   readonly appearance: Appearance;
@@ -120,6 +123,7 @@ export async function readAthleteIdentity(
       mental: athlete.mental,
       active: athlete.active,
       appearance: athlete.appearance,
+      accountId: athlete.accountId,
     })
     .from(athlete)
     .where(eq(athlete.id, athleteId))
@@ -132,6 +136,7 @@ export async function readAthleteIdentity(
     attributes: { fisico: r.fisico, tecnico: r.tecnico, tatico: r.tatico, mental: r.mental },
     active: r.active,
     appearance: r.appearance,
+    accountId: r.accountId,
   };
 }
 

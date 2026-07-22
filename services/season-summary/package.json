@@ -1,0 +1,16 @@
+{
+  "name": "@camisa-9/season-summary",
+  "version": "0.0.0",
+  "private": true,
+  "type": "module",
+  "exports": "./src/index.ts",
+  "description": "Costura do fecho de temporada (SPEC-053): carimba na campanha de cada humano o desfecho do clube (campeão/subiu/permaneceu/rebaixado) depois da viragem. Borda IMPURA (services/*), fora de packages/*. Sem migration própria (a tabela é do player-store). Rodada via tsx/vitest.",
+  "scripts": {
+    "test": "vitest run"
+  },
+  "dependencies": {
+    "@camisa-9/player-store": "*",
+    "@camisa-9/world-engine": "*",
+    "@camisa-9/world-store": "*"
+  }
+}

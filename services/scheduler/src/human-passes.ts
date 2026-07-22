@@ -6,22 +6,29 @@ import {
   conservativeChoiceOption,
   dueDayIndex,
   matchChoices,
+  matchRating,
+  type GoalEvent,
 } from '@camisa-9/world-engine';
+import type { Position } from '@camisa-9/world-engine';
 import {
   accrueRound,
+  accrueSeasonMatch,
   advanceRecovery,
   applyDailyMood,
   applyTraining,
   generateForDay,
   injureFromMatch,
+  readFocosByIds,
   readInjuryState,
   resolveConservative,
   resolveDeadline,
   type Db as PlayerDb,
+  type Focos,
+  type SeasonMatchInput,
 } from '@camisa-9/player-store';
 import type { OccupationView } from '@camisa-9/world-store';
-import type { MatchResult } from '@camisa-9/player';
-import type { YesterdayMatch } from './round-outcomes.js';
+import { abilityFromFocos, isPosition, type MatchResult } from '@camisa-9/player';
+import type { RoundMatch, YesterdayMatch } from './round-outcomes.js';
 
 export interface HumanDelta {
   readonly accrued: number;
@@ -41,6 +48,7 @@ export async function safeHumanPasses(
   paid: boolean,
   tier: number | undefined,
   yesterday: YesterdayMatch | undefined,
+  today: RoundMatch | undefined,
 ): Promise<HumanDelta> {
   try {
     return await runHumanPasses(
@@ -53,6 +61,7 @@ export async function safeHumanPasses(
       paid,
       tier,
       yesterday,
+      today,
     );
   } catch {
     console.error(`tick: passe do humano adiado (day=${day}) — human_pass_failed`);
@@ -74,9 +83,13 @@ async function runHumanPasses(
   paid: boolean,
   tier: number | undefined,
   yesterday: YesterdayMatch | undefined,
+  today: RoundMatch | undefined,
 ): Promise<HumanDelta> {
   const id = occ.humanAthleteId;
   const pay = paid ? await accrueRound(playerDb, id, day, prize) : undefined;
+  // A campanha da temporada (SPEC-053) — logo após o accrue, sob o mesmo gate `paid`, e ANTES do
+  // treino: a nota e o overall do dia são os do jogador que ENTROU em campo.
+  if (paid && today !== undefined) await trySeasonStats(playerDb, seed, occ, day, today);
   const hurt =
     injurySeverity !== undefined ? await tryInjure(playerDb, id, day, injurySeverity) : false;
   await applyDailyMood(playerDb, id, day);
@@ -161,6 +174,82 @@ async function tryResolveChoices(
   } catch {
     console.error(`tick: resolver de escolhas adiado (day=${day}) — choice_resolve_failed`); // OP-11
   }
+}
+
+/**
+ * A campanha da temporada (SPEC-053), ISOLADA (molde `tryInjure`): soma a partida do dia à linha
+ * de temporada — jogos, gols, assistências, a nota e o **overall de hoje**, que é a linha EVOLUÇÃO
+ * do card e o único desses números irrecuperável depois (a viragem sobrescreve o mundo).
+ *
+ * Gate de ENTRADA (lição SPEC-034/050): se a rodada deste dia JÁ tinha vencido quando o humano
+ * ocupou a vaga, quem a jogou foi o NPC — sem o gate, um admitido mid-season herdaria como suas as
+ * partidas de antes da entrada. Comparação no espaço `dueDayIndex`, não em dia-calendário.
+ */
+async function trySeasonStats(
+  playerDb: PlayerDb,
+  seed: string,
+  occ: OccupationView,
+  day: number,
+  today: RoundMatch,
+): Promise<void> {
+  if (dueDayIndex(occ.occupiedAt.getTime()) >= day) return;
+  if (!isPosition(occ.position)) return; // coluna `text` sem CHECK (lição SPEC-047): sem posição
+  try {
+    //                                     válida não há nota honesta — melhor não registrar.
+    const focos = (await readFocosByIds(playerDb, [occ.humanAthleteId])).get(occ.humanAthleteId);
+    if (!focos) return;
+    await accrueSeasonMatch(
+      playerDb,
+      occ.humanAthleteId,
+      seasonInputFrom(seed, occ, occ.position, day, today, focos),
+    );
+  } catch {
+    console.error(`tick: campanha da temporada adiada (day=${day}) — season_stats_failed`); // OP-11
+  }
+}
+
+/** Monta o que a partida do dia acrescenta à campanha. A nota usa os focos de AGORA (o jogador que
+ *  entrou em campo) e o overall idem — é o ponto da fatia. Puro. */
+function seasonInputFrom(
+  seed: string,
+  occ: OccupationView,
+  position: Position,
+  day: number,
+  t: RoundMatch,
+  focos: Focos,
+): SeasonMatchInput {
+  const isHome = t.match.homeId === occ.clubId;
+  const goalsFor = isHome ? t.match.homeGoals : t.match.awayGoals;
+  const goalsAgainst = isHome ? t.match.awayGoals : t.match.homeGoals;
+  const goalEvents = (t.match.events ?? []).filter((e): e is GoalEvent => e.kind === 'goal');
+  return {
+    seasonId: t.seasonId,
+    round: t.round,
+    day,
+    clubId: occ.clubId,
+    clubName: t.clubName,
+    leagueId: t.leagueId,
+    tier: t.tier,
+    position,
+    goals: goalEvents.filter((e) => e.athleteId === occ.athleteId).length,
+    assists: goalEvents.filter((e) => e.assistId === occ.athleteId).length,
+    rating: matchRating({
+      seed,
+      leagueId: t.leagueId,
+      seasonId: t.seasonId,
+      round: t.round,
+      homeId: t.match.homeId,
+      awayId: t.match.awayId,
+      athleteId: occ.athleteId,
+      position,
+      goalsScored: goalEvents.filter((e) => e.athleteId === occ.athleteId).length,
+      assists: goalEvents.filter((e) => e.assistId === occ.athleteId).length,
+      goalsAgainst,
+      result: goalsFor > goalsAgainst ? 'win' : goalsFor < goalsAgainst ? 'loss' : 'draw',
+      focos,
+    }),
+    overall: abilityFromFocos(focos, position),
+  };
 }
 
 /** Injeta a lesão da partida, ISOLADA: um evento corrompido (gravidade inválida) ou uma falha

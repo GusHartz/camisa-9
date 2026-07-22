@@ -39,6 +39,7 @@ import {
   readMatchChoices,
   readMood,
   readWallet,
+  spendFreePoint,
   schema as playerSchema,
   type DbHandle as PlayerHandle,
 } from '@camisa-9/player-store';
@@ -103,6 +104,7 @@ describe.skipIf(!DB_URL)('daily-tick — o tick de produção contra Postgres re
     await playerHandle.db.delete(playerSchema.injury);
     await playerHandle.db.delete(playerSchema.decision);
     await playerHandle.db.delete(playerSchema.purchase);
+    await playerHandle.db.delete(playerSchema.seasonSummary); // FK→athlete+account (SPEC-053) — antes do atleta
     await playerHandle.db.delete(playerSchema.matchChoice); // FK→athlete (SPEC-050) — antes do atleta
     await playerHandle.db.delete(playerSchema.athlete);
     await playerHandle.db.delete(playerSchema.team);
@@ -131,6 +133,18 @@ describe.skipIf(!DB_URL)('daily-tick — o tick de produção contra Postgres re
       clubId,
     });
     return athleteId;
+  }
+
+  /** `seatHuman` + retrocede o `occupied_at` para o espaço de dias SINTÉTICOS do teste. Sem isto o
+   *  gate de ENTRADA da campanha (SPEC-053) trata o humano como admitido HOJE — `occupiedAt` é o
+   *  `now()` real, ordens de grandeza acima de START — e pula a partida, deixando o teste VAZIO. */
+  async function seatHumanPlaying(clubId: string, since = START - 1): Promise<string> {
+    const humanId = await seatHuman(clubId);
+    await worldHandle.db
+      .update(worldSchema.worldOccupation)
+      .set({ occupiedAt: new Date(epochAt(since)) })
+      .where(eq(worldSchema.worldOccupation.humanAthleteId, humanId));
+    return humanId;
   }
 
   /** O resultado (win/draw/loss) do clube na rodada `round` da liga — o oráculo do prêmio. */
@@ -197,6 +211,82 @@ describe.skipIf(!DB_URL)('daily-tick — o tick de produção contra Postgres re
     await runDailyTick(worldHandle.db, playerHandle.db, SEED, epochAt(START));
     const p2 = (await readAthleteProgress(playerHandle.db, humanId))!;
     expect(p2.trainingXp).toBe(p1.trainingXp); // NÃO dobrou
+  });
+
+  // ── SPEC-053: o SEAM da campanha de temporada ────────────────────────────────────────────────
+  // É a QUARTA vez que este projeto aprende a mesma lição (SPEC-029 → 046 → 047): as duas metades
+  // passam nos testes e a COMPOSIÇÃO não é exercitada. Aqui o tick roda de verdade.
+
+  it('SEAM: o tick grava a campanha da temporada com o placar e o overall REAIS do dia', async () => {
+    const world = (await readWorld(worldHandle.db, SEED))!;
+    await setSeasonAnchor(worldHandle.db, SEED, world.seasonId, START);
+    const clubId = world.tiers[world.tiers.length - 1]!.leagues[0]!.clubs[0]!.id;
+    const humanId = await seatHumanPlaying(clubId);
+
+    await runDailyTick(worldHandle.db, playerHandle.db, SEED, epochAt(START));
+
+    const [row] = await playerHandle.db
+      .select()
+      .from(playerSchema.seasonSummary)
+      .where(eq(playerSchema.seasonSummary.athleteId, humanId));
+    expect(row).toBeDefined();
+    expect(row?.matches).toBe(1);
+    expect(row?.seasonId).toBe(world.seasonId);
+    expect(row?.leagueId).toBe(world.tiers[world.tiers.length - 1]!.leagues[0]!.leagueId);
+    expect(row?.clubId).toBe(clubId);
+    expect(row?.position).toBe('FWD');
+    // A nota é gravada em DÉCIMOS e vem do `matchRating` — sempre dentro da faixa do engine.
+    expect(row!.ratingLast!).toBeGreaterThanOrEqual(30);
+    expect(row!.ratingLast!).toBeLessThanOrEqual(100);
+    // O overall de um atleta fresco (todos os focos em 34) — o ponto de partida da EVOLUÇÃO.
+    expect(row?.startOverall).toBe(34);
+    expect(row?.endOverall).toBe(34);
+  });
+
+  it('SEAM idempotente: o tick 2× no mesmo dia NÃO duplica a partida na campanha', async () => {
+    const world = (await readWorld(worldHandle.db, SEED))!;
+    await setSeasonAnchor(worldHandle.db, SEED, world.seasonId, START);
+    const clubId = world.tiers[world.tiers.length - 1]!.leagues[0]!.clubs[0]!.id;
+    const humanId = await seatHumanPlaying(clubId);
+
+    await runDailyTick(worldHandle.db, playerHandle.db, SEED, epochAt(START));
+    await runDailyTick(worldHandle.db, playerHandle.db, SEED, epochAt(START));
+
+    const [row] = await playerHandle.db
+      .select()
+      .from(playerSchema.seasonSummary)
+      .where(eq(playerSchema.seasonSummary.athleteId, humanId));
+    expect(row?.matches).toBe(1);
+  });
+
+  it('EVOLUÇÃO: gastar um ponto entre dois dias faz o overall do FIM subir, e o do INÍCIO não', async () => {
+    // O critério que reprova a alternativa "recomputar tudo no fecho": o `start_overall` é o do dia
+    // da estreia e nunca mais é tocado; o `end_overall` acompanha o jogador de hoje.
+    const world = (await readWorld(worldHandle.db, SEED))!;
+    await setSeasonAnchor(worldHandle.db, SEED, world.seasonId, START);
+    const clubId = world.tiers[world.tiers.length - 1]!.leagues[0]!.clubs[0]!.id;
+    const humanId = await seatHumanPlaying(clubId);
+
+    await runDailyTick(worldHandle.db, playerHandle.db, SEED, epochAt(START));
+    // O treino idle do tick acumula XP; damos os pontos na mão e o jogador os GASTA (a agência
+    // dele). São 4 porque `abilityFromFocos` é a média INTEIRA dos 4 focos: com 34/34/34/34, só a
+    // partir de +4 na soma a média floorada sai de 34 para 35.
+    await playerHandle.db
+      .update(playerSchema.athlete)
+      .set({ freePoints: 4 })
+      .where(eq(playerSchema.athlete.id, humanId));
+    for (const foco of ['tecnico', 'tecnico', 'tatico', 'fisico'] as const) {
+      await spendFreePoint(playerHandle.db, humanId, foco);
+    }
+    await runDailyTick(worldHandle.db, playerHandle.db, SEED, epochAt(START + 1));
+
+    const [row] = await playerHandle.db
+      .select()
+      .from(playerSchema.seasonSummary)
+      .where(eq(playerSchema.seasonSummary.athleteId, humanId));
+    expect(row?.matches).toBe(2);
+    expect(row?.startOverall).toBe(34); // o overall da ESTREIA, preservado
+    expect(row!.endOverall!).toBeGreaterThan(34); // o de hoje, depois do ponto gasto
   });
 
   it('viragem (season_rolled): NÃO paga salário (dia de descanso, sem rodada) — fix do MAJOR', async () => {

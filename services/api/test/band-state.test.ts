@@ -23,6 +23,8 @@ import {
   accrueRound,
   answerMatchChoice,
   countPendingDecisions,
+  accrueSeasonMatch,
+  closeSeason,
   createAccountWithAthlete,
   createDb as createPlayerDb,
   generateForDay,
@@ -118,6 +120,7 @@ describe.skipIf(!DB_URL)('readBandState — o agregador da faixa (SPEC-038)', ()
     await playerHandle.db.delete(playerSchema.decision);
     await playerHandle.db.delete(playerSchema.purchase);
     await playerHandle.db.delete(playerSchema.dailyLedger);
+    await playerHandle.db.delete(playerSchema.seasonSummary); // FK→athlete+account (SPEC-053) — antes do atleta
     await playerHandle.db.delete(playerSchema.matchChoice); // FK→athlete (SPEC-050) — antes do atleta
     await playerHandle.db.delete(playerSchema.athlete);
     await playerHandle.db.delete(playerSchema.team);
@@ -315,6 +318,84 @@ describe.skipIf(!DB_URL)('readBandState — o agregador da faixa (SPEC-038)', ()
     )!;
     const isHome = raw.homeId === clubId;
     expect(match.goalsFor).toBe(isHome ? raw.homeGoals : raw.awayGoals);
+  });
+
+  // ── SPEC-053: a última temporada fechada no contrato ─────────────────────────────────────────
+
+  it('sem temporada fechada: a chave `lastSeason` é OMITIDA (não `null` fingido)', async () => {
+    const { athleteId } = await seatHuman();
+
+    const state = await readBandState(deps, athleteId, epochAt(D, 16));
+
+    expect('lastSeason' in state).toBe(false); // a regra aditiva-only da SPEC-038
+  });
+
+  it('com temporada fechada: `lastSeason` traz a campanha, com a nota MÉDIA em décimos', async () => {
+    const { athleteId } = await seatHuman();
+    // Duas partidas: 7,2 e 8,0 → média 7,6 (76 em décimos, que é como o contrato viaja).
+    for (const [round, rating, goals] of [
+      [1, 72, 1],
+      [2, 80, 2],
+    ] as const) {
+      await accrueSeasonMatch(playerHandle.db, athleteId, {
+        seasonId: '2024',
+        round,
+        day: 9000 + round,
+        clubId: 'c-x',
+        clubName: 'Guarani do Bairro',
+        leagueId: 'l-x',
+        tier: 3,
+        position: 'FWD',
+        goals,
+        assists: 1,
+        rating,
+        overall: round === 1 ? 41 : 47,
+      });
+    }
+    await closeSeason(playerHandle.db, athleteId, '2024', { outcome: 'promoted', tierAfter: 2 });
+
+    const state = await readBandState(deps, athleteId, epochAt(D, 16));
+
+    expect(state.lastSeason).toBeDefined();
+    expect(state.lastSeason?.seasonId).toBe('2024');
+    expect(state.lastSeason?.clubName).toBe('Guarani do Bairro'); // snapshot, não o clube de hoje
+    expect(state.lastSeason?.outcome).toBe('promoted');
+    expect(state.lastSeason?.tierAfter).toBe(2);
+    expect(state.lastSeason?.matches).toBe(2);
+    expect(state.lastSeason?.goals).toBe(3);
+    expect(state.lastSeason?.assists).toBe(2);
+    expect(state.lastSeason?.ratingAvg).toBe(76); // (72+80)/2, em DÉCIMOS
+    expect(state.lastSeason?.ratingBest).toBe(80);
+    expect(state.lastSeason?.ratingBestRound).toBe(2);
+    // A linha EVOLUÇÃO é o OVERALL — o número que o treino move (a nota quase não responde a ele).
+    expect(state.lastSeason?.startOverall).toBe(41);
+    expect(state.lastSeason?.endOverall).toBe(47);
+    expect(state.lastSeason?.seasonNumber).toBe(1);
+    expect(state.lastSeason?.careerSeasons).toBe(1);
+  });
+
+  it('a campanha de OUTRA conta nunca vaza no contrato', async () => {
+    const mine = await seatHuman();
+    const other = await createHuman('FWD', 'Outro');
+    await accrueSeasonMatch(playerHandle.db, other, {
+      seasonId: '2024',
+      round: 1,
+      day: 9100,
+      clubId: 'c-y',
+      clubName: 'Outro FC',
+      leagueId: 'l-y',
+      tier: 3,
+      position: 'FWD',
+      goals: 9,
+      assists: 0,
+      rating: 90,
+      overall: 55,
+    });
+    await closeSeason(playerHandle.db, other, '2024', { outcome: 'champion', tierAfter: null });
+
+    const state = await readBandState(deps, mine.athleteId, epochAt(D, 16));
+
+    expect('lastSeason' in state).toBe(false);
   });
 
   it('degradado — na FILA: club null, squad [], queue preenchida; nunca 500', async () => {

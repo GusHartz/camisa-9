@@ -4,7 +4,12 @@
 // que o shim in-memory deliberadamente não provava. Reusa o CONTRATO público do engine
 // (PublishInput/PublishOutcome) — o engine fica intocado (OP-17).
 import { and, eq, sql } from 'drizzle-orm';
-import type { PublishInput, PublishOutcome, RoundResult } from '@camisa-9/world-engine';
+import type {
+  MatchResult,
+  PublishInput,
+  PublishOutcome,
+  RoundResult,
+} from '@camisa-9/world-engine';
 import type { Db } from '../client.js';
 import { publishedRound } from '../schema/round.js';
 
@@ -47,6 +52,25 @@ export async function readRound(
     .where(roundEq(leagueId, seasonId, round))
     .limit(1);
   return rows[0]?.result ?? null;
+}
+
+/**
+ * TODAS as partidas publicadas de uma liga numa temporada (SPEC-053) — o insumo da classificação
+ * final. Lê o `published_round` porque, depois da viragem, o snapshot do mundo já foi sobrescrito:
+ * as rodadas publicadas são a única memória do que de fato aconteceu naquela temporada.
+ * Ordenado por rodada (determinístico); `[]` se a temporada não tem rodada publicada.
+ */
+export async function readSeasonMatches(
+  db: Db,
+  leagueId: string,
+  seasonId: string,
+): Promise<readonly MatchResult[]> {
+  const rows = await db
+    .select({ result: publishedRound.result })
+    .from(publishedRound)
+    .where(and(eq(publishedRound.leagueId, leagueId), eq(publishedRound.seasonId, seasonId)))
+    .orderBy(publishedRound.round);
+  return rows.flatMap((r) => r.result.matches);
 }
 
 /** Rodada-do-mundo: a rodada N de TODAS as ligas, publicada junta. */

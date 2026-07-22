@@ -14,6 +14,7 @@ import {
   decision,
   injury,
   matchChoice,
+  seasonSummary,
   purchase,
   session,
 } from '../src/schema/index.js';
@@ -58,6 +59,7 @@ describe.skipIf(!DB_URL)('player-store — conta + atleta contra Postgres real',
     await handle.db.delete(decision); // neto (FK → athlete, SPEC-025) antes do atleta
     await handle.db.delete(purchase); // neto (FK → athlete, SPEC-024) antes do atleta
     await handle.db.delete(dailyLedger);
+    await handle.db.delete(seasonSummary); // FK→athlete+account (SPEC-053) — antes do atleta
     await handle.db.delete(matchChoice); // FK→athlete (SPEC-050) — antes do atleta
     await handle.db.delete(athlete); // filho antes do pai (FK)
     await handle.db.delete(session); // SPEC-037: filha de account (FK)

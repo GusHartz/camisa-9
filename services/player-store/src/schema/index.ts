@@ -9,3 +9,4 @@ export * from './decision.js';
 export * from './injury.js';
 export * from './daily-ledger.js';
 export * from './match-choice.js';
+export * from './season-summary.js';

@@ -73,6 +73,7 @@ describe.skipIf(!DB_URL)('enter-world — a costura player↔world contra Postgr
     await playerHandle.db.delete(playerSchema.decision); // neto (FK → athlete, SPEC-025)
     await playerHandle.db.delete(playerSchema.purchase); // neto (FK → athlete, SPEC-024)
     await playerHandle.db.delete(playerSchema.dailyLedger);
+    await playerHandle.db.delete(playerSchema.seasonSummary); // FK→athlete+account (SPEC-053) — antes do atleta
     await playerHandle.db.delete(playerSchema.matchChoice); // FK→athlete (SPEC-050) — antes do atleta
     await playerHandle.db.delete(playerSchema.athlete);
     await playerHandle.db.delete(playerSchema.team);

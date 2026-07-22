@@ -23,6 +23,7 @@ export {
   publishRound,
   publishWorldRound,
   readRound,
+  readSeasonMatches,
   type WorldRoundInput,
 } from './store/round-repo.js';
 export { readSeasonAnchor, setSeasonAnchor } from './store/season-repo.js';
@@ -65,6 +66,7 @@ export {
 export { VACANCY } from './store/vacancy-policy.js';
 export {
   persistWorldTurnover,
+  readTurnoverReport,
   entryOccupancyRate,
   TurnoverError,
   type TurnoverOutcome,
