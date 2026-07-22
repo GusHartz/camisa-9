@@ -114,8 +114,9 @@ indexadas, 16 escudos, as 2 cenas de casa que faltam e o glifo `?`.
 - [x] `dotnet build` com **0 avisos**
 - [x] `packages/*` e `services/*` intocados; **sem migration**; gates TS verdes
 - [x] Nenhuma animação contínua introduzida; cenário composto por chave e cacheado
-- [ ] `CLAUDE.md` "Estado atual" + `roadmap.md` — a atualizar no fecho
-- [ ] AI declaration submetida no card
+- [x] `CLAUDE.md` "Estado atual" + `roadmap.md` (3.4) + `client/band-wpf/README.md` (o cenário, as 3
+      alturas no smoke, o método de verificação headless) atualizados
+- [x] AI declaration submetida no card; PR **#56** aberto
 
 ---
 
