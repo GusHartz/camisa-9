@@ -185,11 +185,17 @@ internal static class CardDraw
                 dc.DrawRectangle(brush, null, new Rect(x + col * u, y + (r + rowOffset) * u, u, u));
     }
 
-    // O mascote do rodapé (goat-idle.png), carregado uma vez e congelado. Resource embarcado no exe.
+    // O mascote (Resource embarcado no exe), carregado uma vez e congelado. Duas poses: `Goat` é a
+    // parada (rodapé do card, SPEC-049) e `GoatCelebrate` é a comemorando (o estado GLÓRIA do
+    // momento de escolha, SPEC-051) — mesma grade lógica 384×496, trocáveis sem mexer no layout.
     private static BitmapSource? _goat;
+    private static BitmapSource? _goatCelebrate;
 
     internal static BitmapSource Goat =>
         _goat ??= Load("pack://application:,,,/Assets/goat-idle.png");
+
+    internal static BitmapSource GoatCelebrate =>
+        _goatCelebrate ??= Load("pack://application:,,,/Assets/goat-celebrate.png");
 
     private static BitmapSource Load(string uri)
     {
