@@ -30,4 +30,5 @@ CREATE TABLE "player"."season_summary" (
 --> statement-breakpoint
 ALTER TABLE "player"."season_summary" ADD CONSTRAINT "season_summary_athlete_id_athlete_id_fk" FOREIGN KEY ("athlete_id") REFERENCES "player"."athlete"("id") ON DELETE no action ON UPDATE no action;--> statement-breakpoint
 ALTER TABLE "player"."season_summary" ADD CONSTRAINT "season_summary_account_id_account_id_fk" FOREIGN KEY ("account_id") REFERENCES "player"."account"("id") ON DELETE no action ON UPDATE no action;--> statement-breakpoint
-CREATE INDEX "season_summary_open_idx" ON "player"."season_summary" USING btree ("season_id") WHERE "player"."season_summary"."closed_at" is null;
+CREATE INDEX "season_summary_open_idx" ON "player"."season_summary" USING btree ("season_id") WHERE "player"."season_summary"."closed_at" is null;--> statement-breakpoint
+CREATE INDEX "season_summary_account_idx" ON "player"."season_summary" USING btree ("account_id","closed_at") WHERE "player"."season_summary"."closed_at" is not null;

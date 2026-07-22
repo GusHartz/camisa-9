@@ -19,9 +19,9 @@ import {
   type SeasonOutcome,
 } from '@camisa-9/player-store';
 import {
+  readCurrentSeasonId,
   readSeasonMatches,
   readTurnoverReport,
-  readWorld,
   type Db as WorldDb,
 } from '@camisa-9/world-store';
 
@@ -30,6 +30,10 @@ export interface SeasonCloseReport {
   readonly pending: number;
 }
 
+/** clubId do campeão por `liga|temporada`, memoizado DENTRO de uma passada. Sem isto, N humanos da
+ *  mesma liga releriam as 38 rodadas (≈380 partidas em jsonb) N vezes — e o passe roda todo dia. */
+type ChampionCache = Map<string, string | null>;
+
 /** Fecha as campanhas cuja temporada já virou. Retorna quantas fecharam e quantas seguem abertas
  *  (as que ainda esperam a viragem — não é erro). */
 export async function runSeasonClosePass(
@@ -37,13 +41,15 @@ export async function runSeasonClosePass(
   playerDb: PlayerDb,
   seed: string,
 ): Promise<SeasonCloseReport> {
-  const world = await readWorld(worldDb, seed);
-  if (!world) return { closed: 0, pending: 0 };
-  const open = await readOpenSeasonsBefore(playerDb, world.seasonId);
+  // Só o `seasonId`: `readWorld` materializaria o elenco inteiro do mundo à toa, todo dia.
+  const currentSeasonId = await readCurrentSeasonId(worldDb, seed);
+  if (currentSeasonId === null) return { closed: 0, pending: 0 };
+  const open = await readOpenSeasonsBefore(playerDb, currentSeasonId);
+  const champions: ChampionCache = new Map();
   let closed = 0;
   let pending = 0;
   for (const row of open) {
-    const done = await tryCloseOne(worldDb, playerDb, seed, row);
+    const done = await tryCloseOne(worldDb, playerDb, seed, row, champions);
     if (done) closed++;
     else pending++;
   }
@@ -57,12 +63,13 @@ async function tryCloseOne(
   playerDb: PlayerDb,
   seed: string,
   row: OpenSeason,
+  champions: ChampionCache,
 ): Promise<boolean> {
   try {
     const report = await readTurnoverReport(worldDb, seed, row.seasonId);
     if (!report) return false; // a temporada dele ainda não virou → tenta de novo amanhã
     const moved = movementOf(report, row.clubId);
-    const outcome = await outcomeOf(worldDb, row, moved);
+    const outcome = await outcomeOf(worldDb, row, moved, champions);
     const result = await closeSeason(playerDb, row.athleteId, row.seasonId, {
       outcome,
       tierAfter: moved?.toTier ?? null,
@@ -81,7 +88,10 @@ interface Movement {
 
 /** O que o `turnover_report` diz que aconteceu com o clube na virada. */
 function movementOf(
-  report: { promoted: readonly { clubId: string; toTier: number }[]; relegated: readonly { clubId: string; toTier: number }[] },
+  report: {
+    promoted: readonly { clubId: string; toTier: number }[];
+    relegated: readonly { clubId: string; toTier: number }[];
+  },
   clubId: string,
 ): Movement | null {
   const up = report.promoted.find((m) => m.clubId === clubId);
@@ -104,23 +114,35 @@ async function outcomeOf(
   worldDb: WorldDb,
   row: OpenSeason,
   moved: Movement | null,
+  champions: ChampionCache,
 ): Promise<SeasonOutcome> {
   if (moved?.kind === 'relegated') return 'relegated';
-  if (await wasChampion(worldDb, row)) return 'champion';
+  if ((await championOf(worldDb, row, champions)) === row.clubId) return 'champion';
   if (moved?.kind === 'promoted') return 'promoted';
   return 'stayed';
 }
 
-/** 1º lugar na classificação das rodadas publicadas da temporada. Os clubes da liga saem da UNIÃO
- *  dos participantes das partidas — não do snapshot, que a viragem já sobrescreveu. */
-async function wasChampion(worldDb: WorldDb, row: OpenSeason): Promise<boolean> {
+/** O clubId do 1º colocado, das rodadas PUBLICADAS da temporada — memoizado por `liga|temporada`,
+ *  porque todos os humanos de uma mesma liga compartilham a mesma tabela. Os clubes saem da UNIÃO
+ *  dos participantes das partidas, não do snapshot, que a viragem já sobrescreveu. */
+async function championOf(
+  worldDb: WorldDb,
+  row: OpenSeason,
+  champions: ChampionCache,
+): Promise<string | null> {
+  const key = `${row.leagueId}|${row.seasonId}`;
+  const cached = champions.get(key);
+  if (cached !== undefined) return cached;
   const matches = await readSeasonMatches(worldDb, row.leagueId, row.seasonId);
-  if (matches.length === 0) return false;
-  const clubIds = new Set<string>();
-  for (const m of matches) {
-    clubIds.add(m.homeId);
-    clubIds.add(m.awayId);
+  let champion: string | null = null;
+  if (matches.length > 0) {
+    const clubIds = new Set<string>();
+    for (const m of matches) {
+      clubIds.add(m.homeId);
+      clubIds.add(m.awayId);
+    }
+    champion = computeStandings([...clubIds], matches)[0]?.clubId ?? null;
   }
-  const table = computeStandings([...clubIds], matches);
-  return table[0]?.clubId === row.clubId;
+  champions.set(key, champion);
+  return champion;
 }

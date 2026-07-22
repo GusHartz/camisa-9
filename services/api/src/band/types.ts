@@ -236,8 +236,6 @@ export interface BandQueue {
  */
 export interface BandSeasonSummary {
   readonly seasonId: string;
-  /** Contador humano (1, 2, 3…) — quantas temporadas a conta já fechou, incluindo esta. */
-  readonly seasonNumber: number;
   readonly clubName: string;
   readonly position: string;
   readonly tier: number;
@@ -254,8 +252,12 @@ export interface BandSeasonSummary {
   readonly ratingBestRound: number | null;
   readonly startOverall: number;
   readonly endOverall: number;
-  /** A rodada de ESTREIA — o card conta a história de quem entrou tarde. */
+  /** A rodada de ESTREIA e a ÚLTIMA jogada — o card conta a história de quem entrou tarde, e o
+   *  intervalo entre as duas é quanto da temporada ele viveu. */
   readonly firstRound: number | null;
+  readonly lastRound: number | null;
+  /** Quantas temporadas a conta já FECHOU, incluindo esta — o "3ª TEMPORADA" do card. É também o
+   *  número ordinal desta temporada, já que `lastSeason` é sempre a mais recente. */
   readonly careerSeasons: number;
 }
 

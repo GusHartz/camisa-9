@@ -12,7 +12,7 @@ import {
   matchPrize,
   salaryPerRound,
 } from '@camisa-9/player';
-import { choiceContextFrom, matchChoices } from '@camisa-9/world-engine';
+import { choiceContextFrom, matchChoices, matchRating } from '@camisa-9/world-engine';
 import {
   advanceTickCursor,
   createDb as createWorldDb,
@@ -288,6 +288,140 @@ describe.skipIf(!DB_URL)('daily-tick — o tick de produção contra Postgres re
     expect(row?.startOverall).toBe(34); // o overall da ESTREIA, preservado
     expect(row!.endOverall!).toBeGreaterThan(34); // o de hoje, depois do ponto gasto
   });
+
+  it('GATE DE ENTRADA: quem ocupou a vaga DEPOIS da rodada não herda a partida do NPC', async () => {
+    // A revisão adversarial provou por mutação que sem estes dois casos o gate podia ser DELETADO
+    // com a suíte inteira verde. A fronteira é 15h: `dueDayIndex(occupiedAt) >= day` → pulou.
+    const world = (await readWorld(worldHandle.db, SEED))!;
+    await setSeasonAnchor(worldHandle.db, SEED, world.seasonId, START);
+    const league = world.tiers[world.tiers.length - 1]!.leagues[0]!;
+    const late = await seatHumanPlaying(league.clubs[0]!.id, START); // 15h de START = pós-rodada
+    const early = await seatHumanPlaying(league.clubs[1]!.id, START - 1); // véspera = jogou
+
+    await runDailyTick(worldHandle.db, playerHandle.db, SEED, epochAt(START));
+
+    const rows = await playerHandle.db.select().from(playerSchema.seasonSummary);
+    const ids = rows.map((r) => r.athleteId);
+    expect(ids).toContain(early); // jogou a rodada 1
+    expect(ids).not.toContain(late); // quem jogou por ele foi o NPC
+
+    // …e no dia SEGUINTE o retardatário passa a contar normalmente.
+    await runDailyTick(worldHandle.db, playerHandle.db, SEED, epochAt(START + 1));
+    const [lateRow] = await playerHandle.db
+      .select()
+      .from(playerSchema.seasonSummary)
+      .where(eq(playerSchema.seasonSummary.athleteId, late));
+    expect(lateRow?.matches).toBe(1);
+    expect(lateRow?.firstRound).toBe(2); // a estreia é a rodada 2, não a 1
+  });
+
+  it('NÚMEROS: gols, assistências e a NOTA batem com o oráculo independente', async () => {
+    // Sem oráculo, a revisão trocou `athleteId`↔`assistId` e inverteu `isHome` — os dois com a
+    // suíte 32/32 verde. Aqui a nota esperada é recomputada no teste, com os MESMOS insumos.
+    const world = (await readWorld(worldHandle.db, SEED))!;
+    await setSeasonAnchor(worldHandle.db, SEED, world.seasonId, START);
+    const league = world.tiers[world.tiers.length - 1]!.leagues[0]!;
+    const club = league.clubs[0]!;
+    const humanId = await seatHumanPlaying(club.id);
+    const meWorldId = (await readOccupation(worldHandle.db, SEED, humanId))!.athleteId;
+
+    await runDailyTick(worldHandle.db, playerHandle.db, SEED, epochAt(START));
+
+    // Reescreve a rodada com eventos DETERMINÍSTICOS (1 gol meu, 1 assistência minha) e desfaz o
+    // acúmulo do dia — o claim `'season'` é o que impede recontar, então ele também sai.
+    const rr = (await readRound(worldHandle.db, league.leagueId, world.seasonId, 1))!;
+    const mine = rr.matches.find((m) => m.homeId === club.id || m.awayId === club.id)!;
+    const isHome = mine.homeId === club.id;
+    const patched = {
+      ...mine,
+      homeGoals: isHome ? 2 : 1,
+      awayGoals: isHome ? 1 : 2,
+      events: [
+        { kind: 'goal' as const, clubId: club.id, minute: 20, athleteId: meWorldId },
+        { kind: 'goal' as const, clubId: club.id, minute: 55, assistId: meWorldId },
+      ],
+    };
+    await worldHandle.db
+      .update(worldSchema.publishedRound)
+      .set({ result: { ...rr, matches: rr.matches.map((m) => (m === mine ? patched : m)) } })
+      .where(
+        and(
+          eq(worldSchema.publishedRound.leagueId, league.leagueId),
+          eq(worldSchema.publishedRound.seasonId, world.seasonId),
+          eq(worldSchema.publishedRound.round, 1),
+        ),
+      );
+    await playerHandle.db.delete(playerSchema.seasonSummary);
+    await playerHandle.db
+      .delete(playerSchema.dailyLedger)
+      .where(
+        and(
+          eq(playerSchema.dailyLedger.athleteId, humanId),
+          eq(playerSchema.dailyLedger.scope, 'season'),
+        ),
+      );
+
+    await runDailyTick(worldHandle.db, playerHandle.db, SEED, epochAt(START));
+
+    const [row] = await playerHandle.db
+      .select()
+      .from(playerSchema.seasonSummary)
+      .where(eq(playerSchema.seasonSummary.athleteId, humanId));
+    expect(row?.goals).toBe(1); // o gol com `athleteId` meu
+    expect(row?.assists).toBe(1); // a assistência com `assistId` meu — não são intercambiáveis
+    // O SNAPSHOT do mundo, que é a razão de existir da tabela:
+    expect(row?.clubName).toBe(club.name);
+    expect(row?.tier).toBe(world.tiers[world.tiers.length - 1]!.tier);
+    // A NOTA, contra o oráculo — pega troca de gol/assistência E inversão de mando de campo.
+    const focos = { fisico: 34, tecnico: 34, tatico: 34, mental: 34 };
+    expect(row?.ratingLast).toBe(
+      matchRating({
+        seed: SEED,
+        leagueId: league.leagueId,
+        seasonId: world.seasonId,
+        round: 1,
+        homeId: patched.homeId,
+        awayId: patched.awayId,
+        athleteId: meWorldId,
+        position: 'FWD',
+        goalsScored: 1,
+        assists: 1,
+        goalsAgainst: 1,
+        result: 'win', // 2×1 a favor
+        focos,
+      }),
+    );
+  });
+
+  it('SEAM do FECHO: a viragem, pelo tick REAL, fecha a campanha com o desfecho do clube', async () => {
+    // Todos os testes de close-pass chamam o passe direto; este prova a COMPOSIÇÃO — a 4ª vez que
+    // este projeto aprende a lição (SPEC-029 → 046 → 047), e a própria SPEC-053 a invoca.
+    const world = (await readWorld(worldHandle.db, SEED))!;
+    await setSeasonAnchor(worldHandle.db, SEED, world.seasonId, START);
+    const league = world.tiers[world.tiers.length - 1]!.leagues[0]!;
+    const humanId = await seatHumanPlaying(league.clubs[0]!.id);
+
+    await runDailyTick(worldHandle.db, playerHandle.db, SEED, epochAt(START));
+    const [open] = await playerHandle.db
+      .select()
+      .from(playerSchema.seasonSummary)
+      .where(eq(playerSchema.seasonSummary.athleteId, humanId));
+    expect(open?.closedAt).toBeNull(); // ainda em curso
+
+    // O tick do dia da virada roda o catch-up das 38 rodadas E vira a temporada.
+    const rep = await runDailyTick(worldHandle.db, playerHandle.db, SEED, epochAt(START + 38));
+    expect(rep.roundStatus).toBe('season_rolled');
+    expect(rep.seasonsClosed).toBe(1);
+
+    const [closed] = await playerHandle.db
+      .select()
+      .from(playerSchema.seasonSummary)
+      .where(eq(playerSchema.seasonSummary.athleteId, humanId));
+    expect(closed?.closedAt).not.toBeNull();
+    expect(['champion', 'promoted', 'stayed', 'relegated']).toContain(closed?.outcome);
+    expect(closed?.seasonId).toBe(world.seasonId); // a temporada que ACABOU, não a nova
+    // 30s: o tick da virada faz o catch-up das 38 rodadas, cada uma com acúmulo + fecho.
+  }, 30_000);
 
   it('viragem (season_rolled): NÃO paga salário (dia de descanso, sem rodada) — fix do MAJOR', async () => {
     const world = (await readWorld(worldHandle.db, SEED))!;

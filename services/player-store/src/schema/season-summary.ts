@@ -12,6 +12,11 @@
 //
 // As colunas de FECHO (`outcome`, `tier_after`, `end_overall`, `closed_at`) ficam NULL enquanto a
 // temporada corre — `closed_at IS NULL` É o gate de idempotência do passe de fecho.
+//
+// ⚠️ SEM `world_seed`: o `season_id` é um contador global do mundo ('2026', '2027'…), então esta
+// tabela assume UM mundo por banco — que é o que o scheduler faz hoje (uma `WORLD_SEED` por
+// processo, SPEC-032). Se um dia houver multi-seed no mesmo Postgres, esta coluna passa a ser
+// obrigatória aqui e no filtro do `readOpenSeasonsBefore`.
 import { sql } from 'drizzle-orm';
 import { check, index, integer, primaryKey, text, timestamp, uuid } from 'drizzle-orm/pg-core';
 import { account, playerSchema } from './account.js';
@@ -75,6 +80,12 @@ export const seasonSummary = playerSchema.table(
     openIdx: index('season_summary_open_idx')
       .on(t.seasonId)
       .where(sql`${t.closedAt} is null`),
+    // O caminho QUENTE: `GET /v1/band` lê a última campanha fechada da conta a cada poll (60s por
+    // cliente). Sem isto seria seq scan numa tabela que só cresce. Molde do `session_account_idx`
+    // (SPEC-037), que resolve exatamente o mesmo padrão de acesso.
+    accountIdx: index('season_summary_account_idx')
+      .on(t.accountId, t.closedAt)
+      .where(sql`${t.closedAt} is not null`),
     outcomeValid: check(
       'season_summary_outcome_valid',
       sql`${t.outcome} is null or ${t.outcome} in ('champion', 'promoted', 'stayed', 'relegated')`,

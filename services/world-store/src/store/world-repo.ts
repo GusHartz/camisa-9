@@ -25,6 +25,18 @@ export async function writeWorldState(db: Db, seed: string, state: WorldState): 
 }
 
 /** Lê o WorldState completo da `seed` (null se não existe). Strength é recomputada. */
+/** Só o `seasonId` corrente do mundo (SPEC-053). Existe porque `readWorld` dispara 5 queries e
+ *  materializa o elenco INTEIRO (4 andares × 20 clubes × 16 atletas, crescendo com a Pirâmide
+ *  Elástica) — caro demais para quem só precisa saber em que temporada o mundo está. */
+export async function readCurrentSeasonId(db: Db, seed: string): Promise<string | null> {
+  const rows = await db
+    .select({ seasonId: world.seasonId })
+    .from(world)
+    .where(eq(world.seed, seed))
+    .limit(1);
+  return rows[0]?.seasonId ?? null;
+}
+
 export async function readWorld(db: Db, seed: string): Promise<WorldState | null> {
   const worldRows = await db.select().from(world).where(eq(world.seed, seed));
   const worldRow = worldRows[0];

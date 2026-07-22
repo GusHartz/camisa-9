@@ -2,6 +2,7 @@
 export { createDb, type Db, type DbHandle } from './client.js';
 export {
   readClubRoster,
+  readCurrentSeasonId,
   readClubBrief,
   readClubSquad,
   readLeagueClubIds,

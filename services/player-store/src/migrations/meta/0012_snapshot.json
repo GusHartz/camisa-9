@@ -1,5 +1,5 @@
 {
-  "id": "1cbd636e-2fb4-46e8-b85a-94c3b392e336",
+  "id": "f7d8ec7e-1d34-474d-aeef-415c57eaa077",
   "prevId": "b21091eb-b496-4b87-9a52-be3fa13b6dfe",
   "version": "7",
   "dialect": "postgresql",
@@ -1074,6 +1074,28 @@
           ],
           "isUnique": false,
           "where": "\"player\".\"season_summary\".\"closed_at\" is null",
+          "concurrently": false,
+          "method": "btree",
+          "with": {}
+        },
+        "season_summary_account_idx": {
+          "name": "season_summary_account_idx",
+          "columns": [
+            {
+              "expression": "account_id",
+              "isExpression": false,
+              "asc": true,
+              "nulls": "last"
+            },
+            {
+              "expression": "closed_at",
+              "isExpression": false,
+              "asc": true,
+              "nulls": "last"
+            }
+          ],
+          "isUnique": false,
+          "where": "\"player\".\"season_summary\".\"closed_at\" is not null",
           "concurrently": false,
           "method": "btree",
           "with": {}

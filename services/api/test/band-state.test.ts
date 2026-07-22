@@ -370,8 +370,9 @@ describe.skipIf(!DB_URL)('readBandState — o agregador da faixa (SPEC-038)', ()
     // A linha EVOLUÇÃO é o OVERALL — o número que o treino move (a nota quase não responde a ele).
     expect(state.lastSeason?.startOverall).toBe(41);
     expect(state.lastSeason?.endOverall).toBe(47);
-    expect(state.lastSeason?.seasonNumber).toBe(1);
     expect(state.lastSeason?.careerSeasons).toBe(1);
+    expect(state.lastSeason?.firstRound).toBe(1);
+    expect(state.lastSeason?.lastRound).toBe(2);
   });
 
   it('a campanha de OUTRA conta nunca vaza no contrato', async () => {

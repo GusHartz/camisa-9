@@ -96,7 +96,9 @@ describe.skipIf(!DB_URL)('close-pass — o fecho de temporada contra Postgres re
   }
 
   /** Um humano com uma campanha ABERTA na temporada dada. */
-  async function humanWithCampaign(seasonId: string): Promise<{ athleteId: string; accountId: string }> {
+  async function humanWithCampaign(
+    seasonId: string,
+  ): Promise<{ athleteId: string; accountId: string }> {
     seq += 1;
     const draft = createAthlete({
       name: 'Craque',

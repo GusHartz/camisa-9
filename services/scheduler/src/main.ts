@@ -19,7 +19,7 @@ export async function main(): Promise<void> {
       `tick: day=${r.dayIndex} status=${r.roundStatus} dias=${r.daysProcessed} humanos=${r.humans} ` +
         `pagos=${r.accrued} decisões=${r.decisions} lesões=${r.injured} recuperados=${r.recovered} ` +
         `regen=${r.regenerated} transf=${r.transferred} admit=${r.admitted} ` +
-        `vacancy=${r.vacancy.frozen}/${r.vacancy.reverted}`,
+        `temporadas=${r.seasonsClosed} vacancy=${r.vacancy.frozen}/${r.vacancy.reverted}`,
     );
   } finally {
     await worldHandle.pool.end();

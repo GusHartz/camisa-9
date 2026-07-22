@@ -54,6 +54,7 @@ export interface ClosedSeason {
   readonly ratingBest: number | null;
   readonly ratingBestRound: number | null;
   readonly firstRound: number | null;
+  readonly lastRound: number | null;
   readonly startOverall: number;
   readonly endOverall: number;
 }
@@ -86,7 +87,8 @@ export async function accrueSeasonMatch(
     });
   } catch (err) {
     // OP-11: constraint do pg vira mensagem genérica; a causa fica só para log server-side.
-    if (isConstraintViolation(err)) throw new Error('não foi possível somar a partida', { cause: err });
+    if (isConstraintViolation(err))
+      throw new Error('não foi possível somar a partida', { cause: err });
     throw err;
   }
 }
@@ -227,6 +229,7 @@ export async function readLastClosedSeason(
     ratingBest: r.ratingBest,
     ratingBestRound: r.ratingBestRound,
     firstRound: r.firstRound,
+    lastRound: r.lastRound,
     startOverall: r.startOverall,
     endOverall: r.endOverall,
   };

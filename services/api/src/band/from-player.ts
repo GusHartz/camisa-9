@@ -151,7 +151,6 @@ export function buildLastSeason(
   if (!row) return undefined;
   return {
     seasonId: row.seasonId,
-    seasonNumber: careerSeasons,
     clubName: row.clubName,
     position: row.position,
     tier: row.tier,
@@ -166,6 +165,7 @@ export function buildLastSeason(
     startOverall: row.startOverall,
     endOverall: row.endOverall,
     firstRound: row.firstRound,
+    lastRound: row.lastRound,
     careerSeasons,
   };
 }

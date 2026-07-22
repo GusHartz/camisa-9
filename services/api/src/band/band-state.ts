@@ -157,15 +157,14 @@ export async function readBandState(
 }
 
 /** A campanha fechada mais recente da CONTA (SPEC-053). Duas leituras porque o card mostra tanto a
- *  temporada quanto o contador de carreira, e ambos atravessam o regen. */
-async function readLastSeason(
-  db: Db,
-  accountId: string,
-): Promise<BandSeasonSummary | undefined> {
-  return buildLastSeason(
-    await readLastClosedSeason(db, accountId),
-    await countCareerSeasons(db, accountId),
-  );
+ *  temporada quanto o contador de carreira, e ambos atravessam o regen — em PARALELO, porque estão
+ *  no caminho de cada poll da faixa e não dependem uma da outra. */
+async function readLastSeason(db: Db, accountId: string): Promise<BandSeasonSummary | undefined> {
+  const [row, careerSeasons] = await Promise.all([
+    readLastClosedSeason(db, accountId),
+    countCareerSeasons(db, accountId),
+  ]);
+  return buildLastSeason(row, careerSeasons);
 }
 
 /** A DICA de regen (SPEC-045): tem vaga no mundo E a idade (relógio de carreira) atingiu o mínimo
