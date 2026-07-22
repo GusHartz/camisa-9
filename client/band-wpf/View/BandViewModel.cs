@@ -87,6 +87,11 @@ public sealed class BandViewModel : INotifyPropertyChanged
     // um poll que avance _lastRound com o overlay aberto responderia a oferta errada; MAJOR da revisão)
     private ChoiceOutcomeRow? _outcome; // o desfecho em cartaz (SPEC-051)
 
+    // Cenário (SPEC-052): a chave da cena + a altura da faixa (que entra na chave, porque o
+    // recorte muda a arte). A cena nasce na fase neutra até o primeiro `Apply`.
+    private readonly double _bandHeightDip;
+    private SceneKey _scene;
+
     public string StatusLine { get => _statusLine; private set => Set(ref _statusLine, value); }
     public string Phase { get => _phase; private set => Set(ref _phase, value); }
     public Brush PhaseBrush { get => _phaseBrush; private set => Set(ref _phaseBrush, value); }
@@ -241,6 +246,9 @@ public sealed class BandViewModel : INotifyPropertyChanged
     {
         Phase = s.Phase ?? "";
         PhaseBrush = BrushFor(s.Phase);
+        // SPEC-052: a CHAVE da cena. Sendo record, o `Set` só notifica quando algo que MUDA O
+        // DESENHO mudou — é isso que impede o cenário de repintar a cada poll.
+        Scene = SceneModel.From(s, _bandHeightDip);
 
         BandAthlete? a = s.Athlete;
         AthleteLine =
@@ -338,11 +346,21 @@ public sealed class BandViewModel : INotifyPropertyChanged
 
     // --- Replay da partida (SPEC-044): a fatia 1 (SPEC-043) deu a timeline; aqui ela é REPRODUZIDA. ---
 
-    public BandViewModel(int replayWatchSeconds = 240)
+    public BandViewModel(int replayWatchSeconds = 240, double bandHeightDip = 88)
     {
         _replay = new MatchReplay(replayWatchSeconds);
         _replay.Frame += OnReplayFrame;
         _replay.Ended += OnReplayEnded;
+        _bandHeightDip = bandHeightDip;
+        _scene = SceneModel.From(null, bandHeightDip); // cena neutra até o 1º Apply
+    }
+
+    /// <summary>A chave do cenário (SPEC-052) — a View compõe e cacheia por ela. Só notifica quando
+    /// algo que MUDA O DESENHO muda (record = igualdade estrutural).</summary>
+    internal SceneKey Scene
+    {
+        get => _scene;
+        private set => Set(ref _scene, value);
     }
 
     /// <summary>Para o replay no fechamento da faixa — evita o timer ZUMBI tocando no reauth (o app

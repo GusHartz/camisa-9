@@ -70,7 +70,8 @@ public partial class App : Application
 
     private void ShowBand()
     {
-        var band = new MainWindow(_api, new BandViewModel(LoadReplayWatchSeconds()));
+        int height = LoadBandHeight();
+        var band = new MainWindow(_api, new BandViewModel(LoadReplayWatchSeconds(), height), height);
         bool reauthing = false;
         band.ReauthRequired += () =>
         {
@@ -114,6 +115,32 @@ public partial class App : Application
     }
 
     // A duração da watch do replay (SPEC-044), do config.json. Default 240s (~4 min); tolerante.
+    /// A altura da faixa (SPEC-052): os 3 níveis de presença — compacta 64 · normal 88 (default) ·
+    /// cena 112. São os múltiplos INTEIROS do grid lógico de 28 linhas (×4 DIP), o que mantém o
+    /// pixel art nítido; qualquer outro valor cai no default em vez de borrar a arte.
+    private static int LoadBandHeight()
+    {
+        try
+        {
+            string path = Path.Combine(AppContext.BaseDirectory, "config.json");
+            if (File.Exists(path))
+            {
+                using JsonDocument doc = JsonDocument.Parse(File.ReadAllText(path));
+                if (
+                    doc.RootElement.TryGetProperty("bandHeightDip", out JsonElement v)
+                    && v.TryGetInt32(out int h)
+                    && (h == 64 || h == 88 || h == 112)
+                )
+                    return h;
+            }
+        }
+        catch
+        {
+            // config ausente/torto → default
+        }
+        return 88;
+    }
+
     private static int LoadReplayWatchSeconds()
     {
         try

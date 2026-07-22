@@ -20,9 +20,25 @@
             <Setter Property="Cursor" Value="Hand" />
         </Style>
     </Window.Resources>
-    <Border Background="{Binding PhaseBrush}" Padding="12,6">
-        <!-- ClipToBounds só aqui, NUNCA no <Window> (crash de startup 0xE0434352). -->
-        <Grid ClipToBounds="True">
+    <!-- SPEC-052 — a faixa em 3 camadas: (1) o CENÁRIO pixel-art (composto uma vez por chave em
+         `SceneRenderer` e injetado pelo code-behind), (2) um scrim lateral que garante contraste do
+         texto sobre qualquer fundo, (3) o conteúdo. O `PhaseBrush` fica como cor de base (aparece
+         enquanto a cena não compôs e nas bordas). ClipToBounds só aqui, NUNCA no <Window>
+         (crash de startup 0xE0434352). -->
+    <Grid ClipToBounds="True" Background="{Binding PhaseBrush}">
+        <Image x:Name="SceneLayer" Stretch="Fill"
+               RenderOptions.BitmapScalingMode="NearestNeighbor" />
+        <Rectangle>
+            <Rectangle.Fill>
+                <LinearGradientBrush StartPoint="0,0" EndPoint="1,0">
+                    <GradientStop Color="#DB0B0F1C" Offset="0" />
+                    <GradientStop Color="#8C0B0F1C" Offset="0.55" />
+                    <GradientStop Color="#4D0B0F1C" Offset="1" />
+                </LinearGradientBrush>
+            </Rectangle.Fill>
+        </Rectangle>
+        <Border Padding="12,6">
+        <Grid>
             <Grid.ColumnDefinitions>
                 <ColumnDefinition Width="Auto" />
                 <ColumnDefinition Width="*" />
@@ -248,5 +264,6 @@
                 <ContentControl x:Name="ChoiceHost" />
             </Popup>
         </Grid>
-    </Border>
+        </Border>
+    </Grid>
 </Window>
