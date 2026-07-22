@@ -78,11 +78,24 @@ public sealed record BandMatch(
     int? GoalsAgainst,
     // SPEC-043/044: a timeline de gols (cronológica), orientada `isMine`. Ausente/null pré-jogo ou
     // num cliente/servidor sem o campo (tolerante). Default null p/ a desserialização e a construção.
-    IReadOnlyList<BandGoal>? Goals = null
+    IReadOnlyList<BandGoal>? Goals = null,
+    // SPEC-046: a minha NOTA na partida (3.0..10.0). Presente quando `played`; null pré-jogo ou num
+    // servidor sem o campo (tolerante). É o herói do card de partida (SPEC-049).
+    double? MyRating = null
 );
 
-/// <summary>Um gol na timeline da partida (SPEC-043) — minuto + se foi do clube do humano.</summary>
-public sealed record BandGoal(int Minute, bool IsMine);
+/// <summary>Um gol na timeline da partida (SPEC-043) — minuto + se foi do clube do humano. SPEC-046:
+/// o artilheiro/assistente (`ByMe`/`Scorer`/`AssistByMe`/`Assist`). Os NOMES só vêm p/ gols do MEU
+/// clube (a faixa não tem o elenco do adversário → null). Aditivo/tolerante: default p/ o cliente/
+/// servidor sem os campos.</summary>
+public sealed record BandGoal(
+    int Minute,
+    bool IsMine,
+    bool ByMe = false,
+    string? Scorer = null,
+    bool AssistByMe = false,
+    string? Assist = null
+);
 
 public sealed record BandClub(
     string ClubId,

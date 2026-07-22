@@ -102,11 +102,20 @@
                 <TextBlock Text="{Binding QueueLine}" FontSize="11" Foreground="#DDB86B"
                            HorizontalAlignment="Right"
                            Visibility="{Binding QueueVisible, Converter={StaticResource BoolToVis}}" />
-                <!-- Re-assistir (clique simples): reproduz a última partida liquidada de novo. -->
-                <TextBlock Text="↻ re-assistir" FontSize="10" Foreground="#9AD0FF"
-                           HorizontalAlignment="Right" VerticalAlignment="Center" Cursor="Hand"
-                           MouseLeftButtonDown="OnReWatchClick"
-                           Visibility="{Binding ReplayAvailable, Converter={StaticResource BoolToVis}}" />
+                <!-- Compartilhar o card + re-assistir (mutuamente exclusivos da fila). -->
+                <StackPanel Orientation="Horizontal" HorizontalAlignment="Right"
+                            VerticalAlignment="Center">
+                    <!-- Card de partida (SPEC-049): gera a imagem 1080×1080 → clipboard + Pictures. -->
+                    <TextBlock Text="📸 card" FontSize="10" Foreground="#DDB86B" Cursor="Hand"
+                               Margin="0,0,10,0" VerticalAlignment="Center"
+                               MouseLeftButtonDown="OnShareCardClick"
+                               Visibility="{Binding CardAvailable, Converter={StaticResource BoolToVis}}" />
+                    <!-- Re-assistir (clique simples): reproduz a última partida liquidada de novo. -->
+                    <TextBlock Text="↻ re-assistir" FontSize="10" Foreground="#9AD0FF"
+                               VerticalAlignment="Center" Cursor="Hand"
+                               MouseLeftButtonDown="OnReWatchClick"
+                               Visibility="{Binding ReplayAvailable, Converter={StaticResource BoolToVis}}" />
+                </StackPanel>
             </Grid>
 
             <!-- Linha 4: treino (com os botões de distribuir) · decisões · loja · regen · lesão + feedback/status -->

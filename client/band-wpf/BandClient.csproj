@@ -16,4 +16,17 @@
     <!-- config.json ao lado do exe para o smoke apontar ao services/api de dev. -->
     <None Update="config.json" CopyToOutputDirectory="PreserveNewest" />
   </ItemGroup>
+  <ItemGroup>
+    <!-- Card de partida (SPEC-049): as fontes OFL (Pixelify Sans + Silkscreen) e o mascote entram como
+         Resource embarcado no exe (referenciados por URI pack://). Remove-do-None-default evita o item
+         duplicado. As licenças OFL acompanham a redistribuição (copiadas ao output). -->
+    <None Remove="Assets\fonts\PixelifySans-VF.ttf" />
+    <None Remove="Assets\fonts\Silkscreen-Regular.ttf" />
+    <None Remove="Assets\goat-idle.png" />
+    <Resource Include="Assets\fonts\PixelifySans-VF.ttf" />
+    <Resource Include="Assets\fonts\Silkscreen-Regular.ttf" />
+    <Resource Include="Assets\goat-idle.png" />
+    <None Update="Assets\fonts\OFL-PixelifySans.txt" CopyToOutputDirectory="PreserveNewest" />
+    <None Update="Assets\fonts\OFL-Silkscreen.txt" CopyToOutputDirectory="PreserveNewest" />
+  </ItemGroup>
 </Project>

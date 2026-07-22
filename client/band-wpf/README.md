@@ -1,4 +1,4 @@
-# NEXT GOAT — cliente da faixa (WPF) · leitura (fatia 1) + escritas (fatia 2)
+# NEXT GOAT — cliente da faixa (WPF) · leitura (fatia 1) + escritas (fatia 2) + card de partida (SPEC-049)
 
 O **primeiro cliente do repo** (C#/WPF, .NET 8, Windows-only). A **fatia 1** (SPEC-042) entregou o
 **pipe vertical fino** — a faixa ancora acima da taskbar, faz login, faz poll do `GET /v1/band` real e
@@ -91,9 +91,16 @@ Os critérios de aceite são verificados à mão (sem C# na CI — precedente do
      solicitado" (a viragem executa). Sem elegibilidade a dica não aparece; se clicar via 409 → feedback.
    - **Erro por code** — sem pontos/saldo, decisão já resolvida, 429 → feedback **genérico** roteado pelo
      `code` (nunca a frase do servidor); a faixa **não** trava e reconcilia.
-8. **Erro por code (leitura)** — pare a API → "sem conexão"; deixe o token expirar (ou apague-o
+8. **Card de partida (SPEC-049)** — com uma rodada tickada com a sua nota (jogo publicado), o affordance
+   **`📸 card`** aparece na linha do clube; clique → renderiza a imagem **1080×1080** pixel-art (sua nota
+   gigante em ouro, o placar, o momento com os seus gols, o rodapé com o mascote + NEXT GOAT), **copia
+   p/ a área de transferência** (cole no WhatsApp) **e** salva em `%USERPROFILE%\Pictures\NextGoat\`. O
+   feedback confirma ("card copiado ✓"). Sem jogo/nota → o affordance **não** aparece.
+   - As cores mudam com o resultado (verde vitória / slate empate / vermelho derrota); 0×0 → "SEM GOLS";
+     sem participação → placar + nota, sem "VOCÊ". Confira o PNG salvo (colar no WhatsApp mostra o card).
+9. **Erro por code (leitura)** — pare a API → "sem conexão"; deixe o token expirar (ou apague-o
    server-side) → **401 volta ao login**; force o rate limit → respeita o `Retry-After`.
-9. **Orçamento SOB REDE + DURANTE O REPLAY** — deixe ≥10 min ocioso-com-poll **e** meça também durante
+10. **Orçamento SOB REDE + DURANTE O REPLAY** — deixe ≥10 min ocioso-com-poll **e** meça também durante
    uma janela de replay (~4 min); reusa o script do spike:
 
    ```powershell
@@ -102,7 +109,26 @@ Os critérios de aceite são verificados à mão (sem C# na CI — precedente do
 
    Alvo: **CPU média `<1%`** da máquina **E** RAM (working set) **`<150MB`**, sem drift ilimitado —
    inclusive com o replay rodando (o tick é coarse, a animação é leve).
-10. **Saída graciosa** — duplo-clique fecha; o `Mutex` impede uma 2ª faixa.
+11. **Saída graciosa** — duplo-clique fecha; o `Mutex` impede uma 2ª faixa.
+
+### Card de partida — fontes, assets e render fiel (SPEC-049)
+
+O card é **100% cliente**, WPF puro (zero dependência NuGet): compõe o PNG por primitivas
+(`DrawingContext` → `RenderTargetBitmap` → `PngBitmapEncoder`), fiel ao handoff de design (tokens do
+design system Next Goat, os 5 estados). Os assets em `Assets/` são **embarcados** no exe (`Resource`):
+
+- **Fontes** (`Assets/fonts/`): **Pixelify Sans** (display) + **Silkscreen** (numérica — a nota/placar),
+  **OFL** (as licenças `OFL-*.txt` acompanham). O Pixelify é a fonte **variável** — o WPF usa a instância
+  default e sintetiza o "bold"; aceitável no pixel-art (confira o smoke). O design system marca as faces
+  como substitutas — a troca por faces de marca finais é um swap de asset futuro.
+- **Mascote** (`Assets/goat-idle.png`); a **coroa** é desenhada como retângulos (o crown.svg do handoff).
+
+**Render fiel sem GUI (o método de verificação visual):** um harness headless (STA + `RenderTargetBitmap`)
+compõe os 5 estados (vitória/empate/derrota/0×0/nome-longo) para PNG, sem subir a faixa — foi assim que a
+fidelidade foi conferida na implementação (build 0 avisos + inspeção dos PNGs). O harness vive fora do
+repo (scratchpad); para re-gerar, linke `View/{CardDraw,CardChip,MatchCardModel,MatchCardRenderer}.cs` +
+`Api/BandState.cs` num console `net8.0-windows`/`UseWPF` que embarque `Assets/`, e renderize modelos de
+exemplo. O smoke real (colar no WhatsApp + orçamento) é ação do founder.
 
 ## Escopo deferido (fatias futuras)
 
