@@ -1,11 +1,13 @@
-# NEXT GOAT — cliente da faixa (WPF) · leitura (fatia 1) + escritas (fatia 2) + card de partida (SPEC-049)
+# NEXT GOAT — cliente da faixa (WPF) · leitura + escritas + card de partida + o corpo da faixa
 
 O **primeiro cliente do repo** (C#/WPF, .NET 8, Windows-only). A **fatia 1** (SPEC-042) entregou o
 **pipe vertical fino** — a faixa ancora acima da taskbar, faz login, faz poll do `GET /v1/band` real e
 desenha o dia do atleta com primitivas WPF (texto/formas/blocos de cor). A **fatia 2** (SPEC-045)
 a deixa **interativa**: o jogador **distribui pontos de treino**, **responde decisões**, **compra** e
 **pede regen** direto na faixa, pelas 4 rotas POST da SPEC-041, reconciliando via re-leitura do
-`/v1/band`. **Zero arte** (os assets não estão no repo — deferidos); render estrutural.
+`/v1/band`. A **SPEC-052** dá **corpo** a ela: o fundo deixa de ser chapado e ganha **cenário
+pixel-art** (CT ao amanhecer · a casa onde você dorme · o vestiário da véspera), composto por
+primitivas e recortado para **3 alturas** a partir de uma arte só.
 
 > **Thin renderer (OP-17):** o cliente só apresenta affordances e dispara POSTs — **zero regra de
 > jogo, zero anti-fraude**. TODA validação (saldo, ordem de moradia, opção válida, elegibilidade do
@@ -98,9 +100,17 @@ Os critérios de aceite são verificados à mão (sem C# na CI — precedente do
    feedback confirma ("card copiado ✓"). Sem jogo/nota → o affordance **não** aparece.
    - As cores mudam com o resultado (verde vitória / slate empate / vermelho derrota); 0×0 → "SEM GOLS";
      sem participação → placar + nota, sem "VOCÊ". Confira o PNG salvo (colar no WhatsApp mostra o card).
-9. **Erro por code (leitura)** — pare a API → "sem conexão"; deixe o token expirar (ou apague-o
+9. **O cenário e as 3 alturas (SPEC-052)** — a faixa abre com **cenário pixel-art** atrás do conteúdo,
+   que muda com a hora do dia: **CT ao amanhecer** (manhã) · **a casa onde você dorme** (noite —
+   pensão nos degraus 0-1, cobertura nos 2-3) · **o vestiário da véspera** (tarde; depois das 15h com
+   o jogo publicado, o placar acende em verde/cinza/vermelho). Troque `bandHeightDip` no `config.json`
+   para **64**, **88** e **112** e reabra: a arte é a mesma, **recortada de baixo** — em 64 o essencial
+   (campo/gol/bola no CT, placar e banco na véspera) continua visível. Confirme também que **nada
+   pisca**: o cenário é composto uma vez por chave e cacheado — durante o replay, que notifica ~2×/s,
+   o fundo fica imóvel.
+10. **Erro por code (leitura)** — pare a API → "sem conexão"; deixe o token expirar (ou apague-o
    server-side) → **401 volta ao login**; force o rate limit → respeita o `Retry-After`.
-10. **Orçamento SOB REDE + DURANTE O REPLAY** — deixe ≥10 min ocioso-com-poll **e** meça também durante
+11. **Orçamento SOB REDE + DURANTE O REPLAY** — deixe ≥10 min ocioso-com-poll **e** meça também durante
    uma janela de replay (~4 min); reusa o script do spike:
 
    ```powershell
@@ -109,7 +119,7 @@ Os critérios de aceite são verificados à mão (sem C# na CI — precedente do
 
    Alvo: **CPU média `<1%`** da máquina **E** RAM (working set) **`<150MB`**, sem drift ilimitado —
    inclusive com o replay rodando (o tick é coarse, a animação é leve).
-11. **Saída graciosa** — duplo-clique fecha; o `Mutex` impede uma 2ª faixa.
+12. **Saída graciosa** — duplo-clique fecha; o `Mutex` impede uma 2ª faixa.
 
 ### Card de partida — fontes, assets e render fiel (SPEC-049)
 
@@ -130,9 +140,34 @@ repo (scratchpad); para re-gerar, linke `View/{CardDraw,CardChip,MatchCardModel,
 `Api/BandState.cs` num console `net8.0-windows`/`UseWPF` que embarque `Assets/`, e renderize modelos de
 exemplo. O smoke real (colar no WhatsApp + orçamento) é ação do founder.
 
+### O cenário — como é feito e como se verifica (SPEC-052)
+
+O fundo é **pixel-art composta por primitivas**, no mesmo espírito do card de partida: nenhum asset
+binário, nenhuma dependência. `View/PixelCanvas.cs` expõe as duas primitivas do handoff (`R`
+retângulo lógico, `P` pixel) sobre um grid de **120×28**, a **4 DIP por pixel lógico**;
+`View/SceneRenderer.cs` pinta as 4 cenas; `View/ScenePalette.cs` congela a paleta do design (fonte
+única — a fatia 2, o avatar, reusa a mesma); `View/SceneModel.cs` projeta o `BandState` numa
+`SceneKey` (thin renderer, OP-17 — o cliente não decide nada, só lê a fase, a casa e o placar).
+
+- **As 3 alturas saem de uma arte só**: 112 DIP mostra as 28 linhas, 88 mostra 22, 64 mostra 16,
+  sempre **ancorado embaixo**. Por isso a régua da "faixa segura": o que precisa sobreviver ao
+  recorte compacto mora nas linhas de baixo.
+- **Determinismo**: o handoff sorteava 25 pixels com `Math.random()` (janelas do prédio, luzes da
+  laje) — no WPF isso faria a arte **mudar a cada repintura**. Viraram máscara determinística; o
+  harness compõe a mesma chave duas vezes e compara os bytes.
+- ⚠️ **Ordem de inicialização estática**: o cache de brushes do `ScenePalette` é declarado **antes**
+  dos brushes que o usam. Inicializadores de campo estático rodam em ordem de declaração — o cache no
+  fim da classe derruba o type initializer na primeira composição.
+
+**Verificação sem GUI**: o mesmo método do card — um console `net8.0-windows`/`UseWPF` que linka
+`View/{ScenePalette,PixelCanvas,SceneRenderer,SceneModel}.cs`, chama `SceneRenderer.Compose(key)` e
+salva PNG. Foi assim que as 4 cenas × 3 alturas foram conferidas uma a uma.
+
 ## Escopo deferido (fatias futuras)
 
-Arte (avatar em camadas, 3 cenas ilustradas), as 3 alturas (64/88/110), toasts WinRT, autoupdate +
-code-signing, o fix do Win+D (parenting à WorkerW — hoje a faixa **some** no Mostrar Desktop,
-ratificado aceitável), a Postura B (AppBar), e o build self-contained para distribuição. A escolha
-do FOCO do treino (hoje o acúmulo é idle no scheduler) e a otimista-UI (hoje reconcilia por re-leitura).
+**O avatar** (fatia 2 da SPEC-052 — bloqueada pelos ativos: 12+12 cores de kit indexadas, 16 escudos,
+as cenas de quitinete e apê, o glifo `?`), toasts WinRT, autoupdate + code-signing, o fix do Win+D
+(parenting à WorkerW — hoje a faixa **some** no Mostrar Desktop, ratificado aceitável), a Postura B
+(AppBar), e o build self-contained para distribuição. A escolha do FOCO do treino (hoje o acúmulo é
+idle no scheduler) e a otimista-UI (hoje reconcilia por re-leitura). O **layout da UI em 64 DIP**
+(esta fatia recorta o cenário; o que o conteúdo mostra nessa altura é decisão de UI, não de arte).

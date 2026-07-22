@@ -1,7 +1,9 @@
+using System.Collections.Generic;
 using System.Windows;
 using System.Windows.Input;
 using System.Windows.Interop;
 using System.Windows.Media;
+using System.Windows.Media.Imaging;
 using System.Windows.Threading;
 using BandClient.Api;
 using BandClient.Shell;
@@ -20,7 +22,10 @@ namespace BandClient;
 public partial class MainWindow : Window
 {
     private const int BandWidthDip = 480;
-    private const int BandHeightDip = 88;
+
+    // SPEC-052: a altura vira um dos 3 níveis de presença (compacta 64 · normal 88 · cena 112) —
+    // os múltiplos inteiros do grid lógico de 28 linhas. Lida do `config.json` pelo App.
+    private readonly int BandHeightDip;
     private const int WM_SETTINGCHANGE = 0x001A;
     private const int WM_DISPLAYCHANGE = 0x007E;
     private const int WM_DPICHANGED = 0x02E0;
@@ -36,9 +41,10 @@ public partial class MainWindow : Window
     /// <summary>Disparado quando o servidor rejeita a sessão (401) — o App reabre o login.</summary>
     public event Action? ReauthRequired;
 
-    public MainWindow(BandApiClient api, BandViewModel vm)
+    public MainWindow(BandApiClient api, BandViewModel vm, int bandHeightDip = 88)
     {
         _vm = vm;
+        BandHeightDip = bandHeightDip;
         _poller = new BandPoller(api);
         _actions = new BandActions(api, _poller); // escritas (SPEC-045): POST → reconcilia via o poller
         InitializeComponent();
@@ -52,6 +58,11 @@ public partial class MainWindow : Window
         {
             if (e.PropertyName is nameof(BandViewModel.CurrentMatchChoice) or nameof(BandViewModel.Outcome))
                 RenderChoiceCard();
+            // SPEC-052: o cenário só repinta quando a CHAVE muda. Assinar a chave (e não o
+            // PropertyChanged genérico) é o que segura o orçamento: durante o replay o VM dispara
+            // ~2 notificações/s, e nenhuma delas toca a cena.
+            else if (e.PropertyName == nameof(BandViewModel.Scene))
+                RenderScene();
         };
 
         _poller.Updated += OnState;
@@ -240,6 +251,22 @@ public partial class MainWindow : Window
         e.Handled = true;
         if ((sender as FrameworkElement)?.DataContext is ShopRow row && row.CanBuy)
             _ = _actions.PurchaseAsync(row.Id);
+    }
+
+    // O cenário da faixa (SPEC-052). Composto UMA vez por chave e cacheado — a mesma cena reaparece
+    // instantaneamente ao voltar (ex.: alternar entre fases ao longo do dia). O dicionário é
+    // pequeno por construção: 3 fases × 2 casas × pré/pós × altura.
+    private readonly Dictionary<SceneKey, BitmapSource> _sceneCache = new();
+
+    private void RenderScene()
+    {
+        SceneKey key = _vm.Scene;
+        if (!_sceneCache.TryGetValue(key, out BitmapSource? bmp))
+        {
+            bmp = SceneRenderer.Compose(key);
+            _sceneCache[key] = bmp;
+        }
+        SceneLayer.Source = bmp;
     }
 
     // O conteúdo do popup do momento (SPEC-051): DESFECHO tem precedência sobre a oferta (um evento

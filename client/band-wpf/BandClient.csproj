@@ -23,9 +23,12 @@
     <None Remove="Assets\fonts\PixelifySans-VF.ttf" />
     <None Remove="Assets\fonts\Silkscreen-Regular.ttf" />
     <None Remove="Assets\goat-idle.png" />
+    <!-- SPEC-051: a pose COMEMORANDO do handoff — o estado GLÓRIA do momento de escolha. -->
+    <None Remove="Assets\goat-celebrate.png" />
     <Resource Include="Assets\fonts\PixelifySans-VF.ttf" />
     <Resource Include="Assets\fonts\Silkscreen-Regular.ttf" />
     <Resource Include="Assets\goat-idle.png" />
+    <Resource Include="Assets\goat-celebrate.png" />
     <None Update="Assets\fonts\OFL-PixelifySans.txt" CopyToOutputDirectory="PreserveNewest" />
     <None Update="Assets\fonts\OFL-Silkscreen.txt" CopyToOutputDirectory="PreserveNewest" />
   </ItemGroup>

@@ -108,12 +108,12 @@ public static class ChoiceCard
         content.ColumnDefinitions.Add(new ColumnDefinition { Width = new GridLength(1, GridUnitType.Star) });
         content.ColumnDefinitions.Add(new ColumnDefinition { Width = GridLength.Auto });
 
-        // ⚠️ o sprite `goat-celebrate.png` do handoff ainda não está no repo (ver DONE-051): a glória
-        // usa o `goat-idle` em opacidade cheia; o fracasso, a 85% — como o handoff pede no ④.
+        // As duas poses do handoff: a glória traz o bode COMEMORANDO (com o pop de entrada); o
+        // fracasso, o parado a 85% de opacidade — como o handoff pede no ④.
         Image sprite =
             new()
             {
-                Source = CardDraw.Goat,
+                Source = glory ? CardDraw.GoatCelebrate : CardDraw.Goat,
                 Height = glory ? 52 : 50,
                 Stretch = Stretch.Uniform,
                 Opacity = glory ? 1.0 : 0.85,
