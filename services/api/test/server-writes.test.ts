@@ -115,6 +115,7 @@ describe.skipIf(!DB_URL)('escritas de gameplay — servidor real (SPEC-041)', ()
     await playerHandle.db.delete(playerSchema.decision);
     await playerHandle.db.delete(playerSchema.purchase);
     await playerHandle.db.delete(playerSchema.dailyLedger);
+    await playerHandle.db.delete(playerSchema.seasonSummary); // FK→athlete+account (SPEC-053) — antes do atleta
     await playerHandle.db.delete(playerSchema.matchChoice); // FK→athlete (SPEC-050) — antes do atleta
     await playerHandle.db.delete(playerSchema.athlete);
     await playerHandle.db.delete(playerSchema.team);

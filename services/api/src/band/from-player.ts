@@ -11,6 +11,7 @@ import {
 } from '@camisa-9/player';
 import type {
   AthleteIdentity,
+  ClosedSeason,
   InjuryState,
   Mood,
   PendingDecision,
@@ -23,6 +24,7 @@ import type {
   BandDecision,
   BandHome,
   BandInjury,
+  BandSeasonSummary,
   BandPurchase,
   BandTraining,
 } from './types.js';
@@ -132,5 +134,38 @@ export function buildInjury(state: InjuryState, tickDay: number): BandInjury | n
     recoveryDays: inj.recoveryDays,
     phase: injuryPhase(inj, tickDay),
     daysLeft: daysLeftOf(inj.startedDay, inj.recoveryDays, tickDay),
+  };
+}
+
+/**
+ * A última campanha FECHADA da conta → contrato (SPEC-053). `undefined` = nenhuma ainda, e a chave
+ * simplesmente some do payload (regra aditiva-only da SPEC-038: nunca `null` fingido).
+ *
+ * As notas ficam em DÉCIMOS inteiros até a borda — o storage soma inteiro ao longo de 38 rodadas
+ * para não acumular drift de float; dividir por 10 é apresentação, e é do cliente.
+ */
+export function buildLastSeason(
+  row: ClosedSeason | null,
+  careerSeasons: number,
+): BandSeasonSummary | undefined {
+  if (!row) return undefined;
+  return {
+    seasonId: row.seasonId,
+    clubName: row.clubName,
+    position: row.position,
+    tier: row.tier,
+    tierAfter: row.tierAfter,
+    outcome: row.outcome,
+    matches: row.matches,
+    goals: row.goals,
+    assists: row.assists,
+    ratingAvg: row.matches > 0 ? Math.round(row.ratingSum / row.matches) : null,
+    ratingBest: row.ratingBest,
+    ratingBestRound: row.ratingBestRound,
+    startOverall: row.startOverall,
+    endOverall: row.endOverall,
+    firstRound: row.firstRound,
+    lastRound: row.lastRound,
+    careerSeasons,
   };
 }

@@ -45,6 +45,12 @@ export default defineConfig({
         find: /^@camisa-9\/transfer$/,
         replacement: fileURLToPath(new URL('./services/transfer/src/index.ts', import.meta.url)),
       },
+      {
+        find: /^@camisa-9\/season-summary$/,
+        replacement: fileURLToPath(
+          new URL('./services/season-summary/src/index.ts', import.meta.url),
+        ),
+      },
       // A camada HTTP/sessão (SPEC-037): a suíte sobe o servidor via `createApiServer` + listen(0).
       {
         find: /^@camisa-9\/api$/,

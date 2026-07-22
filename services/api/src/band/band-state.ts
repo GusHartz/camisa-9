@@ -17,9 +17,11 @@ import {
 } from '@camisa-9/world-engine';
 import { dayPhase, daysUntilRevert } from '@camisa-9/player';
 import {
+  countCareerSeasons,
   readAthleteIdentity,
   readAthleteProgress,
   readInjuryState,
+  readLastClosedSeason,
   readMatchChoices,
   readMood,
   readPendingDecisions,
@@ -46,6 +48,7 @@ import {
   buildAthlete,
   buildBars,
   buildDecisions,
+  buildLastSeason,
   buildHome,
   buildInjury,
   buildTraining,
@@ -58,7 +61,15 @@ import {
   findTodayFixture,
   type BandMatchCtx,
 } from './from-world.js';
-import type { BandClub, BandMatch, BandMate, BandQueue, BandState, BandTime } from './types.js';
+import type {
+  BandClub,
+  BandMatch,
+  BandMate,
+  BandQueue,
+  BandSeasonSummary,
+  BandState,
+  BandTime,
+} from './types.js';
 
 /** Os dois handles + a seed do mundo. A seed vem de `ApiDeps` (env `WORLD_SEED`), NUNCA do request. */
 export interface BandDeps {
@@ -121,6 +132,10 @@ export async function readBandState(
   const age = ageOfMe(world.squad);
   const canRegen = canRegenOf(world.club, age);
   const decisions = buildDecisions(pendingRows);
+  // A campanha fechada é da CONTA (SPEC-053): depois do regen o atleta ativo é outro, e é a
+  // temporada do atleta ANTERIOR que o card quer contar. Fora do Promise.all porque o `accountId`
+  // só existe depois da identidade.
+  const lastSeason = await readLastSeason(deps.db, identity.accountId);
   return {
     contractVersion: 'v1',
     serverTime: buildTime(slot, epochMs, cursor >= slot.dayIndex),
@@ -136,7 +151,20 @@ export async function readBandState(
     pendingDecisions: decisions.length,
     decisions,
     queue: world.queue,
+    // Aditivo-only: a chave só APARECE quando existe (nunca `null` fingido — regra da SPEC-038).
+    ...(lastSeason ? { lastSeason } : {}),
   };
+}
+
+/** A campanha fechada mais recente da CONTA (SPEC-053). Duas leituras porque o card mostra tanto a
+ *  temporada quanto o contador de carreira, e ambos atravessam o regen — em PARALELO, porque estão
+ *  no caminho de cada poll da faixa e não dependem uma da outra. */
+async function readLastSeason(db: Db, accountId: string): Promise<BandSeasonSummary | undefined> {
+  const [row, careerSeasons] = await Promise.all([
+    readLastClosedSeason(db, accountId),
+    countCareerSeasons(db, accountId),
+  ]);
+  return buildLastSeason(row, careerSeasons);
 }
 
 /** A DICA de regen (SPEC-045): tem vaga no mundo E a idade (relógio de carreira) atingiu o mínimo

@@ -40,6 +40,7 @@ describe.skipIf(!DB_URL)('economy-repo — salário e estilo de vida contra Post
     await handle.db.delete(schema.decision);
     await handle.db.delete(schema.purchase);
     await handle.db.delete(schema.dailyLedger);
+    await handle.db.delete(schema.seasonSummary); // FK→athlete+account (SPEC-053) — antes do atleta
     await handle.db.delete(schema.matchChoice); // FK→athlete (SPEC-050) — antes do atleta
     await handle.db.delete(schema.athlete);
     await handle.db.delete(schema.team);

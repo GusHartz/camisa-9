@@ -24,6 +24,7 @@ import { deleteExpiredSessions, type Db as PlayerDb } from '@camisa-9/player-sto
 import { moodModulator, runAdmissionPass } from '@camisa-9/world-entry';
 import { runRegenPass } from '@camisa-9/regen';
 import { runTransferPass } from '@camisa-9/transfer';
+import { runSeasonClosePass } from '@camisa-9/season-summary';
 import type { WorldState } from '@camisa-9/world-engine';
 import {
   EMPTY_OUTCOMES,
@@ -54,6 +55,8 @@ export interface DailyTickReport {
   readonly transferred: number;
   /** Humanos ADMITIDOS da waiting-list nesta passada (SPEC-034; diário). */
   readonly admitted: number;
+  /** Campanhas de temporada FECHADAS nesta passada (SPEC-053; diário, idempotente). */
+  readonly seasonsClosed: number;
   readonly vacancy: VacancyReport;
 }
 
@@ -108,6 +111,7 @@ interface TickTotals {
   regenerated: number;
   transferred: number;
   admitted: number;
+  seasonsClosed: number;
   frozen: number;
   reverted: number;
 }
@@ -146,6 +150,7 @@ async function runCatchUp(
     regenerated: totals.regenerated,
     transferred: totals.transferred,
     admitted: totals.admitted,
+    seasonsClosed: totals.seasonsClosed,
     vacancy: { frozen: totals.frozen, reverted: totals.reverted },
   };
 }
@@ -155,7 +160,48 @@ interface DayOutcome extends TickTotals {
   readonly status: DailyRoundStatus;
 }
 
-/** Um dia do mundo: publica a rodada (ou vira/pula), roda regen+vacancy, e os passes por-humano.
+/**
+ * Os passes de nível-MUNDO de um dia liquidado (extraídos do `processDay` por OP-15).
+ *
+ * Regen e transferência rodam na JANELA DE GÊNESE (a viragem OU o reprocesso `before_season`
+ * dela), NÃO num dia publicado: o `reassignSlot` muta o snapshot congelado e a guarda de gênese o
+ * barra depois da 1ª rodada. Incluir `before_season` AUTO-CURA o órfão: se a viragem committou mas
+ * o pass falhou e o cursor travou, o retry reprocessa o dia como `before_season` → o regen re-roda.
+ * A transferência vem DEPOIS do regen (um ≥42 regenera em vez de transferir, e o regen troca o
+ * humano da vaga, então a flag não sobreviveria).
+ *
+ * O FECHO DE TEMPORADA (SPEC-053) é o único que roda em TODO dia liquidado: a janela de gênese
+ * dura um dia só, então um fecho perdido lá dentro nunca mais teria retry e a campanha ficaria sem
+ * card para sempre. É idempotente (`closed_at IS NULL`) e no-op quando não há temporada virada.
+ */
+async function runWorldPasses(
+  worldDb: WorldDb,
+  playerDb: PlayerDb,
+  seed: string,
+  day: number,
+  status: DailyRoundStatus,
+): Promise<{
+  regenerated: number;
+  transferred: number;
+  frozen: number;
+  reverted: number;
+  seasonsClosed: number;
+}> {
+  const inGenesisWindow = status === 'season_rolled' || status === 'before_season';
+  const regenerated = inGenesisWindow ? await runRegenPass(worldDb, playerDb, seed) : 0;
+  const transferred = inGenesisWindow ? await runTransferPass(worldDb, playerDb, seed) : 0;
+  const vacancy = await runVacancyPass(worldDb, seed, day);
+  const seasons = await runSeasonClosePass(worldDb, playerDb, seed);
+  return {
+    regenerated,
+    transferred,
+    frozen: vacancy.frozen,
+    reverted: vacancy.reverted,
+    seasonsClosed: seasons.closed,
+  };
+}
+
+/** Um dia do mundo: publica a rodada (ou vira/pula), roda os passes de mundo, e os por-humano.
  *  `settled` = a rodada do mundo liquidou (o cursor pode avançar). */
 async function processDay(
   worldDb: WorldDb,
@@ -166,17 +212,7 @@ async function processDay(
 ): Promise<DayOutcome> {
   const round = await runRoundForDay(worldDb, seed, day, modulate);
   if (!isSettled(round.status)) return { ...zeroTotals(), settled: false, status: round.status };
-  // Regen roda na JANELA DE GÊNESE (a viragem OU o reprocesso `before_season` dela), NÃO num dia
-  // publicado: o reassignSlot muta o snapshot congelado e a guarda de gênese o barra depois da 1ª
-  // rodada. Incluir `before_season` AUTO-CURA o órfão do MAJOR: se a viragem committou mas o pass
-  // falhou (ex.: readRegenEligible cai por reset de conexão) e o cursor travou, o retry reprocessa
-  // o dia como before_season (gênese ainda aberta) → o regen re-roda. Só-`season_rolled` órfãva-o.
-  const inGenesisWindow = round.status === 'season_rolled' || round.status === 'before_season';
-  const regenerated = inGenesisWindow ? await runRegenPass(worldDb, playerDb, seed) : 0;
-  // Transferência ACEITA aplica na gênese (SPEC-033), APÓS o regen (um ≥42 regenera, não transfere —
-  // o regen troca o humano da vaga, então a flag não sobrevive). Molde do regen: só na gênese.
-  const transferred = inGenesisWindow ? await runTransferPass(worldDb, playerDb, seed) : 0;
-  const vacancy = await runVacancyPass(worldDb, seed, day);
+  const world0 = await runWorldPasses(worldDb, playerDb, seed, day, round.status);
   const occupations = await readWorldOccupations(worldDb, seed);
   const world = await readWorld(worldDb, seed); // p/ o `tier` do clube de cada humano (seam da proposta)
   const clubTier = world ? buildClubTierMap(world) : new Map<string, number>();
@@ -188,10 +224,11 @@ async function processDay(
   const yesterday = await yesterdayFor(worldDb, seed, round, paid, occupations);
   const totals = zeroTotals();
   totals.humans = occupations.length;
-  totals.regenerated = regenerated;
-  totals.transferred = transferred;
-  totals.frozen = vacancy.frozen;
-  totals.reverted = vacancy.reverted;
+  totals.regenerated = world0.regenerated;
+  totals.transferred = world0.transferred;
+  totals.frozen = world0.frozen;
+  totals.reverted = world0.reverted;
+  totals.seasonsClosed = world0.seasonsClosed;
   for (const occ of occupations) {
     const d = await safeHumanPasses(
       playerDb,
@@ -203,6 +240,7 @@ async function processDay(
       paid,
       clubTier.get(occ.clubId),
       yesterday.get(occ.athleteId),
+      outcomes.matches.get(occ.athleteId), // a partida de HOJE (SPEC-053)
     );
     totals.accrued += d.accrued;
     totals.decisions += d.decisions;
@@ -265,6 +303,7 @@ function zeroTotals(): TickTotals {
     regenerated: 0,
     transferred: 0,
     admitted: 0,
+    seasonsClosed: 0,
     frozen: 0,
     reverted: 0,
   };
@@ -279,6 +318,7 @@ function addDay(totals: TickTotals, out: DayOutcome): void {
   totals.regenerated += out.regenerated;
   totals.transferred += out.transferred;
   totals.admitted += out.admitted;
+  totals.seasonsClosed += out.seasonsClosed;
   totals.frozen += out.frozen;
   totals.reverted += out.reverted;
 }
@@ -296,6 +336,7 @@ function emptyTick(dayIndex: number, status: DailyRoundStatus): DailyTickReport 
     regenerated: 0,
     transferred: 0,
     admitted: 0,
+    seasonsClosed: 0,
     vacancy: { frozen: 0, reverted: 0 },
   };
 }

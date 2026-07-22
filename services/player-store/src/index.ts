@@ -73,6 +73,17 @@ export {
   type MatchChoiceRow,
 } from './store/match-choice-repo.js';
 export {
+  accrueSeasonMatch,
+  closeSeason,
+  readOpenSeasonsBefore,
+  readLastClosedSeason,
+  countCareerSeasons,
+  type SeasonMatchInput,
+  type SeasonOutcome,
+  type OpenSeason,
+  type ClosedSeason,
+} from './store/season-summary-repo.js';
+export {
   authenticate,
   createSession,
   readSessionByHash,

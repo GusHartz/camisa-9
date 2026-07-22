@@ -85,6 +85,13 @@
       "when": 1784727599923,
       "tag": "0011_match_choices",
       "breakpoints": true
+    },
+    {
+      "idx": 12,
+      "version": "7",
+      "when": 1784757075538,
+      "tag": "0012_season_summary",
+      "breakpoints": true
     }
   ]
 }

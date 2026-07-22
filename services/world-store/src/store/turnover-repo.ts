@@ -8,6 +8,7 @@ import {
   WORLD,
   advanceWorld,
   turnoverReport as buildTurnoverReport,
+  type TurnoverReport,
   type WorldSeasonResult,
   type WorldState,
 } from '@camisa-9/world-engine';
@@ -86,6 +87,27 @@ export async function persistWorldTurnover(
     await upsertAnchor(tx, seed, after.seasonId, newStart);
     return { status: 'rolled', fromSeasonId: before.seasonId, toSeasonId: after.seasonId };
   });
+}
+
+/**
+ * A auditoria de UMA viragem, por PK (SPEC-053). O fecho de temporada é dirigido pela LINHA da
+ * campanha: ele pergunta "a MINHA temporada já virou?" — e `null` significa "ainda não", não erro.
+ * Buscar pela virada mais recente seria errado: uma campanha que não fechou no dia certo seria
+ * carimbada com o desfecho de outra temporada.
+ */
+export async function readTurnoverReport(
+  db: Db,
+  worldSeed: string,
+  fromSeasonId: string,
+): Promise<TurnoverReport | null> {
+  const rows = await db
+    .select({ report: turnoverReport.report })
+    .from(turnoverReport)
+    .where(
+      and(eq(turnoverReport.worldSeed, worldSeed), eq(turnoverReport.fromSeasonId, fromSeasonId)),
+    )
+    .limit(1);
+  return rows[0]?.report ?? null;
 }
 
 /**

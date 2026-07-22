@@ -221,6 +221,46 @@ export interface BandQueue {
   readonly total: number;
 }
 
+/**
+ * A última temporada FECHADA da CONTA (SPEC-053) — o insumo do card de fim de temporada.
+ *
+ * ⚠️ É da CONTA, não do atleta: o regen (SPEC-022) desativa o atleta e cria outro, e a campanha que
+ * o card mais quer contar é justamente a de quem acabou de encerrar uma carreira.
+ *
+ * ⚠️ `startOverall`/`endOverall` são a linha EVOLUÇÃO — o OVERALL, não a nota. `matchRating` quase
+ * não responde ao treino (Técnico/Tático nem entram na fórmula; Mental só estreita a variância),
+ * então "nota início → nota fim" mediria ruído. A nota fica em `ratingAvg`, onde pertence.
+ *
+ * `tier` é NÚMERO: os nomes das divisões são decisão de render (Elite · Nacional · Regional ·
+ * Várzea, presos ao índice; andares novos da Pirâmide Elástica nascem embaixo como Várzea II…).
+ */
+export interface BandSeasonSummary {
+  readonly seasonId: string;
+  readonly clubName: string;
+  readonly position: string;
+  readonly tier: number;
+  /** O tier DEPOIS da viragem; `null` quando permaneceu. */
+  readonly tierAfter: number | null;
+  readonly outcome: 'champion' | 'promoted' | 'stayed' | 'relegated';
+  readonly matches: number;
+  readonly goals: number;
+  readonly assists: number;
+  /** Média da temporada, em décimos → o cliente divide por 10. `null` sem partida. */
+  readonly ratingAvg: number | null;
+  readonly ratingBest: number | null;
+  /** A rodada da melhor nota — o "MELHOR FASE" do card. */
+  readonly ratingBestRound: number | null;
+  readonly startOverall: number;
+  readonly endOverall: number;
+  /** A rodada de ESTREIA e a ÚLTIMA jogada — o card conta a história de quem entrou tarde, e o
+   *  intervalo entre as duas é quanto da temporada ele viveu. */
+  readonly firstRound: number | null;
+  readonly lastRound: number | null;
+  /** Quantas temporadas a conta já FECHOU, incluindo esta — o "3ª TEMPORADA" do card. É também o
+   *  número ordinal desta temporada, já que `lastSeason` é sempre a mais recente. */
+  readonly careerSeasons: number;
+}
+
 export interface BandState {
   readonly contractVersion: 'v1';
   readonly serverTime: BandTime;
@@ -240,4 +280,7 @@ export interface BandState {
   readonly decisions: readonly BandDecision[];
   /** Só quando `club === null` e o atleta está na fila. */
   readonly queue: BandQueue | null;
+  /** A última temporada fechada da CONTA (SPEC-053). **Omitida** (não `null`) enquanto não houver
+   *  nenhuma — a regra que a SPEC-038 fixou para `trainedToday`/`shirtNumber`. */
+  readonly lastSeason?: BandSeasonSummary;
 }

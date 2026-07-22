@@ -18,9 +18,28 @@ import type { MatchResult } from '@camisa-9/player';
 export interface RoundOutcomes {
   readonly prizes: Map<string, MatchResult>; // athleteId → win/draw/loss
   readonly injuries: Map<string, string>; // athleteId → gravidade (evento de lesão da partida)
+  /** A partida do clube + o snapshot do mundo (SPEC-053) — o insumo do acumulador de temporada.
+   *  Já era achada aqui (`matchOf`) e descartada; carregá-la evita uma segunda leitura das rodadas. */
+  readonly matches: Map<string, RoundMatch>;
 }
 
-export const EMPTY_OUTCOMES: RoundOutcomes = { prizes: new Map(), injuries: new Map() };
+/** A partida publicada de um humano + o recorte do mundo em que ela aconteceu. O snapshot é
+ *  necessário porque a viragem SOBRESCREVE o mundo (SPEC-021): clube, liga e tier da temporada que
+ *  acabou deixam de existir no instante em que ela acaba. */
+export interface RoundMatch {
+  readonly match: MatchRecord;
+  readonly leagueId: string;
+  readonly seasonId: string;
+  readonly round: number;
+  readonly clubName: string;
+  readonly tier: number;
+}
+
+export const EMPTY_OUTCOMES: RoundOutcomes = {
+  prizes: new Map(),
+  injuries: new Map(),
+  matches: new Map(),
+};
 
 /** Prêmios (win/draw/loss) E lesões de cada humano, da rodada publicada. Acha o jogo do clube dele,
  *  lê cada liga UMA vez (cache). Mapas por `athleteId` (id do mundo — a chave da ocupação). */
@@ -33,9 +52,11 @@ export async function roundOutcomes(
 ): Promise<RoundOutcomes> {
   const prizes = new Map<string, MatchResult>();
   const injuries = new Map<string, string>();
+  const matches = new Map<string, RoundMatch>();
   const world = await readWorld(worldDb, seed);
-  if (!world) return { prizes, injuries };
+  if (!world) return { prizes, injuries, matches };
   const clubLeague = buildClubLeagueMap(world);
+  const clubInfo = buildClubInfoMap(world);
   const roundByLeague = new Map<string, RoundResult | null>();
   for (const occ of occupations) {
     const leagueId = clubLeague.get(occ.clubId);
@@ -48,8 +69,23 @@ export async function roundOutcomes(
     prizes.set(occ.athleteId, outcomeOf(match, occ.clubId));
     const sev = injuryFor(match, occ.athleteId);
     if (sev !== undefined) injuries.set(occ.athleteId, sev);
+    const info = clubInfo.get(occ.clubId);
+    if (info) {
+      matches.set(occ.athleteId, { match, leagueId, seasonId, round, ...info });
+    }
   }
-  return { prizes, injuries };
+  return { prizes, injuries, matches };
+}
+
+/** clubId → nome + tier (o snapshot que a viragem apagaria). Puro. */
+function buildClubInfoMap(world: WorldState): Map<string, { clubName: string; tier: number }> {
+  const map = new Map<string, { clubName: string; tier: number }>();
+  for (const t of world.tiers) {
+    for (const l of t.leagues) {
+      for (const c of l.clubs) map.set(c.id, { clubName: c.name, tier: t.tier });
+    }
+  }
+  return map;
 }
 
 /** clubId → leagueId (a liga do clube), de `readWorld`. Puro. */

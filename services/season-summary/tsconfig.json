@@ -1,0 +1,9 @@
+{
+  "//": "Type-check do season-summary (SPEC-053) — a costura do fecho de temporada. Como o regen, NÃO é composite e NÃO entra no `tsc -b`; borda IMPURA rodada via tsx/vitest. O gate autoritativo é `tsconfig.typecheck.json` (raiz), que inclui services/*.",
+  "extends": "../../tsconfig.base.json",
+  "compilerOptions": {
+    "noEmit": true,
+    "resolveJsonModule": true
+  },
+  "include": ["src/**/*.ts", "test/**/*.ts"]
+}
