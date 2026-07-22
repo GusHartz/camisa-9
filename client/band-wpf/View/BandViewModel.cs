@@ -85,6 +85,7 @@ public sealed class BandViewModel : INotifyPropertyChanged
     private int _lastRound; // o round mostrado (ApplyClub)
     private int _choicesRound; // o round da OFERTA apresentada (capturado na apresentação, NÃO no clique —
     // um poll que avance _lastRound com o overlay aberto responderia a oferta errada; MAJOR da revisão)
+    private ChoiceOutcomeRow? _outcome; // o desfecho em cartaz (SPEC-051)
 
     public string StatusLine { get => _statusLine; private set => Set(ref _statusLine, value); }
     public string Phase { get => _phase; private set => Set(ref _phase, value); }
@@ -354,6 +355,7 @@ public sealed class BandViewModel : INotifyPropertyChanged
         _nextChoiceIdx = 0;
         ChoiceOpen = false;
         CurrentMatchChoice = null;
+        Outcome = null;
     }
 
     public bool ReplayActive
@@ -403,6 +405,7 @@ public sealed class BandViewModel : INotifyPropertyChanged
         // tela em vez de ser substituída irrespondível no mesmo frame (MINOR da revisão).
         if (_nextChoiceIdx < _replayChoices.Count && f.Minute >= _replayChoices[_nextChoiceIdx].Minute)
         {
+            Outcome = null; // um evento por vez: o desfecho anterior sai de cena (SPEC-051)
             CurrentMatchChoice = _replayChoices[_nextChoiceIdx];
             ChoiceOpen = true;
             _nextChoiceIdx++;
@@ -419,6 +422,7 @@ public sealed class BandViewModel : INotifyPropertyChanged
         // O replay acabou → o overlay de escolha fecha junto (o momento é DO replay, SPEC-050).
         ChoiceOpen = false;
         CurrentMatchChoice = null;
+        Outcome = null;
         ApplyClub(_lastClub);
     }
 
@@ -461,6 +465,7 @@ public sealed class BandViewModel : INotifyPropertyChanged
         _nextChoiceIdx = 0;
         ChoiceOpen = false;
         CurrentMatchChoice = null;
+        Outcome = null;
     }
 
     // Reconciliação do poll (SPEC-050): NUNCA reseta um overlay em curso — reage pelo CONJUNTO de
@@ -479,12 +484,27 @@ public sealed class BandViewModel : INotifyPropertyChanged
             if (ch is null || ch.Result is not { } result || !_pendingOutcome.Remove(ch.TemplateId))
                 continue; // elemento null (JSON hostil) não derruba o Apply
             ActionFeedback = ResultFeedback(result);
+            // SPEC-051: o desfecho SUBSTITUI a oferta no mesmo popup (um evento por vez). Fica até o
+            // próximo momento abrir ou o replay terminar. A prosa é a do servidor; sem ela, o card
+            // cai no genérico (degradação do critério 6).
+            Outcome = new ChoiceOutcomeRow(
+                ch.Minute,
+                result,
+                ch.ResultTitle,
+                ch.ResultBody,
+                ch.MoralDelta
+            );
+            ChoiceOpen = true;
             if (_currentMatchChoice?.TemplateId == ch.TemplateId)
-            {
-                ChoiceOpen = false;
-                CurrentMatchChoice = null;
-            }
+                CurrentMatchChoice = null; // a oferta some; a moldura do desfecho assume
         }
+    }
+
+    /// <summary>O desfecho em cartaz (SPEC-051) — `null` = nenhum. Só a View o lê.</summary>
+    public ChoiceOutcomeRow? Outcome
+    {
+        get => _outcome;
+        private set => Set(ref _outcome, value);
     }
 
     private static string ResultFeedback(string result) =>
@@ -569,10 +589,29 @@ public sealed class BandViewModel : INotifyPropertyChanged
         );
     }
 
-    // Uma opção da escolha → linha de render (SPEC-050): a arriscada ganha o marcador ⚡ + o atributo
-    // abreviado ao lado do rótulo (ex.: "Chutar de primeira ⚡TEC").
+    // Uma opção da escolha → linha de render. O ChoiceCard (SPEC-051) precisa dos SINAIS separados
+    // (cor pelo Risky, chip pelo Attr, micro-texto pelo Hint); o `Display` concatenado fica para
+    // qualquer superfície simples que ainda o use.
     private static ChoiceOptionRow ToChoiceRow(BandChoiceOption o) =>
-        new(o.Id, o.Risky ? $"{o.Label} ⚡{AttrAbbrev(o.Attr)}" : o.Label);
+        new(
+            o.Id,
+            o.Risky ? $"{o.Label} ⚡{AttrAbbrev(o.Attr)}" : o.Label,
+            o.Label,
+            o.Risky,
+            AttrAbbrev(o.Attr),
+            AttrHint(o.Attr)
+        );
+
+    // O micro-texto do handoff: diz QUEM decide a aposta — nunca a porcentagem (segredo do servidor).
+    private static string AttrHint(string? attr) =>
+        attr switch
+        {
+            "fisico" => "seu Físico decide",
+            "tecnico" => "sua Habilidade decide",
+            "tatico" => "sua Leitura decide",
+            "mental" => "sua Cabeça decide",
+            _ => "seu talento decide",
+        };
 
     private static string AttrAbbrev(string? attr) =>
         attr switch
@@ -658,6 +697,24 @@ public sealed class BandViewModel : INotifyPropertyChanged
 /// bloqueado/sem saldo), `CanBuy` (gateia o clique) e `Dim` (opacidade quando indisponível).</summary>
 public sealed record ShopRow(string Id, string Label, string Status, bool CanBuy, double Dim);
 
-/// <summary>Uma opção do momento de escolha pronta p/ render (SPEC-050): `Display` já traz o
-/// marcador "⚡ATTR" quando a opção é arriscada; `Id` é o que o POST envia.</summary>
-public sealed record ChoiceOptionRow(string Id, string Display);
+/// <summary>O desfecho de uma escolha, pronto p/ o ChoiceCard (SPEC-051). `Title`/`Body` null = o
+/// catálogo não declara prosa p/ esse desfecho → o card usa o texto genérico (critério 6).</summary>
+public sealed record ChoiceOutcomeRow(
+    int Minute,
+    string Result,
+    string? Title,
+    string? Body,
+    int? MoralDelta
+);
+
+/// <summary>Uma opção pronta p/ o desenho (SPEC-050/051): o ChoiceCard precisa dos SINAIS
+/// SEPARADOS (cor pelo `Risky`, chip pelo `Attr`, micro-texto pelo `Hint`) — não de um rótulo já
+/// concatenado; o `Display` fica p/ superfícies simples. `Id` é o que o POST envia.</summary>
+public sealed record ChoiceOptionRow(
+    string Id,
+    string Display,
+    string Label,
+    bool Risky,
+    string Attr,
+    string Hint
+);

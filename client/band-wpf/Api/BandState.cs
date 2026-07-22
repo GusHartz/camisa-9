@@ -101,7 +101,13 @@ public sealed record BandMatchChoice(
     string Prompt,
     IReadOnlyList<BandChoiceOption> Options,
     string? ChosenOptionId = null,
-    string? Result = null
+    string? Result = null,
+    // SPEC-051 — a narrativa do DESFECHO, hidratada do catálogo pelo servidor (o cliente nunca tem
+    // tabela de prosa) + o moral REALMENTE aplicado. Null = servidor antigo / sem prosa declarada /
+    // opção que não mexe na moral → o card degrada para o feedback genérico.
+    string? ResultTitle = null,
+    string? ResultBody = null,
+    int? MoralDelta = null
 );
 
 /// <summary>Um gol na timeline da partida (SPEC-043) — minuto + se foi do clube do humano. SPEC-046:

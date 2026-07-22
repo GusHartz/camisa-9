@@ -46,6 +46,14 @@ public partial class MainWindow : Window
         Width = BandWidthDip;
         Height = BandHeightDip;
 
+        // SPEC-051: o momento de escolha é DESENHADO (ChoiceCard), não montado em XAML — o popup só
+        // hospeda. Redesenha quando a oferta OU o desfecho mudam; nada por frame.
+        _vm.PropertyChanged += (_, e) =>
+        {
+            if (e.PropertyName is nameof(BandViewModel.CurrentMatchChoice) or nameof(BandViewModel.Outcome))
+                RenderChoiceCard();
+        };
+
         _poller.Updated += OnState;
         _poller.Unauthorized += () => ReauthRequired?.Invoke();
         _poller.RateLimited += sec => _vm.SetStatus($"limite atingido; retoma em {sec}s");
@@ -232,6 +240,27 @@ public partial class MainWindow : Window
         e.Handled = true;
         if ((sender as FrameworkElement)?.DataContext is ShopRow row && row.CanBuy)
             _ = _actions.PurchaseAsync(row.Id);
+    }
+
+    // O conteúdo do popup do momento (SPEC-051): DESFECHO tem precedência sobre a oferta (um evento
+    // por vez); sem nenhum dos dois, esvazia. O desenho vive em `View/ChoiceCard.cs`.
+    private void RenderChoiceCard()
+    {
+        if (_vm.Outcome is { } o)
+        {
+            ChoiceHost.Content = ChoiceCard.BuildOutcome(
+                o.Minute,
+                o.Result,
+                o.Title,
+                o.Body,
+                o.MoralDelta
+            );
+            return;
+        }
+        ChoiceHost.Content =
+            _vm.CurrentMatchChoice is { } c
+                ? ChoiceCard.BuildOffer(c, _vm.ChoiceOptions, OnMatchChoiceOptionClick)
+                : null;
     }
 
     // Uma opção do momento de escolha da partida (SPEC-050). O contexto (round + templateId) vem do
