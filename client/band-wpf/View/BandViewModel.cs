@@ -72,6 +72,17 @@ public sealed class BandViewModel : INotifyPropertyChanged
     private MatchCardModel? _cardModel;
     private bool _cardAvailable;
 
+    // Escolhas na partida (SPEC-050): a apresentação AO VIVO deriva do Frame do replay (SPEC-044) —
+    // ZERO timer novo. Fora do replay NÃO há affordance (decisão do founder): o overlay só abre via Frame.
+    private BandMatchChoice? _currentMatchChoice; // o momento no overlay (null = fechado/nenhum)
+    private bool _choiceOpen;
+    private IReadOnlyList<ChoiceOptionRow> _choiceOptions = Array.Empty<ChoiceOptionRow>();
+    private IReadOnlyList<BandMatchChoice> _replayChoices = Array.Empty<BandMatchChoice>(); // as NÃO-respondidas, por minuto
+    private int _nextChoiceIdx;
+    private IReadOnlyList<BandMatchChoice>? _lastChoices; // a oferta fresca da última partida — p/ o ReWatch
+    private readonly HashSet<string> _answeredLocal = new(); // respondidas AQUI (otimista, até o Apply anotar)
+    private int _lastRound; // o round mostrado (ApplyClub) — o contexto do POST de resposta
+
     public string StatusLine { get => _statusLine; private set => Set(ref _statusLine, value); }
     public string Phase { get => _phase; private set => Set(ref _phase, value); }
     public Brush PhaseBrush { get => _phaseBrush; private set => Set(ref _phaseBrush, value); }
@@ -141,6 +152,47 @@ public sealed class BandViewModel : INotifyPropertyChanged
     {
         if (_cardModel is { } model)
             ActionFeedback = MatchCardShare.Share(model);
+    }
+
+    // --- Escolhas na partida (SPEC-050): o overlay dirigido pelo replay. ---
+
+    /// <summary>O momento de escolha corrente do replay (null = nenhum). Só o Frame o abre;
+    /// re-atribuir regenera as linhas de opção (ChoiceOptions).</summary>
+    public BandMatchChoice? CurrentMatchChoice
+    {
+        get => _currentMatchChoice;
+        private set
+        {
+            if (Set(ref _currentMatchChoice, value))
+                ChoiceOptions =
+                    value is null
+                        ? Array.Empty<ChoiceOptionRow>()
+                        : value.Options is null
+                            ? Array.Empty<ChoiceOptionRow>()
+                            : value.Options.Where(o => o is not null).Select(ToChoiceRow).ToList();
+        }
+    }
+
+    public bool ChoiceOpen { get => _choiceOpen; private set => Set(ref _choiceOpen, value); }
+
+    /// <summary>As opções do momento corrente prontas p/ render (rótulo + marcador ⚡ATTR se arriscada).</summary>
+    public IReadOnlyList<ChoiceOptionRow> ChoiceOptions
+    {
+        get => _choiceOptions;
+        private set => Set(ref _choiceOptions, value);
+    }
+
+    /// <summary>O contexto do POST de resposta (round mostrado + templateId corrente); null = sem momento.</summary>
+    public (int Round, string TemplateId)? ChoiceContext() =>
+        _currentMatchChoice is { } ch ? (_lastRound, ch.TemplateId) : null;
+
+    /// <summary>Marca o momento como respondido LOCALMENTE (otimista): fecha o overlay e impede a
+    /// re-oferta num ReWatch antes da reconciliação chegar. O CurrentMatchChoice FICA — é por ele que
+    /// o Apply casa o `Result` anotado do servidor e mostra o feedback do desfecho.</summary>
+    public void MarkChoiceAnswered(string templateId)
+    {
+        _answeredLocal.Add(templateId);
+        ChoiceOpen = false;
     }
 
     /// <summary>Abre/fecha o painel de decisões (só abre se há decisão pendente).</summary>
@@ -213,6 +265,7 @@ public sealed class BandViewModel : INotifyPropertyChanged
         ApplyClub(s.Club);
         ApplyQueue(s.Queue, s.Club);
         MaybeAutoPlay(s.Club);
+        ReconcileMatchChoice(s.Club); // SPEC-050: fecha o momento que chegou ANOTADO (nunca reseta um em curso)
 
         // Card de partida (SPEC-049): projeta o jogo do dia (null = pré-jogo / sem nota) → gateia o
         // affordance "compartilhar". O modelo fica guardado p/ o gesto (ShareMatchCard).
@@ -278,8 +331,16 @@ public sealed class BandViewModel : INotifyPropertyChanged
     }
 
     /// <summary>Para o replay no fechamento da faixa — evita o timer ZUMBI tocando no reauth (o app
-    ///  não morre no 401; a fatia 2 senão churnaria PropertyChanged num VM órfão). Só para o timer.</summary>
-    public void StopReplay() => _replay.Stop();
+    ///  não morre no 401; a fatia 2 senão churnaria PropertyChanged num VM órfão). Além do timer,
+    ///  zera o estado de escolha (SPEC-050) — todo estado novo de replay morre aqui.</summary>
+    public void StopReplay()
+    {
+        _replay.Stop();
+        _replayChoices = Array.Empty<BandMatchChoice>();
+        _nextChoiceIdx = 0;
+        ChoiceOpen = false;
+        CurrentMatchChoice = null;
+    }
 
     public bool ReplayActive
     {
@@ -306,7 +367,12 @@ public sealed class BandViewModel : INotifyPropertyChanged
     public void ReWatch()
     {
         if (_lastGoals is { } goals)
+        {
+            // Recaptura as escolhas (SPEC-050): SÓ as não-respondidas re-oferecem — as respondidas
+            // vêm ANOTADAS do servidor; as respondidas agora (sem anotação ainda) caem no _answeredLocal.
+            BeginChoicePresentation(_lastChoices);
             _replay.Play(goals);
+        }
     }
 
     // Durante o replay, o MatchLine é DIRIGIDO pelo motor (relógio + placar que sobe); o poll (Apply)
@@ -317,6 +383,14 @@ public sealed class BandViewModel : INotifyPropertyChanged
         MatchLine = $"⏱ {f.Minute}'  {f.MyGoals}–{f.TheirGoals}";
         MyGoalFlashOpacity = f.GoalNow && f.GoalIsMine ? 1 : 0;
         TheirGoalFlashOpacity = f.GoalNow && !f.GoalIsMine ? 1 : 0;
+        // Escolhas (SPEC-050): o momento abre NO MINUTO dele. `>=` porque o relógio PULA minutos; o
+        // `while` faz a PRÓXIMA substituir uma anterior não-respondida (o momento passou).
+        while (_nextChoiceIdx < _replayChoices.Count && f.Minute >= _replayChoices[_nextChoiceIdx].Minute)
+        {
+            CurrentMatchChoice = _replayChoices[_nextChoiceIdx];
+            ChoiceOpen = true;
+            _nextChoiceIdx++;
+        }
     }
 
     // Fim natural do replay (90'): volta ao placar final ESTÁTICO e apaga o flash — senão o ⚽ de um
@@ -326,6 +400,9 @@ public sealed class BandViewModel : INotifyPropertyChanged
         ReplayActive = false;
         MyGoalFlashOpacity = 0;
         TheirGoalFlashOpacity = 0;
+        // O replay acabou → o overlay de escolha fecha junto (o momento é DO replay, SPEC-050).
+        ChoiceOpen = false;
+        CurrentMatchChoice = null;
         ApplyClub(_lastClub);
     }
 
@@ -340,13 +417,60 @@ public sealed class BandViewModel : INotifyPropertyChanged
             return;
         }
         _lastGoals = goals;
+        _lastChoices = m.Choices; // a oferta fresca (as respondidas vêm ANOTADAS) — p/ o ReWatch
         ReplayAvailable = true;
         string key = $"{club.SeasonId}:{club.Round}";
         if (key == _lastReplayKey)
             return; // já auto-tocou esta rodada
         _lastReplayKey = key;
+        // Partida NOVA: o otimista local da anterior expira (os templateIds repetem entre rodadas —
+        // catálogo fixo; um _answeredLocal velho suprimiria um momento fresco desta rodada).
+        _answeredLocal.Clear();
+        BeginChoicePresentation(m.Choices);
         _replay.Play(goals);
     }
+
+    // Prepara a fila de escolhas de UMA sessão de replay (SPEC-050): só as não-respondidas (nem no
+    // servidor — ChosenOptionId — nem localmente), em ordem de minuto; overlay fechado até o Frame abrir.
+    private void BeginChoicePresentation(IReadOnlyList<BandMatchChoice>? choices)
+    {
+        _replayChoices = (choices ?? Array.Empty<BandMatchChoice>())
+            .Where(ch => ch is not null && ch.ChosenOptionId is null && !_answeredLocal.Contains(ch.TemplateId))
+            .OrderBy(ch => ch.Minute)
+            .ToList();
+        _nextChoiceIdx = 0;
+        ChoiceOpen = false;
+        CurrentMatchChoice = null;
+    }
+
+    // Reconciliação do poll (SPEC-050): NUNCA reseta um overlay em curso — só reage quando a escolha
+    // corrente chegou ANOTADA do servidor (mesmo TemplateId com Result): fecha e dá o feedback do
+    // desfecho, roteado SEMPRE pelo valor de `result` (nunca por frase do servidor — OP-11).
+    private void ReconcileMatchChoice(BandClub? club)
+    {
+        if (_currentMatchChoice is not { } current)
+            return;
+        IReadOnlyList<BandMatchChoice>? choices = club?.TodayMatch?.Choices;
+        if (choices is null)
+            return;
+        foreach (BandMatchChoice? ch in choices)
+        {
+            if (ch is null || ch.TemplateId != current.TemplateId || ch.Result is not { } result)
+                continue; // elemento null (JSON hostil) não derruba o Apply
+            ChoiceOpen = false;
+            CurrentMatchChoice = null;
+            ActionFeedback = ResultFeedback(result);
+            return;
+        }
+    }
+
+    private static string ResultFeedback(string result) =>
+        result switch
+        {
+            "success" => "Deu bom! A arriscada pagou.",
+            "fail" => "Não deu... o risco cobrou.",
+            _ => "Anotado.", // 'na' / valor futuro → neutro
+        };
 
     private void ApplyClub(BandClub? c)
     {
@@ -358,7 +482,16 @@ public sealed class BandViewModel : INotifyPropertyChanged
                 MatchLine = "";
             return;
         }
-        string round = c.Round is { } r ? $" · rod {r}" : " · fora de temporada";
+        string round;
+        if (c.Round is { } r)
+        {
+            _lastRound = r; // o round MOSTRADO — o contexto do POST de escolha (SPEC-050)
+            round = $" · rod {r}";
+        }
+        else
+        {
+            round = " · fora de temporada";
+        }
         ClubLine = $"{c.Name} · T{c.Tier} · {c.Position}º{round}";
 
         if (ReplayActive)
@@ -412,6 +545,21 @@ public sealed class BandViewModel : INotifyPropertyChanged
             p.Available ? 1.0 : 0.45
         );
     }
+
+    // Uma opção da escolha → linha de render (SPEC-050): a arriscada ganha o marcador ⚡ + o atributo
+    // abreviado ao lado do rótulo (ex.: "Chutar de primeira ⚡TEC").
+    private static ChoiceOptionRow ToChoiceRow(BandChoiceOption o) =>
+        new(o.Id, o.Risky ? $"{o.Label} ⚡{AttrAbbrev(o.Attr)}" : o.Label);
+
+    private static string AttrAbbrev(string? attr) =>
+        attr switch
+        {
+            "fisico" => "FIS",
+            "tecnico" => "TEC",
+            "tatico" => "TAT",
+            "mental" => "MEN",
+            _ => "", // arriscada sem atributo declarado → só o ⚡
+        };
 
     private static string MeOf(BandState s)
     {
@@ -486,3 +634,7 @@ public sealed class BandViewModel : INotifyPropertyChanged
 /// <summary>Uma linha do catálogo pronta p/ render (SPEC-045): rótulo, status (comprar/adquirido/
 /// bloqueado/sem saldo), `CanBuy` (gateia o clique) e `Dim` (opacidade quando indisponível).</summary>
 public sealed record ShopRow(string Id, string Label, string Status, bool CanBuy, double Dim);
+
+/// <summary>Uma opção do momento de escolha pronta p/ render (SPEC-050): `Display` já traz o
+/// marcador "⚡ATTR" quando a opção é arriscada; `Id` é o que o POST envia.</summary>
+public sealed record ChoiceOptionRow(string Id, string Display);

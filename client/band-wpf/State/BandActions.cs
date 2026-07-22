@@ -35,6 +35,10 @@ public sealed class BandActions
     public Task AnswerDecisionAsync(string decisionId, string optionId) =>
         Run(ct => _api.AnswerDecisionAsync(decisionId, optionId, ct), "decisão registrada");
 
+    // SPEC-050: responde um momento de escolha da partida (apresentado no replay, SPEC-044).
+    public Task AnswerMatchChoiceAsync(int round, string templateId, string optionId) =>
+        Run(ct => _api.AnswerMatchChoiceAsync(round, templateId, optionId, ct), "resposta enviada");
+
     public Task PurchaseAsync(string itemId) => Run(ct => _api.PurchaseAsync(itemId, ct), "comprado!");
 
     public Task RegenAsync() => Run(ct => _api.RegenAsync(ct), "renascimento solicitado");
@@ -94,6 +98,8 @@ public sealed class BandActions
             "insufficient_balance" => "saldo insuficiente",
             "already_owned" => "você já tem esse item",
             "decision_resolved" => "essa decisão já foi resolvida",
+            "choice_resolved" => "momento já resolvido", // SPEC-050
+            "choice_not_available" => "o momento passou", // SPEC-050
             "not_found" => "decisão indisponível",
             "invalid_option" => "opção inválida",
             "regen_ineligible" => "regen ainda não disponível",

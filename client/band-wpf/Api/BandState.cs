@@ -81,7 +81,27 @@ public sealed record BandMatch(
     IReadOnlyList<BandGoal>? Goals = null,
     // SPEC-046: a minha NOTA na partida (3.0..10.0). Presente quando `played`; null pré-jogo ou num
     // servidor sem o campo (tolerante). É o herói do card de partida (SPEC-049).
-    double? MyRating = null
+    double? MyRating = null,
+    // SPEC-048/050: os momentos de escolha SEUS na partida (presentes só pós-jogo). Ausente/null
+    // pré-jogo ou num servidor sem o campo (tolerante). Default null — política aditiva-only do /v1.
+    IReadOnlyList<BandMatchChoice>? Choices = null
+);
+
+/// <summary>Uma opção de um momento de escolha da partida (SPEC-050). `Risky` marca a opção arriscada
+/// e `Attr` (fisico|tecnico|tatico|mental) diz qual atributo ela testa — ambos opcionais/tolerantes.</summary>
+public sealed record BandChoiceOption(string Id, string Label, bool Risky = false, string? Attr = null);
+
+/// <summary>Um momento de escolha da partida (SPEC-048/050), ancorado no `Minute` da timeline. O
+/// cliente o apresenta NO MINUTO durante o replay (SPEC-044). `ChosenOptionId`/`Result` presentes =
+/// já respondida (anotada pelo servidor); `Result` é 'success'|'fail'|'na'. Aditivo/tolerante.</summary>
+public sealed record BandMatchChoice(
+    int Minute,
+    string TemplateId,
+    string Type,
+    string Prompt,
+    IReadOnlyList<BandChoiceOption> Options,
+    string? ChosenOptionId = null,
+    string? Result = null
 );
 
 /// <summary>Um gol na timeline da partida (SPEC-043) — minuto + se foi do clube do humano. SPEC-046:

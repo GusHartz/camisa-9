@@ -233,4 +233,19 @@ public partial class MainWindow : Window
         if ((sender as FrameworkElement)?.DataContext is ShopRow row && row.CanBuy)
             _ = _actions.PurchaseAsync(row.Id);
     }
+
+    // Uma opção do momento de escolha da partida (SPEC-050). O contexto (round + templateId) vem do
+    // VM; otimista: fecha o overlay já (MarkChoiceAnswered) e a reconciliação confirma com o Result.
+    private void OnMatchChoiceOptionClick(object sender, MouseButtonEventArgs e)
+    {
+        e.Handled = true;
+        if (
+            _vm.ChoiceContext() is { } ctx
+            && (sender as FrameworkElement)?.DataContext is ChoiceOptionRow opt
+        )
+        {
+            _ = _actions.AnswerMatchChoiceAsync(ctx.Round, ctx.TemplateId, opt.Id);
+            _vm.MarkChoiceAnswered(ctx.TemplateId);
+        }
+    }
 }
