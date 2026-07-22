@@ -97,6 +97,7 @@ describe.skipIf(!DB_URL)('api — servidor real', () => {
     await handle.db.delete(schema.decision);
     await handle.db.delete(schema.purchase);
     await handle.db.delete(schema.dailyLedger);
+    await handle.db.delete(schema.matchChoice); // FK→athlete (SPEC-050) — antes do atleta
     await handle.db.delete(schema.athlete);
     await handle.db.delete(schema.session);
     await handle.db.delete(schema.account);

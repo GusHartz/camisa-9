@@ -9,6 +9,7 @@ import {
   type MatchChoice,
   type MatchChoiceContext,
 } from './match-choices.js';
+import { choiceOptionById, conservativeChoiceOption } from './match-choice-roll.js';
 
 const RICH: MatchChoiceContext = {
   goalMinutes: [23, 71],
@@ -114,5 +115,58 @@ describe('matchChoices (SPEC-048, puro)', () => {
       expect(cs.length).toBeGreaterThanOrEqual(1);
       for (const c of cs) expect(eventTriggered.has(c.templateId)).toBe(false);
     }
+  });
+
+  it('SPEC-050 — catálogo: nenhuma conservadora é risky; toda risky tem fail.moral ≤ 0 e attr válido', () => {
+    const attrs = new Set(['fisico', 'tecnico', 'tatico', 'mental']);
+    let riskyCount = 0;
+    for (const t of MATCH_CHOICES)
+      for (const o of t.options) {
+        if (o.conservative) expect(o.risky).toBeUndefined();
+        if (o.risky) {
+          riskyCount++;
+          expect(attrs.has(o.risky.attr)).toBe(true);
+          expect(typeof o.risky.fail['moral']).toBe('number');
+          expect(o.risky.fail['moral'] as number).toBeLessThanOrEqual(0);
+        }
+      }
+    expect(riskyCount).toBe(4); // provocar, meu-jeito, revidar, arriscar
+  });
+
+  it('SPEC-050 — "sem punição": toda conservadora tem moral ≥ 0 (ou sem chave moral)', () => {
+    for (const t of MATCH_CHOICES) {
+      const c = t.options.find((o) => o.conservative)!;
+      const m = c.effect['moral'];
+      if (m !== undefined) expect(m as number).toBeGreaterThanOrEqual(0);
+    }
+  });
+
+  it('SPEC-050 — regressão da geração: estrutura da 048 preservada módulo `risky` (fixture cravado)', () => {
+    const strip = (cs: MatchChoice[]): { templateId: string; minute: number; half: 1 | 2 }[] =>
+      cs.map((c) => ({ templateId: c.templateId, minute: c.minute, half: c.half }));
+    expect(strip(mc('me', RICH))).toEqual([
+      { templateId: 'provocacao', minute: 40, half: 1 },
+      { templateId: 'lesao-colega', minute: 55, half: 2 },
+      { templateId: 'comemoracao', minute: 71, half: 2 },
+    ]);
+    expect(strip(mc('me', EMPTY))).toEqual([
+      { templateId: 'pressao-tecnico', minute: 25, half: 1 },
+      { templateId: 'ajuste-intervalo', minute: 46, half: 2 },
+      { templateId: 'chance-clara', minute: 68, half: 2 },
+    ]);
+  });
+
+  it('SPEC-050 — choiceOptionById/conservativeChoiceOption (validação/fallback da resposta)', () => {
+    expect(choiceOptionById('pressao-tecnico', 'obedecer')?.effect).toEqual({
+      focusBias: 'tatico',
+    });
+    expect(choiceOptionById('pressao-tecnico', 'nao-existe')).toBeUndefined();
+    expect(choiceOptionById('nao-existe', 'x')).toBeUndefined();
+    for (const t of MATCH_CHOICES) {
+      const c = conservativeChoiceOption(t.id);
+      expect(c?.conservative).toBe(true); // todo template atual TEM uma marcada
+      expect(c?.risky).toBeUndefined();
+    }
+    expect(conservativeChoiceOption('nao-existe')).toBeUndefined();
   });
 });

@@ -6,6 +6,7 @@ import {
   MOOD,
   applyPoint,
   coachFocus,
+  isFocus,
   nextThreshold,
   overall,
   pointsEarnedTotal,
@@ -43,6 +44,7 @@ interface AthleteRow {
   readonly freePoints: number;
   readonly lastFocus: string | null;
   readonly focusStreak: number;
+  readonly nextTrainFocus: string | null;
 }
 
 /** Aplica UMA sessão de treino ao atleta ATIVO: a lib recomputa barra/pontos e persiste numa
@@ -67,7 +69,11 @@ export async function applyTraining(
         row.focusStreak,
       );
     }
-    const chosen = focus ?? coachFocus(row.attributes);
+    // Viés de treino (SPEC-050): sem foco explícito, a escolha de partida de ONTEM guia o treino de
+    // HOJE — consumido 1× (limpa junto do treino; a linha já está FOR UPDATE). Só consome quando
+    // TREINA de fato (o no-op do claim acima preserva o viés). Guarda `isFocus` (lição SPEC-047).
+    const bias = focus === null && isFocus(row.nextTrainFocus) ? row.nextTrainFocus : null;
+    const chosen = focus ?? bias ?? coachFocus(row.attributes);
     const streak = resolveFocusStreak(row.lastFocus, row.focusStreak, chosen);
     const r = trainSession(row, chosen, {
       ...opts,
@@ -80,6 +86,7 @@ export async function applyTraining(
         freePoints: r.freePoints,
         lastFocus: streak.lastFocus,
         focusStreak: streak.focusStreak,
+        ...(bias !== null ? { nextTrainFocus: null } : {}),
       })
       .where(eq(athlete.id, athleteId));
     await bumpForma(tx, athleteId, MOOD.trainFormaBump); // treino sobe a forma (SPEC-027), na mesma tx
@@ -152,6 +159,7 @@ async function loadActive(tx: Tx, athleteId: string): Promise<AthleteRow> {
     freePoints: r.freePoints,
     lastFocus: r.lastFocus,
     focusStreak: r.focusStreak,
+    nextTrainFocus: r.nextTrainFocus,
   };
 }
 
@@ -165,6 +173,7 @@ function rowShape() {
     freePoints: athlete.freePoints,
     lastFocus: athlete.lastFocus,
     focusStreak: athlete.focusStreak,
+    nextTrainFocus: athlete.nextTrainFocus,
   };
 }
 

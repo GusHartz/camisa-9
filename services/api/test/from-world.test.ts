@@ -176,7 +176,13 @@ describe('buildTodayMatch — escolhas na partida (SPEC-048, puro)', () => {
     for (const c of m.choices!) {
       expect(typeof c.prompt).toBe('string');
       expect(c.options.length).toBeGreaterThan(0);
-      for (const o of c.options) expect(Object.keys(o).sort()).toEqual(['id', 'label']); // effect NÃO exposto
+      // SPEC-050: `risky`/`attr` telegrafam o roll; o `effect`/`fail`/chance SEGUEM server-side.
+      for (const o of c.options) {
+        for (const k of Object.keys(o)) expect(['id', 'label', 'risky', 'attr']).toContain(k);
+        expect('effect' in o).toBe(false);
+        expect('fail' in o).toBe(false);
+        if ('risky' in o) expect(typeof (o as { attr?: unknown }).attr).toBe('string');
+      }
     }
     // determinístico (mesma entrada → mesmas escolhas)
     expect(m.choices).toEqual(buildTodayMatch('A', FIX, round(EVENTS, 1, 1), 'Rival', CTX).choices);

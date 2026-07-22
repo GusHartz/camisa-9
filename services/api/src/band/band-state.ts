@@ -20,6 +20,7 @@ import {
   readAthleteIdentity,
   readAthleteProgress,
   readInjuryState,
+  readMatchChoices,
   readMood,
   readPendingDecisions,
   readWallet,
@@ -161,7 +162,7 @@ async function resolveWorldSlice(
   if (occupation.lastActiveDay !== clocks.calendarDay) {
     await markPresence(deps, athleteId, clocks.calendarDay);
   }
-  return readClubWorld(deps, occupation, clocks, focos);
+  return readClubWorld(deps, occupation, athleteId, clocks, focos);
 }
 
 function buildTime(slot: RoundSlot, epochMs: number, settled: boolean): BandTime {
@@ -198,6 +199,7 @@ async function readQueueSlice(deps: BandDeps, athleteId: string): Promise<BandQu
 async function readClubWorld(
   deps: BandDeps,
   occupation: OccupationView,
+  athleteId: string,
   clocks: ClubClocks,
   focos: RatingFocos,
 ): Promise<WorldSlice> {
@@ -210,6 +212,12 @@ async function readClubWorld(
   if (!brief) return { club: null, squad, queue: null };
   const leagueClubIds = await readLeagueClubIds(deps.worldDb, deps.worldSeed, brief.leagueId);
   const round = seasonRound(startDayIndex, clocks.tickDay, leagueClubIds.length);
+  // As respostas persistidas da rodada MOSTRADA (SPEC-050) — anotam a oferta (`chosenOptionId`/
+  // `result`). Só quando liquidada (o mesmo gate da oferta/placar). `athleteId` = id do PLAYER.
+  const answers =
+    round !== null && clocks.settled
+      ? await readAnswersMap(deps.db, athleteId, occupation.seasonId, round)
+      : undefined;
   // O contexto do humano p/ orientar a partida (SPEC-046): id do mundo + focos vivos + seed/liga/
   // temporada + o mapa de nomes do MEU elenco (nomear autor/assistente dos meus gols).
   const ctx: BandMatchCtx = {
@@ -220,6 +228,7 @@ async function readClubWorld(
     leagueId: brief.leagueId,
     seasonId: occupation.seasonId,
     nameByWorldId: new Map(squadRows.map((r) => [r.athleteId, r.name])),
+    ...(answers !== undefined ? { answers } : {}),
   };
   const todayMatch =
     round === null
@@ -258,6 +267,19 @@ async function readTodayMatch(
     roundResult,
     oppBrief?.name ?? fixture.opponentClubId,
     ctx,
+  );
+}
+
+/** As respostas da rodada mostrada, por `templateId` (SPEC-050) — best-effort do lado player. */
+async function readAnswersMap(
+  db: Db,
+  athleteId: string,
+  seasonId: string,
+  round: number,
+): Promise<ReadonlyMap<string, { readonly chosenOption: string; readonly result: string }>> {
+  const rows = await readMatchChoices(db, athleteId, seasonId, round);
+  return new Map(
+    rows.map((r) => [r.templateId, { chosenOption: r.chosenOption, result: r.result }]),
   );
 }
 

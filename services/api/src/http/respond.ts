@@ -17,6 +17,8 @@ const MESSAGE: Readonly<Record<ErrorCode, string>> = {
   not_found: 'recurso não encontrado',
   no_free_points: 'sem ponto de treino disponível',
   decision_resolved: 'decisão já resolvida',
+  choice_resolved: 'escolha já resolvida',
+  choice_not_available: 'escolha indisponível',
   invalid_option: 'opção inválida',
   insufficient_balance: 'saldo insuficiente',
   already_owned: 'item já adquirido',

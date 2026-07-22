@@ -100,6 +100,11 @@ export interface OccupationView {
   /** Congelamento de vaga (SPEC-023): relógio de atividade + transição. `null` = sem dado. */
   readonly lastActiveDay: number | null;
   readonly frozenSinceDay: number | null;
+  /** Quando esta ocupação foi gravada (SPEC-050): o gate de ENTRADA do resolver de escolhas — um
+   *  admitido mid-season não herda escolhas da rodada anterior à entrada (lição SPEC-034). ⚠️ A
+   *  viragem re-insere (reapplyOccupations) e RESETA este relógio — inócuo: o resolver já pula a
+   *  janela de gênese. */
+  readonly occupiedAt: Date;
 }
 
 /** A ocupação de um humano num mundo (null se não ocupa nenhuma vaga). */
@@ -146,6 +151,7 @@ export function toOccupationView(r: typeof worldOccupation.$inferSelect): Occupa
     regenRequested: r.regenRequested,
     lastActiveDay: r.lastActiveDay,
     frozenSinceDay: r.frozenSinceDay,
+    occupiedAt: r.occupiedAt,
   };
 }
 

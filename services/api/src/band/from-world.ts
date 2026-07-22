@@ -2,12 +2,12 @@
 // do contrato. Puro — recebe valores já lidos. O kit e o fixture são DERIVADOS (fns puras), sem
 // tocar o snapshot nem os goldens. `generateFixtures` é reuso puro do engine (só consome `c.id`).
 import {
+  choiceContextFrom,
   generateFixtures,
   matchChoices,
   matchRating,
   type GoalEvent,
-  type InjuryEvent,
-  type MatchChoiceContext,
+  type MatchChoiceOption,
   type MatchOutcome,
   type MatchResult,
   type Position,
@@ -17,6 +17,7 @@ import {
 import { kitFromClubId } from '@camisa-9/player';
 import type { ClubBrief, OccupationView, QueueEntry } from '@camisa-9/world-store';
 import type {
+  BandChoiceOption,
   BandClub,
   BandGoal,
   BandMatch,
@@ -36,6 +37,12 @@ export interface BandMatchCtx {
   readonly leagueId: string;
   readonly seasonId: string;
   readonly nameByWorldId: ReadonlyMap<string, string>;
+  /** As respostas já persistidas da rodada mostrada (SPEC-050), por `templateId` — anota a oferta
+   *  (`chosenOptionId`/`result`). Ausente/vazio = tudo pendente. */
+  readonly answers?: ReadonlyMap<
+    string,
+    { readonly chosenOption: string; readonly result: string }
+  >;
 }
 
 /** O elenco de 16 (11+5). `isMe` bate o id do MUNDO da minha ocupação; `avatarSeed` = o id do mundo. */
@@ -107,8 +114,7 @@ export function buildTodayMatch(
     ? goalEvents.map((e) => buildGoal(e, clubId, ctx))
     : undefined;
   const myRating = match && ctx ? ratingFor(match, fixture.isHome, goalEvents, ctx) : null;
-  const choices =
-    match && ctx ? buildChoices(match, clubId, fixture.isHome, goalEvents, ctx) : undefined;
+  const choices = match && ctx ? buildChoices(match, clubId, ctx) : undefined;
   return {
     opponentClubId: fixture.opponentClubId,
     opponentName,
@@ -122,26 +128,11 @@ export function buildTodayMatch(
   };
 }
 
-/** As escolhas da partida (SPEC-048): deriva a participação do humano dos eventos publicados (gols
- *  `byMe`, gols sofridos, lesão no clube) e chama o motor puro. Expõe a OFERTA (sem o `effect`). */
-function buildChoices(
-  match: MatchResult,
-  clubId: string,
-  isHome: boolean,
-  goalEvents: readonly GoalEvent[],
-  ctx: BandMatchCtx,
-): BandMatchChoice[] {
-  const injuries = (match.events ?? []).filter((e): e is InjuryEvent => e.kind === 'injury');
-  const goalsFor = isHome ? match.homeGoals : match.awayGoals;
-  const goalsAgainst = isHome ? match.awayGoals : match.homeGoals;
-  const mcx: MatchChoiceContext = {
-    goalMinutes: goalEvents.filter((e) => e.athleteId === ctx.meWorldId).map((e) => e.minute),
-    concededMinutes: goalEvents.filter((e) => e.clubId !== clubId).map((e) => e.minute),
-    // "um COMPANHEIRO caiu" — exclui a lesão do PRÓPRIO humano (senão o `lesao-colega` dispara nela).
-    clubInjuredMinute:
-      injuries.find((i) => i.clubId === clubId && i.athleteId !== ctx.meWorldId)?.minute ?? null,
-    result: outcomeOf(goalsFor, goalsAgainst),
-  };
+/** As escolhas da partida (SPEC-048/050): deriva a participação do humano via `choiceContextFrom`
+ *  (a fonte ÚNICA, compartilhada com o resolver do scheduler) e chama o motor puro. Expõe a OFERTA
+ *  (sem o `effect`/`fail` — só `risky`/`attr` telegrafam o roll), anotada com a resposta persistida. */
+function buildChoices(match: MatchResult, clubId: string, ctx: BandMatchCtx): BandMatchChoice[] {
+  const mcx = choiceContextFrom(match, clubId, ctx.meWorldId);
   return matchChoices(
     ctx.seed,
     ctx.leagueId,
@@ -151,13 +142,34 @@ function buildChoices(
     match.awayId,
     ctx.meWorldId,
     mcx,
-  ).map((c) => ({
-    minute: c.minute,
-    templateId: c.templateId,
-    type: c.type,
-    prompt: c.prompt,
-    options: c.options.map((o) => ({ id: o.id, label: o.label })),
-  }));
+  ).map((c) => {
+    const a = ctx.answers?.get(c.templateId);
+    return {
+      minute: c.minute,
+      templateId: c.templateId,
+      type: c.type,
+      prompt: c.prompt,
+      options: c.options.map(toBandChoiceOption),
+      ...(a !== undefined
+        ? {
+            chosenOptionId: a.chosenOption,
+            ...(isChoiceResult(a.result) ? { result: a.result } : {}),
+          }
+        : {}),
+    };
+  });
+}
+
+function toBandChoiceOption(o: MatchChoiceOption): BandChoiceOption {
+  return {
+    id: o.id,
+    label: o.label,
+    ...(o.risky !== undefined ? { risky: true, attr: o.risky.attr } : {}),
+  };
+}
+
+function isChoiceResult(v: string): v is 'success' | 'fail' | 'na' {
+  return v === 'success' || v === 'fail' || v === 'na';
 }
 
 function isGoal(e: { readonly kind: string }): e is GoalEvent {

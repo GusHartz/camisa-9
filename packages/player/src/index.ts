@@ -1,6 +1,6 @@
 // API pública do domínio do jogador (SPEC-016).
 export * from './types.js';
-export { PLAYER, FOCI, POSITIONS, CREATION_TOTAL, TRAINING, TEAM } from './constants.js';
+export { PLAYER, FOCI, POSITIONS, CREATION_TOTAL, TRAINING, TEAM, isFocus } from './constants.js';
 export { validateName } from './name-filter.js';
 export { allocateAttributes } from './attributes.js';
 export { overall, abilityFromFocos } from './ability.js';

@@ -64,6 +64,15 @@ export {
   type Focos,
 } from './store/mood-repo.js';
 export {
+  answerMatchChoice,
+  resolveConservative,
+  readMatchChoices,
+  type ChoiceResult,
+  type ChoiceEffectData,
+  type MatchChoiceAnswer,
+  type MatchChoiceRow,
+} from './store/match-choice-repo.js';
+export {
   authenticate,
   createSession,
   readSessionByHash,

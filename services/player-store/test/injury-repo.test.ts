@@ -44,6 +44,7 @@ describe.skipIf(!DB_URL)('injury-repo — lesões narrativas contra Postgres rea
     await handle.db.delete(schema.decision);
     await handle.db.delete(schema.dailyLedger);
     await handle.db.delete(schema.purchase); // FK→athlete (SPEC-024) — antes de athlete, senão FK viola
+    await handle.db.delete(schema.matchChoice); // FK→athlete (SPEC-050) — antes do atleta
     await handle.db.delete(schema.athlete);
     await handle.db.delete(schema.team);
     await handle.db.delete(schema.account);

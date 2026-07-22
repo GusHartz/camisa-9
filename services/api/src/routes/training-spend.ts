@@ -8,7 +8,7 @@
 // escolheu). Um token de dedup exigiria uma tabela nova (contra o "sem migration" desta fatia) → card
 // futuro; a faixa reconcilia relendo o `GET /v1/band` (o freePoints fresco) após cada spend.
 import { spendFreePoint, type Db } from '@camisa-9/player-store';
-import type { Focus } from '@camisa-9/player';
+import { isFocus } from '@camisa-9/player';
 import { isRecord } from '../http/body.js';
 import { mapDomainError } from '../http/domain-error.js';
 import { hit } from '../http/rate-limit.js';
@@ -16,10 +16,6 @@ import { fail, rateLimited } from '../http/respond.js';
 import type { RouteCtx, RouteResult } from '../http/types.js';
 
 const SPEND_LIMIT = 30;
-
-function isFocus(v: unknown): v is Focus {
-  return v === 'fisico' || v === 'tecnico' || v === 'tatico' || v === 'mental';
-}
 
 export function trainingSpend(db: Db) {
   return async (ctx: RouteCtx, athleteId: string, accountId: string): Promise<RouteResult> => {

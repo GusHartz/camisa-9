@@ -52,6 +52,11 @@ export const athlete = playerSchema.table(
     // Time do quinteto (SPEC-018). NULL = solo; setado no create/join do time. A `position`
     // acima é a vaga reivindicada no elenco. Membros do time = atletas com este `team_id`.
     teamId: uuid('team_id').references(() => team.id),
+    // Viés de foco do treino idle do DIA SEGUINTE (SPEC-050): setado quando o JOGADOR (nunca o
+    // agente) escolhe uma opção de partida com `focusBias`; consumido — e LIMPO — pelo próximo
+    // `applyTraining` sem foco explícito. NULL = sem viés (o técnico cobre a fraqueza). CHECK no
+    // banco + guarda `isFocus` na leitura (lição SPEC-047: coluna text load-bearing, dupla defesa).
+    nextTrainFocus: text('next_train_focus'),
     // Transferência (SPEC-033, card 1.4): `transfer_requested` = a proposta ACEITA, ainda não
     // executada (o passe de viragem move o humano de clube e limpa a flag). `market_open` = o
     // jogador "testou o mercado" (o `explore`) → mais assediável (baixa o threshold da proposta).
@@ -73,5 +78,9 @@ export const athlete = playerSchema.table(
     balanceRange: check('athlete_balance_range', sql`${t.balance} >= 0`),
     formaRange: check('athlete_forma_range', sql`${t.forma} between 0 and 100`),
     moralRange: check('athlete_moral_range', sql`${t.moral} between 0 and 100`),
+    nextTrainFocusValid: check(
+      'athlete_next_train_focus_valid',
+      sql`${t.nextTrainFocus} is null or ${t.nextTrainFocus} in ('fisico', 'tecnico', 'tatico', 'mental')`,
+    ),
   }),
 );

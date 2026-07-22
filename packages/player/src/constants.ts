@@ -5,6 +5,12 @@ import type { Focus, Position } from './types.js';
 /** Ordem canônica dos 4 focos. */
 export const FOCI: readonly Focus[] = ['fisico', 'tecnico', 'tatico', 'mental'];
 
+/** Type-guard de foco (SPEC-050) — a guarda de leitura para colunas `text` load-bearing (lição
+ *  SPEC-047) e para input de borda (a rota `training-spend` reusa). */
+export function isFocus(v: unknown): v is Focus {
+  return typeof v === 'string' && (FOCI as readonly string[]).includes(v);
+}
+
 /** Posições — espelha o world-engine (teste cruza p/ pegar drift). */
 export const POSITIONS: readonly Position[] = ['GK', 'DEF', 'MID', 'FWD'];
 

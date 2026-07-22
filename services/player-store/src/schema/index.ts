@@ -8,3 +8,4 @@ export * from './purchase.js';
 export * from './decision.js';
 export * from './injury.js';
 export * from './daily-ledger.js';
+export * from './match-choice.js';

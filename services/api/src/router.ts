@@ -12,6 +12,7 @@ import { hit } from './http/rate-limit.js';
 import { fail, rateLimited } from './http/respond.js';
 import type { Handler, RouteCtx, RouteResult } from './http/types.js';
 import { answerDecisionRoute } from './routes/answer-decision.js';
+import { answerMatchChoiceRoute } from './routes/answer-match-choice.js';
 import { band } from './routes/band.js';
 import { health } from './routes/health.js';
 import { login } from './routes/login.js';
@@ -34,6 +35,9 @@ const IP_BUCKETS: ReadonlyArray<readonly [string, string, number]> = [
   [' /v1/band', 'band', 10],
   [' /v1/training/', 'training', 40],
   [' /v1/decisions/', 'decisions', 10],
+  // 40 como o treino (SPEC-050): o replay SINCRONIZA as respostas pós-15h — um quinteto num NAT são
+  // 5 contas × até 5 escolhas na mesma janela de 1 min; 10 daria 429 no gancho do "interagir".
+  [' /v1/matches/', 'matches', 40],
   [' /v1/purchases', 'purchases', 10],
   [' /v1/regen', 'regen', 10],
 ];
@@ -79,6 +83,10 @@ export function createRoutes(deps: RouteDeps): Routes {
     ),
     'POST /v1/training/spend': requireAthlete(deps.db, trainingSpend(deps.db)),
     'POST /v1/decisions/answer': requireAthlete(deps.db, answerDecisionRoute(deps.db)),
+    'POST /v1/matches/choices/answer': requireAthlete(
+      deps.db,
+      answerMatchChoiceRoute(deps.db, deps.worldDb, deps.worldSeed),
+    ),
     'POST /v1/purchases': requireAthlete(deps.db, purchases(deps.db)),
     'POST /v1/regen': requireAthlete(deps.db, regen(deps.worldDb, deps.worldSeed)),
     ...deps.extraRoutes,

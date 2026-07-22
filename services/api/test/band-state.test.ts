@@ -21,6 +21,7 @@ import {
 } from '@camisa-9/player';
 import {
   accrueRound,
+  answerMatchChoice,
   countPendingDecisions,
   createAccountWithAthlete,
   createDb as createPlayerDb,
@@ -116,6 +117,7 @@ describe.skipIf(!DB_URL)('readBandState — o agregador da faixa (SPEC-038)', ()
     await playerHandle.db.delete(playerSchema.decision);
     await playerHandle.db.delete(playerSchema.purchase);
     await playerHandle.db.delete(playerSchema.dailyLedger);
+    await playerHandle.db.delete(playerSchema.matchChoice); // FK→athlete (SPEC-050) — antes do atleta
     await playerHandle.db.delete(playerSchema.athlete);
     await playerHandle.db.delete(playerSchema.team);
     await playerHandle.db.delete(playerSchema.session);
@@ -600,11 +602,52 @@ describe.skipIf(!DB_URL)('readBandState — o agregador da faixa (SPEC-038)', ()
         expect(c.minute).toBeGreaterThanOrEqual(1);
         expect(c.minute).toBeLessThanOrEqual(90);
         expect(c.options.length).toBeGreaterThan(0);
-        for (const o of c.options) expect(Object.keys(o).sort()).toEqual(['id', 'label']); // sem effect
+        // SPEC-050: `risky`/`attr` telegrafam o roll; o `effect`/`fail`/chance SEGUEM server-side.
+        for (const o of c.options) {
+          for (const k of Object.keys(o)) expect(['id', 'label', 'risky', 'attr']).toContain(k);
+          expect('effect' in o).toBe(false);
+          expect('fail' in o).toBe(false);
+        }
       }
       // determinístico: reler dá as mesmas escolhas
       const again = await readBandState(deps, athleteId, epochAt(D, 16));
       expect(again.club!.todayMatch!.choices).toEqual(match.choices);
+    });
+
+    it('SPEC-050 — a resposta persistida ANOTA a oferta; pós-D+1 a oferta antiga some sem quebrar', async () => {
+      const { athleteId, seasonId } = await seatHuman();
+      await runRoundForDay(worldHandle.db, SEED, D);
+      await advanceTickCursor(worldHandle.db, SEED, D);
+      const before = await readBandState(deps, athleteId, epochAt(D, 16));
+      const offer = before.club!.todayMatch!.choices!;
+      const target = offer[0]!;
+      expect('chosenOptionId' in target).toBe(false); // pendente = sem anotação
+      await answerMatchChoice(playerHandle.db, athleteId, {
+        seasonId,
+        round: 1,
+        templateId: target.templateId,
+        chosenOption: target.options[0]!.id,
+        result: 'na',
+        effect: {},
+        day: D,
+        resolvedBy: 'player',
+      });
+      const after = await readBandState(deps, athleteId, epochAt(D, 16));
+      const choices = after.club!.todayMatch!.choices!;
+      const annotated = choices.find((c) => c.templateId === target.templateId)!;
+      expect(annotated.chosenOptionId).toBe(target.options[0]!.id);
+      expect(annotated.result).toBe('na');
+      for (const c of choices) {
+        if (c.templateId !== target.templateId) expect('chosenOptionId' in c).toBe(false);
+      }
+      // Pós-D+1 (a rodada MOSTRADA virou; cursor segue em D): a rodada 2 aparece pré-jogo, SEM
+      // choices — a anotação do agente nunca é visível (consequência declarada na SPEC-050).
+      const nextDay = await readBandState(deps, athleteId, epochAt(D + 1, 16));
+      const tm = nextDay.club!.todayMatch;
+      if (tm !== null) {
+        expect(tm.played).toBe(false);
+        expect('choices' in tm).toBe(false);
+      }
     });
   });
 

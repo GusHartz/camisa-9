@@ -24,6 +24,7 @@ import {
   dailyLedger,
   decision,
   injury,
+  matchChoice,
   purchase,
   session,
 } from '../src/schema/index.js';
@@ -67,6 +68,7 @@ describe.skipIf(!DB_URL)('training-repo — progressão contra Postgres real', (
     await handle.db.delete(decision); // neto (FK → athlete, SPEC-025) antes do atleta
     await handle.db.delete(purchase); // neto (FK → athlete, SPEC-024) antes do atleta
     await handle.db.delete(dailyLedger);
+    await handle.db.delete(matchChoice); // FK→athlete (SPEC-050) — antes do atleta
     await handle.db.delete(athlete); // filho antes do pai (FK)
     await handle.db.delete(session); // SPEC-037: filha de account (FK)
     await handle.db.delete(account);
@@ -254,5 +256,48 @@ describe.skipIf(!DB_URL)('training-repo — progressão contra Postgres real', (
     await expect(train('00000000-0000-0000-0000-000000000000', 'fisico')).rejects.toThrow(
       'atleta não encontrado',
     );
+  });
+
+  describe('viés de treino da escolha de partida (SPEC-050)', () => {
+    async function setBias(id: string, bias: string | null): Promise<void> {
+      await handle.db.update(athlete).set({ nextTrainFocus: bias }).where(eq(athlete.id, id));
+    }
+    async function readBias(id: string): Promise<string | null> {
+      const [r] = await handle.db
+        .select({ b: athlete.nextTrainFocus })
+        .from(athlete)
+        .where(eq(athlete.id, id));
+      return r?.b ?? null;
+    }
+
+    it('treino idle (focus=null) CONSOME o viés: treina o foco do viés e LIMPA a coluna', async () => {
+      const id = await newAthlete();
+      await setBias(id, 'tatico');
+      const p = await train(id, null); // sem o viés, o técnico treinaria o mais baixo (fisico)
+      expect(p.lastFocus).toBe('tatico');
+      expect(await readBias(id)).toBeNull(); // one-shot: consumiu E limpou
+    });
+
+    it('foco EXPLÍCITO não consome o viés (fica para o próximo treino idle)', async () => {
+      const id = await newAthlete();
+      await setBias(id, 'fisico');
+      const p = await train(id, 'mental');
+      expect(p.lastFocus).toBe('mental');
+      expect(await readBias(id)).toBe('fisico'); // intacto
+    });
+
+    it('o no-op do claim (2ª chamada no MESMO dia) preserva o viés — só consome quando TREINA', async () => {
+      const id = await newAthlete();
+      await train(id, 'mental'); // o dia foi treinado (claim reivindicado)
+      await setBias(id, 'tecnico');
+      const again = await applyTraining(handle.db, id, null, day); // mesmo dia → claim no-op
+      expect(again.lastFocus).toBe('mental'); // nada re-treinado
+      expect(await readBias(id)).toBe('tecnico'); // o viés sobreviveu ao no-op
+    });
+
+    it('CHECK do banco: um viés fora do enum é rejeitado (defesa dupla, lição SPEC-047)', async () => {
+      const id = await newAthlete();
+      await expect(setBias(id, 'xxx')).rejects.toThrow();
+    });
   });
 });
