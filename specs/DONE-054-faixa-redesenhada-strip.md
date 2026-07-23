@@ -13,7 +13,7 @@
 | **Feature** | A faixa redesenhada — o strip (fatia 1) |
 | **Owner** | gustavo-hartz (dev) |
 | **Branch** | `feat/gustavo-hartz/a-faixa-redesenhada-o-strip-fatia-1` |
-| **PR** | (a preencher) |
+| **PR** | https://github.com/GusHartz/camisa-9/pull/59 |
 | **Desenvolvimento iniciado** | 2026-07-23 |
 | **Desenvolvimento concluído** | 2026-07-23 |
 | **Dias utilizados vs appetite** | <1 dia vs 14 dias |
