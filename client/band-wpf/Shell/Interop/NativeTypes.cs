@@ -38,6 +38,45 @@ internal struct MONITORINFO
     public uint dwFlags;
 }
 
+[StructLayout(LayoutKind.Sequential)]
+internal struct POINT
+{
+    public int X;
+    public int Y;
+}
+
+/// <summary>Dados do ícone da bandeja (ocultar/mostrar a faixa). Struct MODERNA COMPLETA
+/// (NOTIFYICONDATAW): o `cbSize` precisa bater com uma versão que o Windows reconhece, senão
+/// `Shell_NotifyIcon` falha em silêncio. Por isso todos os campos, mesmo os que não usamos.</summary>
+[StructLayout(LayoutKind.Sequential, CharSet = CharSet.Unicode)]
+internal struct NOTIFYICONDATA
+{
+    public uint cbSize;
+    public IntPtr hWnd;
+    public uint uID;
+    public uint uFlags;
+    public uint uCallbackMessage;
+    public IntPtr hIcon;
+
+    [MarshalAs(UnmanagedType.ByValTStr, SizeConst = 128)]
+    public string szTip;
+
+    public uint dwState;
+    public uint dwStateMask;
+
+    [MarshalAs(UnmanagedType.ByValTStr, SizeConst = 256)]
+    public string szInfo;
+
+    public uint uVersion;
+
+    [MarshalAs(UnmanagedType.ByValTStr, SizeConst = 64)]
+    public string szInfoTitle;
+
+    public uint dwInfoFlags;
+    public Guid guidItem;
+    public IntPtr hBalloonIcon;
+}
+
 /// <summary>Constantes Win32 usadas pelo shell (política de UI — OP-17, zero regra de jogo).</summary>
 internal static class Win
 {
@@ -69,4 +108,28 @@ internal static class Win
     // SHQueryUserNotificationState (silêncio sobre fullscreen — reusa achado da SPEC-005)
     public const int QUNS_RUNNING_D3D_FULL_SCREEN = 3;
     public const int QUNS_PRESENTATION_MODE = 4;
+
+    // Shell_NotifyIcon — o ícone da bandeja (ocultar/mostrar a faixa; o processo segue rodando).
+    public const uint NIM_ADD = 0x00000000;
+    public const uint NIM_MODIFY = 0x00000001;
+    public const uint NIM_DELETE = 0x00000002;
+    public const uint NIF_MESSAGE = 0x00000001;
+    public const uint NIF_ICON = 0x00000002;
+    public const uint NIF_TIP = 0x00000004;
+
+    // Mensagem de callback do ícone (WM_APP + 1) e os cliques que chegam no lParam.
+    public const int WM_TRAYICON = 0x8000 + 1; // WM_APP + 1
+    public const int WM_NULL = 0x0000;
+    public const int WM_LBUTTONUP = 0x0202;
+    public const int WM_RBUTTONUP = 0x0205;
+
+    // Menu de contexto nativo do tray (TrackPopupMenuEx é o padrão robusto p/ janela NOACTIVATE).
+    public const uint MF_STRING = 0x00000000;
+    public const uint MF_SEPARATOR = 0x00000800;
+    public const uint TPM_RIGHTBUTTON = 0x0002;
+    public const uint TPM_RETURNCMD = 0x0100;
+    public const uint TPM_NONOTIFY = 0x0080;
+
+    // LoadIcon — ícone genérico do sistema (o ícone de marca é asset de design futuro).
+    public static readonly IntPtr IDI_APPLICATION = new(32512);
 }

@@ -61,6 +61,7 @@ public sealed class BandViewModel : INotifyPropertyChanged
     private IReadOnlyList<ShopRow> _shopItems = Array.Empty<ShopRow>();
     private bool _hasCatalog;
     private bool _shopOpen;
+    private bool _menuOpen; // MENU (SPEC-054 fatia 1): o stub "Central da Carreira — em breve"
     private bool _canRegen;
     private bool _regenArmed; // 2 passos: o 1º clique arma, o 2º confirma (ação destrutiva)
     private bool _regenAvailable;
@@ -122,6 +123,7 @@ public sealed class BandViewModel : INotifyPropertyChanged
     public IReadOnlyList<ShopRow> ShopItems { get => _shopItems; private set => Set(ref _shopItems, value); }
     public bool HasCatalog { get => _hasCatalog; private set => Set(ref _hasCatalog, value); }
     public bool ShopOpen { get => _shopOpen; private set => Set(ref _shopOpen, value); }
+    public bool MenuOpen { get => _menuOpen; private set => Set(ref _menuOpen, value); }
 
     public bool CanRegen
     {
@@ -223,6 +225,9 @@ public sealed class BandViewModel : INotifyPropertyChanged
 
     /// <summary>Abre/fecha a loja (só abre se há catálogo — i.e., o atleta tem clube/estado).</summary>
     public void ToggleShop() => ShopOpen = !_shopOpen && _hasCatalog;
+
+    /// <summary>Abre/fecha o stub do MENU (SPEC-054, fatia 1: "Central da Carreira — em breve").</summary>
+    public void ToggleMenu() => MenuOpen = !_menuOpen;
 
     /// <summary>1º passo do regen (ação destrutiva): arma a confirmação — NÃO posta ainda.</summary>
     public void ArmRegen() => RegenArmed = true;
@@ -546,17 +551,12 @@ public sealed class BandViewModel : INotifyPropertyChanged
                 MatchLine = "";
             return;
         }
-        string round;
         if (c.Round is { } r)
-        {
             _lastRound = r; // o round MOSTRADO — o contexto do POST de escolha (SPEC-050)
-            round = $" · rod {r}";
-        }
-        else
-        {
-            round = " · fora de temporada";
-        }
-        ClubLine = $"{c.Name} · T{c.Tier} · {c.Position}º{round}";
+        // Só o nome do SEU time (decisão do founder): o adversário, o placar e o "(casa/fora)" já
+        // vivem no MatchLine. Tier/posição/rodada saíram daqui — serão tratados noutro lugar depois
+        // (e some junto o bug do "FWDº", que colava "º" no código de posição).
+        ClubLine = c.Name;
 
         if (ReplayActive)
             return; // o replay dirige o MatchLine; o poll não o sobrescreve
