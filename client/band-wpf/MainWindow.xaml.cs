@@ -144,6 +144,7 @@ public partial class MainWindow : Window
     // Re-traz cada popup ABERTO para cima da faixa. Chamado após a faixa re-afirmar seu topmost.
     private void BringPopupsAboveBand()
     {
+        RaisePopup(MenuPopup);
         RaisePopup(DecisionPopup);
         RaisePopup(ShopPopup);
         RaisePopup(ChoicePopup);
@@ -296,6 +297,13 @@ public partial class MainWindow : Window
     {
         e.Handled = true;
         _vm.ToggleShop();
+    }
+
+    // MENU (SPEC-054 fatia 1): abre/fecha o stub "Central da Carreira — em breve".
+    private void OnMenuClick(object sender, MouseButtonEventArgs e)
+    {
+        e.Handled = true;
+        _vm.ToggleMenu();
     }
 
     // Regen é AÇÃO DESTRUTIVA (encerra a carreira na virada) → confirmação em 2 passos: armar → confirmar.

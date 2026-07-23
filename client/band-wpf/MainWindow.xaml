@@ -71,10 +71,17 @@
                     <RowDefinition Height="Auto" />
                 </Grid.RowDefinitions>
 
-                <!-- Linha 1: atleta + fase -->
+                <!-- Linha 1: menu + atleta + fase -->
             <Grid Grid.Row="0">
-                <TextBlock Text="{Binding AthleteLine}" FontWeight="SemiBold" FontSize="13"
-                           TextTrimming="CharacterEllipsis" HorizontalAlignment="Left" />
+                <StackPanel Orientation="Horizontal" HorizontalAlignment="Left">
+                    <!-- MENU (SPEC-054 fatia 1): abre o stub "Central da Carreira — em breve"
+                         (o hub das telas é fatia futura). -->
+                    <TextBlock Text="☰" FontSize="15" Foreground="#9AD0FF" Cursor="Hand"
+                               Margin="0,0,8,0" VerticalAlignment="Center"
+                               MouseLeftButtonDown="OnMenuClick" ToolTip="Central da Carreira" />
+                    <TextBlock Text="{Binding AthleteLine}" FontWeight="SemiBold" FontSize="13"
+                               TextTrimming="CharacterEllipsis" VerticalAlignment="Center" />
+                </StackPanel>
                 <TextBlock Text="{Binding Phase}" Foreground="#B7E4C7" FontSize="11"
                            HorizontalAlignment="Right" VerticalAlignment="Center" />
             </Grid>
@@ -201,6 +208,19 @@
                 </StackPanel>
             </Grid>
             </Grid>
+
+            <!-- MENU (SPEC-054 fatia 1): o stub "Central da Carreira — em breve" (o hub das telas é
+                 fatia futura). Toggle no ☰; ancorado na faixa inteira como os demais popups. -->
+            <Popup x:Name="MenuPopup" IsOpen="{Binding MenuOpen, Mode=OneWay}" PlacementTarget="{Binding ElementName=BandRoot}"
+                   Placement="Top" VerticalOffset="-2" StaysOpen="True" Opened="OnPopupOpened">
+                <Border Background="#151D33" BorderBrush="#3D4E80" BorderThickness="1" Padding="20" Width="360">
+                    <StackPanel>
+                        <TextBlock Text="CENTRAL DA CARREIRA" Foreground="#EAF0FF" FontSize="15" FontWeight="SemiBold" />
+                        <TextBlock Text="Em breve — Perfil, Treino, Contrato, Calendário, Histórico, Elenco e mais."
+                                   Foreground="#A9B4D0" FontSize="12" TextWrapping="Wrap" Margin="0,8,0,0" />
+                    </StackPanel>
+                </Border>
+            </Popup>
 
             <!-- Painel de DECISÃO (SPEC-045): flutua acima da faixa; toggle no gatilho (StaysOpen). O
                  clique numa opção → POST /v1/decisions/answer → reconcilia → a próxima decisão aparece. -->
