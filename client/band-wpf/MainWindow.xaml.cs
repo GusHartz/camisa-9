@@ -110,17 +110,61 @@ public partial class MainWindow : Window
             a.Band.Height,
             Win.SWP_NOACTIVATE
         );
+        BringPopupsAboveBand(); // se re-ancorou com um popup aberto, devolve-o ao topo
     }
 
     // Troca de foreground: reafirma topmost (demote do 24H2), esconde sobre fullscreen (Win+D só detecta).
     private void OnForegroundChanged()
     {
         TopmostStrip.Reassert(_hwnd);
+        BringPopupsAboveBand(); // a faixa acabou de pular na frente; devolve os popups abertos ao topo
         bool fs = Fullscreen.IsActive(_hwnd);
         if (fs != _hidden)
         {
             _hidden = fs;
             Visibility = fs ? Visibility.Hidden : Visibility.Visible;
+        }
+    }
+
+    // A faixa é TOPMOST e se RE-AFIRMA no `OnForegroundChanged` a cada mudança de foco no sistema
+    // (Postura A) — então um Popup (decisão/loja/escolha) que abre acaba COBERTO pela faixa e some.
+    // Fix: (1) ao abrir, empurra o popup para cima da faixa; (2) SEMPRE que a faixa se re-afirma
+    // topmost, re-traz os popups abertos à frente (`BringPopupsAboveBand`). Sem o (2) a faixa
+    // ganhava a corrida logo depois do (1).
+    private void OnPopupOpened(object? sender, EventArgs e)
+    {
+        if (sender is System.Windows.Controls.Primitives.Popup p)
+            RaisePopup(p);
+    }
+
+    // Re-traz cada popup ABERTO para cima da faixa. Chamado após a faixa re-afirmar seu topmost.
+    private void BringPopupsAboveBand()
+    {
+        RaisePopup(DecisionPopup);
+        RaisePopup(ShopPopup);
+        RaisePopup(ChoicePopup);
+    }
+
+    private void RaisePopup(System.Windows.Controls.Primitives.Popup p)
+    {
+        if (!p.IsOpen || p.Child is not { } child)
+            return;
+        // Imediato + deferido: no `Opened` o HWND do popup pode ainda não existir; o deferido pega.
+        Raise();
+        Dispatcher.BeginInvoke(new Action(Raise), DispatcherPriority.Loaded);
+
+        void Raise()
+        {
+            if (PresentationSource.FromVisual(child) is HwndSource src && src.Handle != IntPtr.Zero)
+                NativeMethods.SetWindowPos(
+                    src.Handle,
+                    Win.HWND_TOPMOST,
+                    0,
+                    0,
+                    0,
+                    0,
+                    Win.SWP_NOMOVE | Win.SWP_NOSIZE | Win.SWP_NOACTIVATE
+                );
         }
     }
 

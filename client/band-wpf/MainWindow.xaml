@@ -11,6 +11,11 @@
     <!-- AllowsTransparency=False: composição por-pixel custa CPU (orçamento SPEC-003/042).
          Topmost=False no XAML: o topmost é setado no nível Win32 (TopmostStrip.Apply). -->
     <Window.Resources>
+        <!-- ⚠️ BoolToVis vive AQUI (na janela), não em App.xaml: o `Main` gerado pelo WPF SDK
+             (8.0.423) NÃO chama `App.InitializeComponent()`, então os `Application.Resources`
+             nunca carregam e um `{StaticResource BoolToVis}` do App estourava a faixa ao abrir
+             (XamlParseException). Os recursos da JANELA carregam sempre (MainWindow.InitializeComponent). -->
+        <BooleanToVisibilityConverter x:Key="BoolToVis" />
         <!-- Chip clicável (SPEC-045): um bloco de texto acionável, estrutural (sem arte). -->
         <Style x:Key="Chip" TargetType="Border">
             <Setter Property="Background" Value="#24303E" />
@@ -25,7 +30,7 @@
          texto sobre qualquer fundo, (3) o conteúdo. O `PhaseBrush` fica como cor de base (aparece
          enquanto a cena não compôs e nas bordas). ClipToBounds só aqui, NUNCA no <Window>
          (crash de startup 0xE0434352). -->
-    <Grid ClipToBounds="True" Background="{Binding PhaseBrush}">
+    <Grid x:Name="BandRoot" ClipToBounds="True" Background="{Binding PhaseBrush}">
         <Image x:Name="SceneLayer" Stretch="Fill"
                RenderOptions.BitmapScalingMode="NearestNeighbor" />
         <Rectangle>
@@ -84,7 +89,9 @@
                 <StackPanel Grid.Column="0" Orientation="Horizontal">
                     <TextBlock Text="Forma" FontSize="10" Foreground="#9A9AA5"
                                Width="40" VerticalAlignment="Center" />
-                    <ProgressBar Minimum="0" Maximum="100" Value="{Binding Forma}"
+                    <!-- Mode=OneWay: ProgressBar.Value faz TwoWay por DEFAULT e `Forma` é só-leitura
+                         (private set) → sem isto, crash ao abrir (InvalidOperationException). -->
+                    <ProgressBar Minimum="0" Maximum="100" Value="{Binding Forma, Mode=OneWay}"
                                  Width="90" Height="8" Foreground="#4EC9B0" Background="#2A2A38"
                                  BorderThickness="0" VerticalAlignment="Center" />
                     <TextBlock Text="{Binding Forma}" FontSize="10" Margin="6,0,0,0"
@@ -93,7 +100,7 @@
                 <StackPanel Grid.Column="2" Orientation="Horizontal">
                     <TextBlock Text="Moral" FontSize="10" Foreground="#9A9AA5"
                                Width="40" VerticalAlignment="Center" />
-                    <ProgressBar Minimum="0" Maximum="100" Value="{Binding Moral}"
+                    <ProgressBar Minimum="0" Maximum="100" Value="{Binding Moral, Mode=OneWay}"
                                  Width="90" Height="8" Foreground="#DDB86B" Background="#2A2A38"
                                  BorderThickness="0" VerticalAlignment="Center" />
                     <TextBlock Text="{Binding Moral}" FontSize="10" Margin="6,0,0,0"
@@ -197,8 +204,11 @@
 
             <!-- Painel de DECISÃO (SPEC-045): flutua acima da faixa; toggle no gatilho (StaysOpen). O
                  clique numa opção → POST /v1/decisions/answer → reconcilia → a próxima decisão aparece. -->
-            <Popup IsOpen="{Binding DecisionOpen}" PlacementTarget="{Binding ElementName=DecisionTrigger}"
-                   Placement="Top" VerticalOffset="-6" StaysOpen="True">
+            <!-- Ancorado na FAIXA INTEIRA (BandRoot), não no gatilho: a faixa encosta na borda
+                 direita do monitor, então um popup preso a um gatilho lá vazava pra fora da tela.
+                 Alinhado à esquerda da faixa (480px) → cabe. `Placement=Top` + offset = colado ACIMA. -->
+            <Popup x:Name="DecisionPopup" IsOpen="{Binding DecisionOpen, Mode=OneWay}" PlacementTarget="{Binding ElementName=BandRoot}"
+                   Placement="Top" VerticalOffset="-2" StaysOpen="True" Opened="OnPopupOpened">
                 <Border Background="#181820" BorderBrush="#2E2E3A" BorderThickness="1" Padding="10"
                         MaxWidth="380">
                     <StackPanel>
@@ -224,8 +234,8 @@
             </Popup>
 
             <!-- LOJA (SPEC-045): o catálogo; clicar "comprar" (só linhas disponíveis) → POST /v1/purchases. -->
-            <Popup IsOpen="{Binding ShopOpen}" PlacementTarget="{Binding ElementName=ShopTrigger}"
-                   Placement="Top" VerticalOffset="-6" StaysOpen="True">
+            <Popup x:Name="ShopPopup" IsOpen="{Binding ShopOpen, Mode=OneWay}" PlacementTarget="{Binding ElementName=BandRoot}"
+                   Placement="Top" VerticalOffset="-2" StaysOpen="True" Opened="OnPopupOpened">
                 <Border Background="#181820" BorderBrush="#2E2E3A" BorderThickness="1" Padding="10"
                         MaxWidth="320" MaxHeight="220">
                     <ScrollViewer VerticalScrollBarVisibility="Auto">
@@ -259,8 +269,8 @@
                  POST /v1/matches/choices/answer → reconcilia; a arriscada leva o ⚡ATTR no rótulo. -->
             <!-- SPEC-051: o conteúdo é DESENHADO em `View/ChoiceCard.cs` (fiel ao handoff do Claude
                  Design, tratamento 1a) e injetado aqui pelo code-behind — o popup em si só ancora. -->
-            <Popup IsOpen="{Binding ChoiceOpen}" PlacementTarget="{Binding ElementName=MatchLineText}"
-                   Placement="Top" VerticalOffset="-4" StaysOpen="True" AllowsTransparency="True">
+            <Popup x:Name="ChoicePopup" IsOpen="{Binding ChoiceOpen, Mode=OneWay}" PlacementTarget="{Binding ElementName=BandRoot}"
+                   Placement="Top" VerticalOffset="-2" StaysOpen="True" AllowsTransparency="True" Opened="OnPopupOpened">
                 <ContentControl x:Name="ChoiceHost" />
             </Popup>
         </Grid>

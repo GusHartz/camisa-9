@@ -172,13 +172,16 @@ public sealed class BandViewModel : INotifyPropertyChanged
         get => _currentMatchChoice;
         private set
         {
-            if (Set(ref _currentMatchChoice, value))
+            // ⚠️ ChoiceOptions PRIMEIRO, DEPOIS o Set: o `Set` dispara PropertyChanged síncrono, e o
+            // code-behind (RenderChoiceCard) reconstrói o card lendo `ChoiceOptions` NA HORA. Se setar
+            // as opções depois do Set, o card monta com a lista ainda VAZIA → prompt aparece, botões
+            // não. (Bug pego no 1º smoke ao vivo da faixa — o card do intervalo sem opções.)
+            if (value != _currentMatchChoice)
                 ChoiceOptions =
-                    value is null
-                        ? Array.Empty<ChoiceOptionRow>()
-                        : value.Options is null
-                            ? Array.Empty<ChoiceOptionRow>()
-                            : value.Options.Where(o => o is not null).Select(ToChoiceRow).ToList();
+                    value?.Options is { } opts
+                        ? opts.Where(o => o is not null).Select(ToChoiceRow).ToList()
+                        : Array.Empty<ChoiceOptionRow>();
+            Set(ref _currentMatchChoice, value);
         }
     }
 

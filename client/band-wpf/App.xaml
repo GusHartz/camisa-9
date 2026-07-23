@@ -1,7 +1,9 @@
 <Application x:Class="BandClient.App"
              xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation"
              xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml">
-    <Application.Resources>
-        <BooleanToVisibilityConverter x:Key="BoolToVis" />
-    </Application.Resources>
+    <!-- ⚠️ NÃO ponha recursos aqui. O `Main` gerado pelo WPF SDK (8.0.423) não chama
+         `App.InitializeComponent()`, então os `Application.Resources` NUNCA carregam em runtime —
+         um `{StaticResource ...}` que aponte pra cá estoura a janela ao abrir. Recursos vão em
+         `<Window.Resources>` da janela que os usa (ver MainWindow.xaml → BoolToVis). -->
+    <Application.Resources />
 </Application>
