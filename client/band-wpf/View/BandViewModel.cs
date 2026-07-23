@@ -546,17 +546,12 @@ public sealed class BandViewModel : INotifyPropertyChanged
                 MatchLine = "";
             return;
         }
-        string round;
         if (c.Round is { } r)
-        {
             _lastRound = r; // o round MOSTRADO — o contexto do POST de escolha (SPEC-050)
-            round = $" · rod {r}";
-        }
-        else
-        {
-            round = " · fora de temporada";
-        }
-        ClubLine = $"{c.Name} · T{c.Tier} · {c.Position}º{round}";
+        // Só o nome do SEU time (decisão do founder): o adversário, o placar e o "(casa/fora)" já
+        // vivem no MatchLine. Tier/posição/rodada saíram daqui — serão tratados noutro lugar depois
+        // (e some junto o bug do "FWDº", que colava "º" no código de posição).
+        ClubLine = c.Name;
 
         if (ReplayActive)
             return; // o replay dirige o MatchLine; o poll não o sobrescreve

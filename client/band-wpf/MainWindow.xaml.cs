@@ -35,7 +35,9 @@ public partial class MainWindow : Window
     private readonly BandPoller _poller;
     private readonly BandActions _actions;
     private IntPtr _hwnd;
-    private bool _hidden;
+    private bool _hidden; // auto-oculta sobre tela cheia (SPEC-042)
+    private bool _userHidden; // o jogador mandou ocultar pelo tray/duplo-clique (segue rodando)
+    private TrayIcon? _tray;
     private bool _cleaned;
 
     /// <summary>Disparado quando o servidor rejeita a sessão (401) — o App reabre o login.</summary>
@@ -86,6 +88,8 @@ public partial class MainWindow : Window
         RegisterExitSafetyNets();
         TopmostStrip.Apply(_hwnd); // Postura A: WS_EX_TOPMOST|TOOLWINDOW|NOACTIVATE no Win32
         ReAnchor();
+        _tray = new TrayIcon(_hwnd);
+        _tray.Add("NEXT GOAT — clique p/ mostrar/ocultar");
         _watcher.ForegroundChanged += OnForegroundChanged;
         _watcher.Start();
     }
@@ -122,7 +126,7 @@ public partial class MainWindow : Window
         if (fs != _hidden)
         {
             _hidden = fs;
-            Visibility = fs ? Visibility.Hidden : Visibility.Visible;
+            ApplyVisibility();
         }
     }
 
@@ -179,7 +183,40 @@ public partial class MainWindow : Window
         {
             ReAnchor();
         }
+        else if (msg == Win.WM_TRAYICON)
+        {
+            // O clique no ícone da bandeja chega no WORD baixo do lParam.
+            int evt = (int)(lParam.ToInt64() & 0xFFFF);
+            if (evt == Win.WM_LBUTTONUP)
+                ToggleUserHidden(); // esquerdo: mostra/oculta
+            else if (evt == Win.WM_RBUTTONUP)
+                OnTrayMenu(); // direito: menu (Mostrar/Ocultar · Sair)
+        }
         return IntPtr.Zero;
+    }
+
+    // A faixa é VISÍVEL só quando o jogador não a ocultou E não há tela cheia por cima. O processo
+    // segue rodando em qualquer caso (poll/presença) — ocultar nunca mata o app.
+    private void ApplyVisibility() =>
+        Visibility = _userHidden || _hidden ? Visibility.Hidden : Visibility.Visible;
+
+    private void ToggleUserHidden()
+    {
+        _userHidden = !_userHidden;
+        ApplyVisibility();
+    }
+
+    private void OnTrayMenu()
+    {
+        switch (_tray?.ShowMenu(visible: !_userHidden && !_hidden))
+        {
+            case TrayIcon.CmdToggle:
+                ToggleUserHidden();
+                break;
+            case TrayIcon.CmdQuit:
+                Close(); // "Sair": o fecho REAL (o duplo-clique agora só oculta)
+                break;
+        }
     }
 
     // Unhook + parar o poll. Idempotente. Chamado por Closing e pelas redes de segurança de saída.
@@ -188,6 +225,7 @@ public partial class MainWindow : Window
         if (_cleaned)
             return;
         _cleaned = true;
+        _tray?.Remove(); // tira o ícone da bandeja (senão fica um fantasma até passar o mouse)
         _watcher.Dispose(); // o unhook nativo PRIMEIRO — precisa rodar mesmo no ProcessExit
         try
         {
@@ -215,12 +253,14 @@ public partial class MainWindow : Window
     protected override void OnMouseDown(MouseButtonEventArgs e)
     {
         base.OnMouseDown(e);
+        // Duplo-clique agora OCULTA (não fecha): evita o fecha-sem-querer numa faixa que se clica
+        // muito. O fecho de verdade fica no "Sair" do menu da bandeja.
         if (e.ChangedButton == MouseButton.Left && e.ClickCount == 2)
-            Close();
+            ToggleUserHidden();
     }
 
     // Re-assistir (SPEC-044): um clique simples no "↻" reproduz a última partida de novo. `Handled`
-    // impede o borbulhamento para o OnMouseDown (que fecha a faixa no duplo-clique).
+    // impede o borbulhamento para o OnMouseDown (que oculta a faixa no duplo-clique).
     private void OnReWatchClick(object sender, MouseButtonEventArgs e)
     {
         _vm.ReWatch();
@@ -228,7 +268,7 @@ public partial class MainWindow : Window
     }
 
     // Compartilhar o card de partida (SPEC-049): gera a imagem, copia p/ o clipboard e salva o PNG.
-    // `Handled` impede o borbulhamento p/ o OnMouseDown (o duplo-clique que fecha a faixa).
+    // `Handled` impede o borbulhamento p/ o OnMouseDown (o duplo-clique que oculta a faixa).
     private void OnShareCardClick(object sender, MouseButtonEventArgs e)
     {
         _vm.ShareMatchCard();
@@ -236,7 +276,7 @@ public partial class MainWindow : Window
     }
 
     // --- Escritas de gameplay (SPEC-045): cada gesto dispara uma POST via o BandActions, que reconcilia.
-    //     `e.Handled` impede o borbulhamento p/ o OnMouseDown (o duplo-clique que fecha a faixa). ---
+    //     `e.Handled` impede o borbulhamento p/ o OnMouseDown (o duplo-clique que oculta a faixa). ---
 
     // Distribui 1 ponto no atributo do chip (Tag = 'fisico'|'tecnico'|'tatico'|'mental').
     private void OnSpendClick(object sender, MouseButtonEventArgs e)
